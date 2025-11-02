@@ -51,6 +51,7 @@ class Employee extends Model
 
     public function projectHistories()
     {
-        return $this->hasMany(EmployeeProjectHistory::class, 'employeeid', 'employeeid');
+        return $this->hasMany(EmployeeProjectHistory::class, 'employeeid', 'employeeid')
+            ->where('status', true);
     }
 }

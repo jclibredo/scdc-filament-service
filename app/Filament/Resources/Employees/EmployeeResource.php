@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Employees;
 
+use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Employee;
 use App\Models\Project;
 use BackedEnum;
@@ -35,39 +37,35 @@ class EmployeeResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // return EmployeeForm::configure($schema);
         return $schema
             ->schema([
                 TextInput::make('employeeid')
                     ->label('Employee ID')
-                    ->disabled() // makes it uneditable
-                    ->dehydrated() // still saves the value
-                    ->default(function () {
-                        $lastEmployee = Employee::latest('id')->first();
-                        $nextId = $lastEmployee ? $lastEmployee->id + 1 : 1; // start from 1 if no records exist
-                        return str_pad($nextId, 4, '0', STR_PAD_LEFT);
-                    }),
+                    ->unique(ignoreRecord: true),
                 TextInput::make('firstname')->required()->maxLength(255),
                 TextInput::make('middlename')->maxLength(255),
                 TextInput::make('lastname')->required()->maxLength(255),
                 Toggle::make('status')->label('Active')->default(true),
                 TextInput::make('mobile')->maxLength(20),
-                TextInput::make('email')->email()->required(),
+                TextInput::make('email')->label('Email Address')
+                    ->email()
+                    ->required()
+                    ->unique(ignoreRecord: true),
                 DatePicker::make('birthdate'),
                 Select::make('sex')
                     ->options([
                         'Male' => 'Male',
                         'Female' => 'Female',
                         'Other' => 'Other',
-                    ]),
+                    ])
+                    ->required(),
                 Textarea::make('address')->rows(3),
                 DatePicker::make('datehired'),
                 DatePicker::make('dateseperated'),
                 Select::make('employeetype')
-                    ->label('Employee Type')
                     ->options([
-                        'semi-monthly' => 'Semi-monthly',
-                        'weekly' => 'Weekly',
+                        'SM' => 'Semi-monthly',
+                        'W' => 'Weekly',
                     ])
                     ->required(),
                 Select::make('skill_id')
@@ -85,14 +83,25 @@ class EmployeeResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return EmployeesTable::configure($table);
         return $table
             ->columns([
                 TextColumn::make('employeeid')->sortable(),
                 TextColumn::make('firstname')->sortable()->searchable(),
                 TextColumn::make('middlename')->sortable(),
                 TextColumn::make('lastname')->sortable()->searchable(),
-                TextColumn::make('employeetype')->sortable()->searchable(),
+                TextColumn::make('projectHistories.employeetype')
+                    ->label('Employee Type')
+                    ->formatStateUsing(function ($state) {
+                        if ($state === 'SM') {
+                            return 'Semi-Monthly';
+                        }
+                        if ($state === 'W') {
+                            return 'Weekly';
+                        }
+                        return $state; // fallback
+                    })
+                    ->sortable()
+                    ->searchable(),
                 IconColumn::make('status')->boolean()->label('Active'),
                 TextColumn::make('mobile'),
                 TextColumn::make('email'),
@@ -117,29 +126,17 @@ class EmployeeResource extends Resource
                         FileUpload::make('uploadfile')
                             ->label('Employee CSV File')
                             ->required()
-                            ->acceptedFileTypes(['text/csv']),
-
-                        Select::make('project_id')
-                            ->label('Assign to Project')
-                            ->options(Project::pluck('name', 'id'))
-                            ->searchable()
-                            ->required(),
+                            ->acceptedFileTypes(['text/csv'])
+                            ->disk('public')
+                            ->directory('employees'), // Stores in storage/app/public/employees
                     ])
                     ->action(function (array $data) {
                         // Handle uploaded CSV import logic here
-
                         $file = $data['uploadfile'];
-                        $projectId = $data['project_id'];
-
-                        // Example: you can store file temporarily
-                        $path = $file->store('uploads/employees');
-
-                        // TODO: implement CSV parsing + import
-                        // Example: use League\Csv or fgetcsv() to loop and create Employee records
-
+                        ProcessEmployeeCsv::dispatch($file);
                         Notification::make()
-                            ->title('CSV Uploaded Successfully')
-                            ->body('Employees assigned to project ID: ' . $projectId)
+                            ->title('CSV Queued for Processing')
+                            ->body('The CSV file will be processed shortly.')
                             ->success()
                             ->send();
                     }),
@@ -158,6 +155,7 @@ class EmployeeResource extends Resource
     {
         return [
             'index' => ListEmployees::route('/'),
+            'create' => CreateEmployee::route('/create'),
         ];
     }
 }

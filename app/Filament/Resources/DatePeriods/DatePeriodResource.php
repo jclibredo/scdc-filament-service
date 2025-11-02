@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\DatePeriods;
 
+use App\Filament\Resources\DatePeriods\Pages\CreateDatePeriod;
 use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
 use BackedEnum;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -38,8 +40,8 @@ class DatePeriodResource extends Resource
                 Select::make('employeetype')
                     ->label('Employee Type')
                     ->options([
-                        'semi-monthly' => 'Semi-monthly',
-                        'weekly' => 'Weekly',
+                        'SM' => 'Semi-monthly',
+                        'W' => 'Weekly',
                     ])
                     ->required(),
 
@@ -59,7 +61,16 @@ class DatePeriodResource extends Resource
         // return DatePeriodsTable::configure($table);
         return $table
             ->columns([
-                TextColumn::make('employeetype')->sortable(),
+                TextColumn::make('employeetype')
+                    ->label('Employee Type')
+                    ->sortable()
+                    ->formatStateUsing(function ($state) {
+                        return match ($state) {
+                            'SM' => 'Semi Monthly',
+                            'W'  => 'Weekly',
+                            default => $state,
+                        };
+                    }),
                 TextColumn::make('category.name')->label('Category')->sortable(),
                 TextColumn::make('datefrom')->date()->label('Date From'),
                 TextColumn::make('dateto')->date()->label('Date To'),
@@ -67,6 +78,24 @@ class DatePeriodResource extends Resource
             ])
             ->filters([])
             ->actions([
+                // Action::make('downloadPdf')
+                //     ->label('Download PDF')
+                //     ->action(function () {
+                //         $employees = Employee::all();
+
+
+                //         // dd($employees);
+                //         $pdf = Pdf::loadView('pdf.employees', [
+                //             'employees' => $employees
+                //         ]);
+
+                //         // Return as download
+                //         return response()->streamDownload(
+                //             fn() => print($pdf->output()),
+                //             'employees.pdf'
+                //         );
+                //     }),
+
                 EditAction::make(),
                 DeleteAction::make(),
                 Action::make('view_payslip')
@@ -74,12 +103,53 @@ class DatePeriodResource extends Resource
                     ->color('primary')
                     ->button()
                     ->action(function ($record) {
+                        $emptype = $record->employeetype;
+                        // 🧩 Filter employees by selected employee type in active project histories
+                        $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
+                            $query->where('employeetype', $emptype);
+                        })->with('projectHistories') // eager load histories
+                            ->get();
+
+
+
+                        // Ensure UTF-8 encoding
+                        // $employees->transform(function ($employee) {
+                        //     $employee->firstname = mb_convert_encoding($employee->firstname, 'UTF-8', 'UTF-8');
+                        //     $employee->lastname = mb_convert_encoding($employee->lastname, 'UTF-8', 'UTF-8');
+                        //     $employee->middlename = mb_convert_encoding($employee->middlename, 'UTF-8', 'UTF-8');
+                        //     $employee->employee_type = mb_convert_encoding($employee->employee_type, 'UTF-8', 'UTF-8');
+                        //     return $employee;
+                        // });
+                        // Ensure all string fields are valid UTF-8
+                        $employees->transform(function ($employee) {
+                            foreach (['firstname', 'lastname', 'middlename', 'employee_type'] as $field) {
+                                if (!empty($employee->$field)) {
+                                    // Convert to UTF-8 and remove invalid bytes
+                                    $employee->$field = mb_convert_encoding($employee->$field, 'UTF-8', 'UTF-8');
+                                    $employee->$field = iconv('UTF-8', 'UTF-8//IGNORE', $employee->$field);
+                                }
+                            }
+                            return $employee;
+                        });
+
+                        // Generate PDF from Blade view
+                        $pdf = Pdf::loadView('payslips.view', [
+                            'employees' =>  $employees,
+                        ]);
+
                         Notification::make()
                             ->title('Payslip Viewer Coming Soon!')
                             ->body("This will open the payslip for: {$record->employee_type}")
                             ->success()
                             ->send();
+
+                        // Stream the PDF to browser to view inline
+                        return response()->streamDownload(
+                            fn() => print($pdf->output()),
+                            'employees.pdf'
+                        );
                     }),
+
 
                 Action::make('upload_data')
                     ->label('Upload Data')
@@ -106,8 +176,15 @@ class DatePeriodResource extends Resource
                     ->label('Export Employees')
                     ->color('success')
                     ->button()
-                    ->action(function () {
-                        $employees = Employee::with('project')->get();
+                    ->action(function ($record) {
+                        $emptype = $record->employeetype;
+                        // $employees = Employee::with('project')->get();
+                        // 🧩 Filter employees by selected employee type in active project histories
+                        $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
+                            $query->where('employeetype', $emptype);
+                        })
+                            ->with('projectHistories') // eager load histories
+                            ->get();
 
                         // 🧩 Check if there are any employees
                         if ($employees->isEmpty()) {
@@ -124,19 +201,20 @@ class DatePeriodResource extends Resource
                         $path = storage_path('app/' . $filename);
 
                         $handle = fopen($path, 'w');
-                        fputcsv($handle, ['Employee ID', 'First Name', 'Last Name', 'Project']); // headers
-
+                        fputcsv($handle, ['Employee ID', 'First Name', 'Last Name', 'Project', 'EmployeeType', 'TotalAmount']); // headers
                         foreach ($employees as $employee) {
+                            $activeHistory = $employee->projectHistories->first();
                             fputcsv($handle, [
                                 $employee->employeeid,
                                 $employee->firstname,
                                 $employee->lastname,
-                                optional($employee->project)->name ?? 'No Project',
+                                $employee->project_id,
+                                $activeHistory?->employeetype,
+                                'Enter Amount Here',
+
                             ]);
                         }
-
                         fclose($handle);
-
                         // ✅ Success notification
                         Notification::make()
                             ->title('Export Successful')
@@ -164,7 +242,7 @@ class DatePeriodResource extends Resource
     {
         return [
             'index' => ListDatePeriods::route('/'),
-            // 'create' => CreateDatePeriod::route('/create'),
+            'create' => CreateDatePeriod::route('/create'),
             // 'edit' => EditDatePeriod::route('/{record}/edit'),
         ];
     }
