@@ -13,6 +13,7 @@ class OtherDeductionLog extends Model
         'other_deduction_id',
         'employee_id',
         'date_period_id',
+        'amount',
     ];
 
     // Relationships

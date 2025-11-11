@@ -7,6 +7,7 @@ use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
+use App\Models\ThirteenthMonth;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
@@ -22,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use League\Csv\Reader;
 use UnitEnum;
 
 class DatePeriodResource extends Resource
@@ -132,24 +134,36 @@ class DatePeriodResource extends Resource
                             ->acceptedFileTypes(['text/csv']),
                     ])
                     ->action(function (array $data, $record) {
-                        $file = $data['uploadfile'];
-                        $path = $file->store('uploads/dateperiods');
+                        // $filePath = $data['uploadfile']->getRealPath();
+                        // // Open CSV using League CSV
+                        // $csv = Reader::createFromPath($filePath, 'r');
+                        // $csv->setHeaderOffset(0); // first row as header
+                        $filePath = $data['uploadfile']; // it's already a string path
+                        $csv = Reader::createFromPath($filePath, 'r');
+                        $csv->setHeaderOffset(0);
+                        $records = $csv->getRecords(); // iterable
+                        foreach ($records as $row) {
+                            // Map CSV columns to your ThirteenthMonth fields
+                            ThirteenthMonth::create([
+                                'periodid' => $record->id,                    // current DatePeriod record
+                                'employeeid' => $row['EmployeeID'],          // from CSV
+                                'total_amount' => $row['TotalAmount'],       // from CSV
+                            ]);
+                        }
 
-                        // TODO: parse and import CSV data for this specific $record
                         Notification::make()
                             ->title('CSV Uploaded Successfully')
-                            ->body("File for DatePeriod #{$record->id} stored at: {$path}")
+                            ->body("File for DatePeriod #{$record->id} imported successfully.")
                             ->success()
                             ->send();
                     }),
 
                 Action::make('export_csv')
-                    ->label('Export Employees')
+                    ->label('Download Template')
                     ->color('success')
                     ->button()
                     ->action(function ($record) {
                         $emptype = $record->employeetype;
-                        // $employees = Employee::with('project')->get();
                         // 🧩 Filter employees by selected employee type in active project histories
                         $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
                             $query->where('employeetype', $emptype);
@@ -172,7 +186,7 @@ class DatePeriodResource extends Resource
                         $path = storage_path('app/' . $filename);
 
                         $handle = fopen($path, 'w');
-                        fputcsv($handle, ['Employee ID', 'First Name', 'Last Name', 'Project', 'EmployeeType', 'TotalAmount']); // headers
+                        fputcsv($handle, ['EmployeeID', 'FirstName', 'LastName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
                         foreach ($employees as $employee) {
                             $activeHistory = $employee->projectHistories->first();
                             fputcsv($handle, [
