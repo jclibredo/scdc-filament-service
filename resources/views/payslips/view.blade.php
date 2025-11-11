@@ -121,6 +121,12 @@
 
 
     @foreach ($employees as $employee)
+
+    @php
+    // fetch values from the thirteenth_months table
+    $thirteenth = $employee->thirteenthMonth;
+    $totalAmount = $thirteenth->total_amount ?? 0;
+    @endphp
     <div class="payslip-container">
         <!-- Left Section -->
         <div class="left-section">
@@ -166,33 +172,13 @@
 
                 <tbody>
                     <tr>
-                        <td>Basic</td>
+                        <td>{{$datePeriod->category->name}}</td>
                         <td></td>
-                        <td style="text-align: left;">9,325.00</td>
+                        <td style="text-align: left;">{{ number_format($totalAmount, 2) }}</td>
 
-                        <td>Absences</td>
-                        <td>3.00</td>
+                        <td>CA</td>
+                        <td></td>
                         <td style="text-align: left;">2,151.93</td>
-                    </tr>
-
-                    <tr>
-                        <td>Allowance</td>
-                        <td>10.00</td>
-                        <td style="text-align: left;">961.54</td>
-
-                        <td>Lates/Undertime</td>
-                        <td>7.95</td>
-                        <td style="text-align: left;">712.80</td>
-                    </tr>
-
-                    <tr>
-                        <td>Transpo Allow</td>
-                        <td>10.00</td>
-                        <td style="text-align: left;">1,211.54</td>
-
-                        <td>SSS Loan</td>
-                        <td></td>
-                        <td style="text-align: left;">800.00</td>
                     </tr>
                 </tbody>
             </table>

@@ -54,4 +54,15 @@ class Employee extends Model
         return $this->hasMany(EmployeeProjectHistory::class, 'employeeid', 'employeeid')
             ->where('status', true);
     }
+
+
+    public function thirteenthMonth()
+    {
+        return $this->hasOne(ThirteenthMonth::class, 'employeeid', 'employeeid');
+    }
+
+    public function getFullnameAttribute()
+    {
+        return "{$this->lastname} {$this->firstname}";
+    }
 }

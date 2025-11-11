@@ -23,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 use League\Csv\Reader;
 use UnitEnum;
 
@@ -76,7 +77,6 @@ class DatePeriodResource extends Resource
                 TextColumn::make('category.name')->label('Category')->sortable(),
                 TextColumn::make('datefrom')->date()->label('Date From'),
                 TextColumn::make('dateto')->date()->label('Date To'),
-                TextColumn::make('created_at')->dateTime()->label('Created'),
             ])
             ->filters([])
             ->actions([
@@ -131,14 +131,17 @@ class DatePeriodResource extends Resource
                         FileUpload::make('uploadfile')
                             ->label('Upload CSV File')
                             ->required()
-                            ->acceptedFileTypes(['text/csv']),
+                            ->acceptedFileTypes(['text/csv'])
+                            ->disk('public')
+                            ->directory('uploads/csv'),
                     ])
                     ->action(function (array $data, $record) {
                         // $filePath = $data['uploadfile']->getRealPath();
                         // // Open CSV using League CSV
                         // $csv = Reader::createFromPath($filePath, 'r');
                         // $csv->setHeaderOffset(0); // first row as header
-                        $filePath = $data['uploadfile']; // it's already a string path
+                        // $filePath = $data['uploadfile']; // it's already a string path
+                        $filePath = storage_path('app/public/' . $data['uploadfile']);
                         $csv = Reader::createFromPath($filePath, 'r');
                         $csv->setHeaderOffset(0);
                         $records = $csv->getRecords(); // iterable
@@ -150,6 +153,9 @@ class DatePeriodResource extends Resource
                                 'total_amount' => $row['TotalAmount'],       // from CSV
                             ]);
                         }
+
+                        // ✅ Delete the uploaded CSV file
+                        Storage::disk('public')->delete($data['uploadfile']);
 
                         Notification::make()
                             ->title('CSV Uploaded Successfully')

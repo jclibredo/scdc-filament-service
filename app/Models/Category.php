@@ -13,9 +13,4 @@ class Category extends Model
         'name',
         'description',
     ];
-    // In Category.php
-    public function csvUploads()
-    {
-        return $this->hasMany(CsvUpload::class);
-    }
 }
