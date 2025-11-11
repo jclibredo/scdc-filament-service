@@ -78,78 +78,49 @@ class DatePeriodResource extends Resource
             ])
             ->filters([])
             ->actions([
-                // Action::make('downloadPdf')
-                //     ->label('Download PDF')
-                //     ->action(function () {
-                //         $employees = Employee::all();
-
-
-                //         // dd($employees);
-                //         $pdf = Pdf::loadView('pdf.employees', [
-                //             'employees' => $employees
-                //         ]);
-
-                //         // Return as download
-                //         return response()->streamDownload(
-                //             fn() => print($pdf->output()),
-                //             'employees.pdf'
-                //         );
-                //     }),
-
                 EditAction::make(),
                 DeleteAction::make(),
                 Action::make('view_payslip')
                     ->label('View Payslip')
                     ->color('primary')
                     ->button()
-                    ->action(function ($record) {
-                        $emptype = $record->employeetype;
-                        // 🧩 Filter employees by selected employee type in active project histories
-                        $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
-                            $query->where('employeetype', $emptype);
-                        })->with('projectHistories') // eager load histories
-                            ->get();
+                    ->url(fn($record) => route('payslips.view', $record->id))
+                    ->openUrlInNewTab(),
+                // Action::make('view_payslip')
+                //     ->label('View Payslip')
+                //     ->color('primary')
+                //     ->button()
+                //     ->action(function ($record) {
+                //         $emptype = $record->employeetype;
+                //         // 🧩 Filter employees by selected employee type in active project histories
 
+                //         $employees = Employee::whereHas('projectHistories', function ($q) use ($emptype) {
+                //             $q->where('employeetype', $emptype)
+                //                 ->where('status', 1); // <-- only active project histories
+                //         })
+                //             ->with(['projectHistories' => function ($q) {
+                //                 $q->where('status', 1); // <-- only active project histories
+                //                 $q->with('project');    // eager load project
+                //             }])
+                //             ->get();
+                //         // Generate PDF from Blade view
+                //         $pdf = Pdf::loadView('payslips.view', [
+                //             'employees' =>  $employees,
+                //             'datePeriod' => $record,
+                //         ]);
 
+                //         Notification::make()
+                //             ->title('Payslip Viewer Coming Soon!')
+                //             ->body("This will open the payslip for: {$record->employee_type}")
+                //             ->success()
+                //             ->send();
 
-                        // Ensure UTF-8 encoding
-                        // $employees->transform(function ($employee) {
-                        //     $employee->firstname = mb_convert_encoding($employee->firstname, 'UTF-8', 'UTF-8');
-                        //     $employee->lastname = mb_convert_encoding($employee->lastname, 'UTF-8', 'UTF-8');
-                        //     $employee->middlename = mb_convert_encoding($employee->middlename, 'UTF-8', 'UTF-8');
-                        //     $employee->employee_type = mb_convert_encoding($employee->employee_type, 'UTF-8', 'UTF-8');
-                        //     return $employee;
-                        // });
-                        // Ensure all string fields are valid UTF-8
-                        $employees->transform(function ($employee) {
-                            foreach (['firstname', 'lastname', 'middlename', 'employee_type'] as $field) {
-                                if (!empty($employee->$field)) {
-                                    // Convert to UTF-8 and remove invalid bytes
-                                    $employee->$field = mb_convert_encoding($employee->$field, 'UTF-8', 'UTF-8');
-                                    $employee->$field = iconv('UTF-8', 'UTF-8//IGNORE', $employee->$field);
-                                }
-                            }
-                            return $employee;
-                        });
-
-                        // Generate PDF from Blade view
-                        $pdf = Pdf::loadView('payslips.view', [
-                            'employees' =>  $employees,
-                        ]);
-
-                        Notification::make()
-                            ->title('Payslip Viewer Coming Soon!')
-                            ->body("This will open the payslip for: {$record->employee_type}")
-                            ->success()
-                            ->send();
-
-                        // Stream the PDF to browser to view inline
-                        return response()->streamDownload(
-                            fn() => print($pdf->output()),
-                            'employees.pdf'
-                        );
-                    }),
-
+                //         // Stream the PDF to browser to view inline
+                //         return response()->streamDownload(
+                //             fn() => print($pdf->output()),
+                //             'employees.pdf'
+                //         );
+                //     }),
 
                 Action::make('upload_data')
                     ->label('Upload Data')
