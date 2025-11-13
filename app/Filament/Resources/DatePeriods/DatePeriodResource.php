@@ -61,7 +61,6 @@ class DatePeriodResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return DatePeriodsTable::configure($table);
         return $table
             ->columns([
                 TextColumn::make('employeetype')
@@ -88,42 +87,6 @@ class DatePeriodResource extends Resource
                     ->button()
                     ->url(fn($record) => route('payslips.view', $record->id))
                     ->openUrlInNewTab(),
-                // Action::make('view_payslip')
-                //     ->label('View Payslip')
-                //     ->color('primary')
-                //     ->button()
-                //     ->action(function ($record) {
-                //         $emptype = $record->employeetype;
-                //         // 🧩 Filter employees by selected employee type in active project histories
-
-                //         $employees = Employee::whereHas('projectHistories', function ($q) use ($emptype) {
-                //             $q->where('employeetype', $emptype)
-                //                 ->where('status', 1); // <-- only active project histories
-                //         })
-                //             ->with(['projectHistories' => function ($q) {
-                //                 $q->where('status', 1); // <-- only active project histories
-                //                 $q->with('project');    // eager load project
-                //             }])
-                //             ->get();
-                //         // Generate PDF from Blade view
-                //         $pdf = Pdf::loadView('payslips.view', [
-                //             'employees' =>  $employees,
-                //             'datePeriod' => $record,
-                //         ]);
-
-                //         Notification::make()
-                //             ->title('Payslip Viewer Coming Soon!')
-                //             ->body("This will open the payslip for: {$record->employee_type}")
-                //             ->success()
-                //             ->send();
-
-                //         // Stream the PDF to browser to view inline
-                //         return response()->streamDownload(
-                //             fn() => print($pdf->output()),
-                //             'employees.pdf'
-                //         );
-                //     }),
-
                 Action::make('upload_data')
                     ->label('Upload Data')
                     ->button()
@@ -136,11 +99,6 @@ class DatePeriodResource extends Resource
                             ->directory('uploads/csv'),
                     ])
                     ->action(function (array $data, $record) {
-                        // $filePath = $data['uploadfile']->getRealPath();
-                        // // Open CSV using League CSV
-                        // $csv = Reader::createFromPath($filePath, 'r');
-                        // $csv->setHeaderOffset(0); // first row as header
-                        // $filePath = $data['uploadfile']; // it's already a string path
                         $filePath = storage_path('app/public/' . $data['uploadfile']);
                         $csv = Reader::createFromPath($filePath, 'r');
                         $csv->setHeaderOffset(0);
@@ -153,10 +111,8 @@ class DatePeriodResource extends Resource
                                 'total_amount' => $row['TotalAmount'],       // from CSV
                             ]);
                         }
-
                         // ✅ Delete the uploaded CSV file
                         Storage::disk('public')->delete($data['uploadfile']);
-
                         Notification::make()
                             ->title('CSV Uploaded Successfully')
                             ->body("File for DatePeriod #{$record->id} imported successfully.")
@@ -174,7 +130,8 @@ class DatePeriodResource extends Resource
                         $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
                             $query->where('employeetype', $emptype);
                         })
-                            ->with('projectHistories') // eager load histories
+                            ->with('projectHistories')
+                            ->orderBy('lastname', 'asc') // eager load histories
                             ->get();
 
                         // 🧩 Check if there are any employees
@@ -192,17 +149,17 @@ class DatePeriodResource extends Resource
                         $path = storage_path('app/' . $filename);
 
                         $handle = fopen($path, 'w');
-                        fputcsv($handle, ['EmployeeID', 'FirstName', 'LastName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
+                        fputcsv($handle, ['EmployeeID', 'LastName', 'FirstName', 'MiddleName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
                         foreach ($employees as $employee) {
                             $activeHistory = $employee->projectHistories->first();
                             fputcsv($handle, [
                                 $employee->employeeid,
-                                $employee->firstname,
                                 $employee->lastname,
+                                $employee->firstname,
+                                $employee->middlename,
                                 $employee->project_id,
                                 $activeHistory?->employeetype,
                                 'Enter Amount Here',
-
                             ]);
                         }
                         fclose($handle);

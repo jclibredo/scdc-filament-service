@@ -7,6 +7,7 @@ use App\Filament\Resources\ThirteenthMonths\Pages\EditThirteenthMonth;
 use App\Filament\Resources\ThirteenthMonths\Pages\ListThirteenthMonths;
 use App\Filament\Resources\ThirteenthMonths\Schemas\ThirteenthMonthForm;
 use App\Filament\Resources\ThirteenthMonths\Tables\ThirteenthMonthsTable;
+use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\OtherDeduction;
@@ -23,7 +24,9 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class ThirteenthMonthResource extends Resource
@@ -38,18 +41,13 @@ class ThirteenthMonthResource extends Resource
     {
         return $schema
             ->schema([
-
-                Select::make('periodid')
-                    ->label('Period')
-                    ->options(DatePeriod::pluck('periodname', 'id'))
-                    ->searchable()
-                    ->required(),
-
-                Select::make('employeeid')
+                Select::make('employeeid') // still bind to the actual foreign key
                     ->label('Employee')
-                    ->options(Employee::pluck('fullname', 'employeeid'))
+                    ->options(Employee::all()->pluck('fullname', 'employeeid')) // use the accessor
                     ->searchable()
+                    ->disabled()
                     ->required(),
+
 
                 TextInput::make('total_amount')
                     ->numeric()
@@ -58,6 +56,7 @@ class ThirteenthMonthResource extends Resource
                     ->default(0),
             ]);
     }
+
 
     public static function table(Table $table): Table
     {
@@ -72,7 +71,6 @@ class ThirteenthMonthResource extends Resource
                     ->date()
                     ->sortable()
                     ->searchable(),
-
                 TextColumn::make('period.dateto')
                     ->label('Date To')
                     ->date()
@@ -82,15 +80,37 @@ class ThirteenthMonthResource extends Resource
                     ->label('Employee')
                     ->sortable()
                     ->searchable(),
-
                 TextColumn::make('total_amount')
                     ->label('Total Amount')
                     ->money('php')
                     ->sortable(),
-
-
             ])
-            ->filters([])
+            ->filters([
+                SelectFilter::make('periodid')
+                    ->label('Period')
+                    ->options(
+                        DatePeriod::all()
+                            ->mapWithKeys(fn($period) => [
+                                $period->id => $period->datefrom . ' - ' . $period->dateto
+                            ])
+                            ->toArray()
+                    )
+                    ->placeholder('Select Period'),
+            ])
+            ->modifyQueryUsing(function (Builder $query, Table $table): Builder {
+                // Get the current value of the 'periodid' filter
+                $periodId = $table->getFilter('periodid')?->getState();
+
+                // If no period is selected, show empty table
+                if (empty($periodId)) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                // Otherwise, filter by the selected period
+                return $query->where('periodid', $periodId);
+            })
+            ->defaultSort('period.datefrom')
+            ->emptyStateActions([])
             ->actions([
                 // EditAction::make(),
                 Action::make('otherDeduction')
@@ -102,18 +122,18 @@ class ThirteenthMonthResource extends Resource
                         'employeeId' => $record->employeeid,
                         'datePeriodId' => $record->periodid,
                     ]))
-                    // ->modalContent(function ($record) {
-                    //     $deductionLogs = OtherDeductionLog::where('employee_id', $record->employeeid)
-                    //         ->where('date_period_id', $record->periodid)
-                    //         ->with('otherDeduction')
-                    //         ->get();
+                    ->modalContent(function ($record) {
+                        $deductionLogs = OtherDeductionLog::where('employee_id', $record->employeeid)
+                            ->where('date_period_id', $record->periodid)
+                            ->with('otherDeduction')
+                            ->get();
 
-                    //     // Display current deductions with a remove button
-                    //     return view('filament.partials.other-deduction-modal', [
-                    //         'deductionLogs' => $deductionLogs,
-                    //         'record' => $record,
-                    //     ]);
-                    // })
+                        // Display current deductions with a remove button
+                        return view('filament.partials.other-deduction-modal', [
+                            'deductionLogs' => $deductionLogs,
+                            'record' => $record,
+                        ]);
+                    })
                     ->modalFooterActions([
                         Action::make('addDeduction')
                             ->label('Add Deduction')
@@ -129,16 +149,12 @@ class ThirteenthMonthResource extends Resource
                                     ->required(),
                             ])
                             ->action(function ($record, array $data) {
-
-
-                                // dd($record);
                                 OtherDeductionLog::create([
                                     'other_deduction_id' => $data['other_deduction_id'],
                                     'employee_id'        => $record->employeeid,
                                     'date_period_id'     => $record->periodid,
                                     'amount'             => $data['amount'],
                                 ]);
-
                                 Notification::make()
                                     ->title('Deduction Added')
                                     ->body('Deduction saved successfully.')
@@ -146,37 +162,7 @@ class ThirteenthMonthResource extends Resource
                                     ->send();
                             }),
                     ]),
-                // Action::make('otherDeduction')
-                //     ->label('Add Other Deduction')
-                //     ->icon('heroicon-o-plus-circle')
-                //     ->color('warning')
-                //     ->modalHeading('Add Other Deduction')
-                //     ->modalSubmitActionLabel('Save Deduction')
-                //     ->form([
-                //         Select::make('deduction_id')
-                //             ->label('Deduction Type')
-                //             ->options(OtherDeduction::pluck('title', 'id'))
-                //             ->searchable()
-                //             ->required(),
-                //         TextInput::make('amount')
-                //             ->label('Amount')
-                //             ->numeric()
-                //             ->required(),
-                //     ])
-                //     ->action(function ($record, array $data) {
-                //         OtherDeductionLog::create([
-                //             'other_deduction_id' => $data['other_deduction_id'],
-                //             'employee_id'        => $record->employeeid,
-                //             'date_period_id'     => $record->periodid,
-                //             'amount'             => $data['amount'],
-                //         ]);
 
-                //         Notification::make()
-                //             ->title('Deduction Added')
-                //             ->body("Deduction for {$record->employee->fullname} saved successfully.")
-                //             ->success()
-                //             ->send();
-                //     }),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
@@ -189,7 +175,6 @@ class ThirteenthMonthResource extends Resource
             //
         ];
     }
-
     public static function getPages(): array
     {
         return [
