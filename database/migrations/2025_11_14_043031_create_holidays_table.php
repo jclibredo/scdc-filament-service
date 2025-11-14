@@ -8,18 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('atlogs', function (Blueprint $table) {
+        Schema::create('holidays', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('userid');
-            $table->time('timein')->nullable();
-            $table->time('timeout')->nullable();
-            $table->dateTime('datetime')->nullable();
+            $table->string('type');           // e.g., Public, Religious, Optional
+            $table->decimal('percentage', 5, 2); // e.g., 10.00 (%)
+            $table->text('details');         // Additional info
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('atlogs');
+        Schema::dropIfExists('holidays');
     }
 };

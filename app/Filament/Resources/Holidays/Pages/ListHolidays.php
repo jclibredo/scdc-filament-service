@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\Atlogs\Pages;
+namespace App\Filament\Resources\Holidays\Pages;
 
-use App\Filament\Resources\Atlogs\AtlogResource;
+use App\Filament\Resources\Holidays\HolidayResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
-class ListAtlogs extends ListRecords
+class ListHolidays extends ListRecords
 {
-    protected static string $resource = AtlogResource::class;
+    protected static string $resource = HolidayResource::class;
 
     protected function getHeaderActions(): array
     {

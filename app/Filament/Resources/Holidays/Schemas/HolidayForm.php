@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\Atlogs\Schemas;
+namespace App\Filament\Resources\Holidays\Schemas;
 
 use Filament\Schemas\Schema;
 
-class AtlogForm
+class HolidayForm
 {
     public static function configure(Schema $schema): Schema
     {

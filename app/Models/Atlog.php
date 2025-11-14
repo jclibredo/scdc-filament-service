@@ -9,16 +9,28 @@ class Atlog extends Model
 {
     use HasFactory;
 
+    protected $table = 'atlogs';
+
     protected $fillable = [
-        'userid',
-        'timein',
-        'timeout',
-        'datetime',
+        'employeeid',
+        'date',
+        'time_in',
+        'break_out',
+        'break_in',
+        'time_out',
     ];
 
-    // Optional relationship to User model
-    public function user()
+    /**
+     * Relation: Atlog belongs to an Employee
+     */
+    public function employee()
     {
-        return $this->belongsTo(Employee::class, 'userid');
+        return $this->belongsTo(Employee::class, 'employeeid', 'employeeid');
+    }
+
+    public function scopeWithEmployee($query)
+    {
+        return $query->select('atlogs.*')
+            ->join('employees', 'atlogs.employeeid', '=', 'employees.employeeid');
     }
 }
