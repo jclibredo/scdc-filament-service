@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Filament\Resources\Holidays\Tables;
+namespace App\Filament\Resources\HolidayLogs\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Table;
 
-class HolidaysTable
+class HolidayLogsTable
 {
     public static function configure(Table $table): Table
     {

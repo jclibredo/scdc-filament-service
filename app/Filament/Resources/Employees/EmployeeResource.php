@@ -25,6 +25,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class EmployeeResource extends Resource
@@ -112,6 +113,27 @@ class EmployeeResource extends Resource
             ])
             ->filters([])
             ->actions([
+                Action::make('viewEarnings')
+                    ->label('View Earnings')
+                    ->icon('heroicon-o-banknotes')
+                    ->modalHeading('Active Earnings')
+                    ->modalWidth('lg')
+                    ->action(function () {
+                        // No action needed, modal only
+                    })
+                    ->modalContent(function ($record) {
+                        // Query active earnings for this employee
+                        $earnings = DB::table('earnings')
+                            ->where('employeeid', $record->employeeid)
+                            ->where('status', true)
+                            ->get();
+
+                        // Return a blade view with the earnings table
+                        return view('filament.custom.earnings-list', [
+                            'employee' => $record,
+                            'earnings' => $earnings,
+                        ]);
+                    }),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

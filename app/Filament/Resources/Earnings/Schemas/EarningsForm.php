@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\Holidays\Schemas;
+namespace App\Filament\Resources\Earnings\Schemas;
 
 use Filament\Schemas\Schema;
 
-class HolidayForm
+class EarningsForm
 {
     public static function configure(Schema $schema): Schema
     {

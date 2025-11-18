@@ -35,11 +35,6 @@ class HolidayResource extends Resource
             ->schema([
                 TextInput::make('type')
                     ->label('Type')
-                    // ->options([
-                    //     'public' => 'Public Holiday',
-                    //     'religious' => 'Religious Holiday',
-                    //     'optional' => 'Optional Holiday',
-                    // ])
                     ->required(),
                 TextInput::make('percentage')
                     ->label('Percentage')
