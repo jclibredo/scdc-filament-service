@@ -21,6 +21,7 @@ class Employee extends Model
         'sex',
         'address',
         'datehired',
+        'employeetype',
         'dateseperated',
         'skill_id',
         'project_id',
@@ -54,7 +55,6 @@ class Employee extends Model
         return $this->hasMany(EmployeeProjectHistory::class, 'employeeid', 'employeeid')
             ->where('status', true);
     }
-
 
     public function thirteenthMonth()
     {

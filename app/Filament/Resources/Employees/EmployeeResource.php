@@ -24,6 +24,8 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
@@ -50,7 +52,6 @@ class EmployeeResource extends Resource
                 TextInput::make('mobile')->maxLength(20),
                 TextInput::make('email')->label('Email Address')
                     ->email()
-                    ->required()
                     ->unique(ignoreRecord: true),
                 DatePicker::make('birthdate'),
                 Select::make('sex')
@@ -90,19 +91,7 @@ class EmployeeResource extends Resource
                 TextColumn::make('firstname')->sortable()->searchable(),
                 TextColumn::make('middlename')->sortable(),
                 TextColumn::make('lastname')->sortable()->searchable(),
-                TextColumn::make('projectHistories.employeetype')
-                    ->label('Employee Type')
-                    ->formatStateUsing(function ($state) {
-                        if ($state === 'SM') {
-                            return 'Semi-Monthly';
-                        }
-                        if ($state === 'W') {
-                            return 'Weekly';
-                        }
-                        return $state; // fallback
-                    })
-                    ->sortable()
-                    ->searchable(),
+                TextColumn::make('employeetype')->sortable()->searchable(),
                 IconColumn::make('status')->boolean()->label('Active'),
                 TextColumn::make('mobile'),
                 TextColumn::make('email'),
@@ -111,7 +100,24 @@ class EmployeeResource extends Resource
                 TextColumn::make('datehired')->date(),
                 TextColumn::make('dateseperated')->date(),
             ])
-            ->filters([])
+            ->filters([
+                // Filter by Employee Type
+                SelectFilter::make('employeetype')
+                    ->label('Employee Type')
+                    ->options([
+                        'SM' => 'Semi Monthly',
+                        'W'  => 'Weekly',
+                    ])
+                    ->placeholder('Select Employee Type'),
+                // FILTER: Project
+                SelectFilter::make('project_id')
+                    ->label('Project')
+                    ->options(
+                        Project::orderBy('name', 'asc')->pluck('name', 'id')
+                    )
+                    ->placeholder('Select Project'),
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormWidth('2xl')
             ->actions([
                 Action::make('viewEarnings')
                     ->label('View Earnings')

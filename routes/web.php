@@ -12,28 +12,58 @@ Route::get('/', function () {
 
 
 Route::get('/payslips/view/{id}', function ($id) {
+    // $datePeriod = DatePeriod::findOrFail($id);
+    // $catgegory = $datePeriod->category->name;
+    // $type = $datePeriod->employeetype;
+    // // Group all deductions by employee_id
+    // $deductions = OtherDeductionLog::where('date_period_id', $id)
+    //     ->with('otherDeduction') // ensure we can access the deduction title
+    //     ->get()
+    //     ->groupBy('employee_id');
+    // $employees = Employee::whereHas('projectHistories', function ($q) use ($type) {
+    //     $q->where('employeetype', $type)
+    //         ->where('status', 1);
+    // })
+    //     ->with([
+    //         'projectHistories' => function ($q) {
+    //             $q->where('status', 1)->with('project');
+    //         },
+    //         'thirteenthMonth' => function ($q) use ($datePeriod) {
+    //             $q->where('periodid', $datePeriod->id);
+    //         }
+    //     ])
+    //     ->get();
+    // return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'catgegory'));
+    // Find the date period
     $datePeriod = DatePeriod::findOrFail($id);
-    $catgegory = $datePeriod->category->name;
+    $category = $datePeriod->category->name;
     $type = $datePeriod->employeetype;
-    // Group all deductions by employee_id
+    $projectId = $datePeriod->project_id ?? null; // if your DatePeriod has a project_id
+
+    // Get deductions grouped by employee
     $deductions = OtherDeductionLog::where('date_period_id', $id)
-        ->with('otherDeduction') // ensure we can access the deduction title
+        ->with('otherDeduction')
         ->get()
         ->groupBy('employee_id');
-    $employees = Employee::whereHas('projectHistories', function ($q) use ($type) {
-        $q->where('employeetype', $type)
-            ->where('status', 1);
-    })
+
+    // Fetch employees with direct columns
+    $employeesQuery = Employee::query()
+        ->where('status', 1)
+        ->where('employeetype', $type);
+
+    // Optional project filter if project_id is provided
+    if ($projectId) {
+        $employeesQuery->where('project_id', $projectId);
+    }
+
+    $employees = $employeesQuery
         ->with([
-            'projectHistories' => function ($q) {
-                $q->where('status', 1)->with('project');
-            },
-            'thirteenthMonth' => function ($q) use ($datePeriod) {
-                $q->where('periodid', $datePeriod->id);
-            }
+            'project', // eager load project
+            'thirteenthMonth' => fn($q) => $q->where('periodid', $datePeriod->id),
         ])
+        ->orderBy('lastname', 'asc')
         ->get();
-    return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'catgegory'));
+    return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'category'));
 })->name('payslips.view');
 
 
