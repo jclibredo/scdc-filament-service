@@ -14,6 +14,7 @@ use App\Models\OtherDeduction;
 use App\Models\OtherDeductionLog;
 use App\Models\ThirteenthMonth;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -24,6 +25,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +38,8 @@ class ThirteenthMonthResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
     protected  static string|UnitEnum|null $navigationGroup = 'Reports';
     protected static ?string $recordTitleAttribute = 'ThirteenthMonth';
+    protected static ?string $navigationLabel = 'Year End Reports';
+    protected static ?string $modelLabel = '13Month and Incentives Reports';
 
     public static function form(Schema $schema): Schema
     {
@@ -91,28 +95,27 @@ class ThirteenthMonthResource extends Resource
                     ->options(
                         DatePeriod::all()
                             ->mapWithKeys(fn($period) => [
-                                $period->id => $period->datefrom . ' - ' . $period->dateto
+                                $period->id => ($period->code ?: 'OOOOOO') . ' | ' .
+                                    Carbon::parse($period->datefrom)->format('M. d, Y') .
+                                    ' - ' .
+                                    Carbon::parse($period->dateto)->format('M. d, Y')
                             ])
                             ->toArray()
                     )
                     ->placeholder('Select Period'),
-            ])
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormWidth('2xl')
             ->modifyQueryUsing(function (Builder $query, Table $table): Builder {
-                // Get the current value of the 'periodid' filter
                 $periodId = $table->getFilter('periodid')?->getState();
-
-                // If no period is selected, show empty table
                 if (empty($periodId)) {
                     return $query->whereRaw('1 = 0');
                 }
-
-                // Otherwise, filter by the selected period
                 return $query->where('periodid', $periodId);
             })
             ->defaultSort('period.datefrom')
             ->emptyStateActions([])
             ->actions([
-                // EditAction::make(),
+                EditAction::make(),
                 Action::make('otherDeduction')
                     ->label('Manage Other Deductions')
                     ->icon('heroicon-o-plus-circle')

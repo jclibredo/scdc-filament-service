@@ -12,6 +12,7 @@ class DatePeriod extends Model
     protected $fillable = [
         'employeetype',
         'category_id',
+        'code',
         'datefrom',
         'dateto',
     ];

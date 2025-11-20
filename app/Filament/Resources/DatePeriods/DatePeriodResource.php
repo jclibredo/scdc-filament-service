@@ -7,6 +7,8 @@ use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
+use App\Models\GovDeductionLog;
+use App\Models\OtherDeductionLog;
 use App\Models\ThirteenthMonth;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,13 +19,19 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use League\Csv\Reader;
 use UnitEnum;
 
@@ -37,9 +45,17 @@ class DatePeriodResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // return DatePeriodForm::configure($schema);
         return $schema
             ->schema([
+                TextInput::make('code')
+                    ->label('Code')
+                    ->disabled()                // user cannot edit
+                    ->dehydrated()              // still save to DB
+                    ->default(fn() => strtoupper(Str::random(6)))
+                    ->rule(
+                        Rule::unique('date_periods', 'code')   // direct DB table check
+                    ) // avoid duplicates
+                    ->required(),
                 Select::make('employeetype')
                     ->label('Employee Type')
                     ->options([
@@ -63,6 +79,9 @@ class DatePeriodResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('code')
+                    ->label('Control Code')
+                    ->placeholder('N/A'),
                 TextColumn::make('employeetype')
                     ->label('Employee Type')
                     ->sortable()
@@ -77,19 +96,97 @@ class DatePeriodResource extends Resource
                 TextColumn::make('datefrom')->date()->label('Date From'),
                 TextColumn::make('dateto')->date()->label('Date To'),
             ])
-            ->filters([])
+            ->filters([
+                // Filter by Control Code
+                SelectFilter::make('code')
+                    ->label('Control Code')
+                    ->options(
+                        DatePeriod::query()
+                            ->whereNotNull('code')
+                            ->where('code', '!=', '')
+                            ->orderBy('code')
+                            ->pluck('code', 'code')
+                    )
+                    ->placeholder('Select Code'),
+
+                // Filter by Employee Type
+                SelectFilter::make('employeetype')
+                    ->label('Employee Type')
+                    ->options([
+                        'SM' => 'Semi Monthly',
+                        'W'  => 'Weekly',
+                    ])
+                    ->placeholder('Select Employee Type'),
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormWidth('2xl')
             ->actions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->before(function ($record) {
+                        DB::table('thirteenth_months')
+                            ->where('periodid', $record->id)
+                            ->delete();
+
+                        DB::table('gov_deduction_logs')
+                            ->where('date_period_id', $record->id)
+                            ->delete();
+
+                        DB::table('other_deduction_logs')
+                            ->where('date_period_id', $record->id)
+                            ->delete();
+                    }),
+
+                Action::make('clean_data')
+                    ->label('Clean Data')
+                    ->color('success')
+                    ->visible(
+                        fn($record) =>
+                        DB::table('thirteenth_months')
+                            ->where('periodid', $record->id)
+                            ->exists()
+                    )
+                    ->icon('heroicon-o-trash')
+                    ->requiresConfirmation()
+                    ->modalHeading('Clean Thirteenth Month Data')
+                    ->modalSubheading('This will delete all 13th month data associated with this period. This action cannot be undone.')
+                    ->modalButton('Yes, delete')
+                    ->action(function ($record) {
+                        // Direct DB delete queries
+                        DB::table('thirteenth_months')
+                            ->where('periodid', $record->id)
+                            ->delete();
+
+                        DB::table('gov_deduction_logs')
+                            ->where('date_period_id', $record->id)
+                            ->delete();
+
+                        DB::table('other_deduction_logs')
+                            ->where('date_period_id', $record->id)
+                            ->delete();
+                        Notification::make()
+                            ->title('Data Cleaned')
+                            ->body("All thirteenth month data for Period #{$record->id} has been removed.")
+                            ->success()
+                            ->send();
+                    }),
+
                 Action::make('view_payslip')
                     ->label('View Payslip')
                     ->color('primary')
                     ->button()
                     ->url(fn($record) => route('payslips.view', $record->id))
                     ->openUrlInNewTab(),
+
                 Action::make('upload_data')
                     ->label('Upload Data')
                     ->button()
+                    ->visible(
+                        fn($record) =>
+
+                        ! DB::table('thirteenth_months')
+                            ->where('periodid', $record->id)
+                            ->exists()
+                    )
                     ->form([
                         FileUpload::make('uploadfile')
                             ->label('Upload CSV File')
@@ -105,10 +202,12 @@ class DatePeriodResource extends Resource
                         $records = $csv->getRecords(); // iterable
                         foreach ($records as $row) {
                             // Map CSV columns to your ThirteenthMonth fields
-                            ThirteenthMonth::create([
-                                'periodid' => $record->id,                    // current DatePeriod record
-                                'employeeid' => $row['EmployeeID'],          // from CSV
-                                'total_amount' => $row['TotalAmount'],       // from CSV
+                            DB::table('thirteenth_months')->insert([
+                                'periodid'      => $record->id,
+                                'employeeid'    => $row['EmployeeID'],
+                                'total_amount'  => $row['TotalAmount'],
+                                'created_at'    => now(),
+                                'updated_at'    => now(),
                             ]);
                         }
                         // ✅ Delete the uploaded CSV file
@@ -124,6 +223,12 @@ class DatePeriodResource extends Resource
                     ->label('Download Template')
                     ->color('success')
                     ->button()
+                    ->visible(
+                        fn($record) =>
+                        ! DB::table('thirteenth_months')
+                            ->where('periodid', $record->id)
+                            ->exists()
+                    )
                     ->action(function ($record) {
                         $emptype = $record->employeetype;
                         // 🧩 Filter employees by selected employee type in active project histories
