@@ -232,11 +232,17 @@ class DatePeriodResource extends Resource
                     ->action(function ($record) {
                         $emptype = $record->employeetype;
                         // 🧩 Filter employees by selected employee type in active project histories
-                        $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
-                            $query->where('employeetype', $emptype);
-                        })
-                            ->with('projectHistories')
-                            ->orderBy('lastname', 'asc') // eager load histories
+                        // $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
+                        //     $query->where('employeetype', $emptype);
+                        // })
+                        //     ->with('projectHistories')
+                        //     ->orderBy('lastname', 'asc') // eager load histories
+                        //     ->get();
+                        $employees = Employee::query()
+                            ->where('employeetype', $emptype)   // now filtered directly from Employee table
+                            ->where('status', 1)                // optional: only active employees
+                            // ->with('projectHistories')          // still load histories if needed
+                            ->orderBy('lastname', 'asc')
                             ->get();
 
                         // 🧩 Check if there are any employees
@@ -246,7 +252,6 @@ class DatePeriodResource extends Resource
                                 ->body('There are no employees to export.')
                                 ->warning()
                                 ->send();
-
                             return;
                         }
 
@@ -256,14 +261,14 @@ class DatePeriodResource extends Resource
                         $handle = fopen($path, 'w');
                         fputcsv($handle, ['EmployeeID', 'LastName', 'FirstName', 'MiddleName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
                         foreach ($employees as $employee) {
-                            $activeHistory = $employee->projectHistories->first();
+                            // $activeHistory = $employee->projectHistories->first();
                             fputcsv($handle, [
                                 $employee->employeeid,
                                 $employee->lastname,
                                 $employee->firstname,
                                 $employee->middlename,
                                 $employee->project_id,
-                                $activeHistory?->employeetype,
+                                $employee->employeetype,
                                 'Enter Amount Here',
                             ]);
                         }
