@@ -16,6 +16,7 @@ use App\Models\ThirteenthMonth;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -169,6 +170,35 @@ class ThirteenthMonthResource extends Resource
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
+                BulkAction::make('printPayslip')
+                    ->label('Print Payslip')
+                    ->icon('heroicon-o-printer')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        dd($records);
+                        foreach ($records as $record) {
+
+
+                            $employeeId = $record->employee_id;
+                            $periodId   = $record->period_id;
+
+                            // You can now use:
+                            // $record->employee_id
+                            // $record->period_id
+                            // $record->employee->fullname
+                            // $record->period->datefrom
+                            // etc.
+
+                            // Example: send to worker that prints PDF
+                            // PrintPayslipJob::dispatch($employeeId, $periodId);
+                        }
+
+                        Notification::make()
+                            ->title('Payslips are being generated')
+                            ->success()
+                            ->send();
+                    }),
+
             ]);
     }
 

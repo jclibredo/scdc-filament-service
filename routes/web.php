@@ -12,29 +12,6 @@ Route::get('/', function () {
 
 
 Route::get('/payslips/view/{id}', function ($id) {
-    // $datePeriod = DatePeriod::findOrFail($id);
-    // $catgegory = $datePeriod->category->name;
-    // $type = $datePeriod->employeetype;
-    // // Group all deductions by employee_id
-    // $deductions = OtherDeductionLog::where('date_period_id', $id)
-    //     ->with('otherDeduction') // ensure we can access the deduction title
-    //     ->get()
-    //     ->groupBy('employee_id');
-    // $employees = Employee::whereHas('projectHistories', function ($q) use ($type) {
-    //     $q->where('employeetype', $type)
-    //         ->where('status', 1);
-    // })
-    //     ->with([
-    //         'projectHistories' => function ($q) {
-    //             $q->where('status', 1)->with('project');
-    //         },
-    //         'thirteenthMonth' => function ($q) use ($datePeriod) {
-    //             $q->where('periodid', $datePeriod->id);
-    //         }
-    //     ])
-    //     ->get();
-    // return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'catgegory'));
-    // Find the date period
     $datePeriod = DatePeriod::findOrFail($id);
     $category = $datePeriod->category->name;
     $type = $datePeriod->employeetype;
@@ -50,12 +27,10 @@ Route::get('/payslips/view/{id}', function ($id) {
     $employeesQuery = Employee::query()
         ->where('status', 1)
         ->where('employeetype', $type);
-
     // Optional project filter if project_id is provided
     if ($projectId) {
         $employeesQuery->where('project_id', $projectId);
     }
-
     $employees = $employeesQuery
         ->with([
             'project', // eager load project
