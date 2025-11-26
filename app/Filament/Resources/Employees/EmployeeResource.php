@@ -87,7 +87,7 @@ class EmployeeResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employeeid')->sortable(),
+                TextColumn::make('employeeid')->sortable()->searchable(),
                 TextColumn::make('firstname')->sortable()->searchable(),
                 TextColumn::make('middlename')->sortable(),
                 TextColumn::make('lastname')->sortable()->searchable(),
