@@ -38,8 +38,11 @@ Route::get('/payslips/view/{id}', function ($id) {
         ])
         ->orderBy('lastname', 'asc')
         ->get();
+
     return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'category'));
 })->name('payslips.view');
+
+
 
 
 // routes/web.php

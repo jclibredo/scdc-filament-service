@@ -6,111 +6,111 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payslip</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+    }
 
-        .payslip-container {
-            display: flex;
-            border-bottom: 1px dotted #000;
-            border-top: 1px dotted #000;
-            padding: 10px;
-        }
+    .payslip-container {
+        display: flex;
+        border-bottom: 1px dotted #000;
+        border-top: 1px dotted #000;
+        padding: 10px;
+    }
 
-        /* Left Section */
-        .left-section {
-            flex: 1;
-            border-right: 1px solid #000;
-            /* padding-right: 50px; */
-        }
+    /* Left Section */
+    .left-section {
+        flex: 1;
+        border-right: 1px solid #000;
+        /* padding-right: 50px; */
+    }
 
-        .left-section {
-            font-size: 10px;
-            /* smaller text for the whole section */
-            line-height: 1.2;
-            /* keep line spacing consistent */
-        }
+    .left-section {
+        font-size: 10px;
+        /* smaller text for the whole section */
+        line-height: 1.2;
+        /* keep line spacing consistent */
+    }
 
-        .left-section p,
-        .left-section .emp-details p,
-        .left-section .signature p {
-            margin: 0;
-            /* preserve existing text structure */
-            padding: 0;
-        }
+    .left-section p,
+    .left-section .emp-details p,
+    .left-section .signature p {
+        margin: 0;
+        /* preserve existing text structure */
+        padding: 0;
+    }
 
-        .left-section p {
-            margin: 5px 0;
-        }
+    .left-section p {
+        margin: 5px 0;
+    }
 
-        .signature {
-            margin-top: 20px;
-        }
+    .signature {
+        margin-top: 20px;
+    }
 
-        /* Right Section */
-        .right-section {
-            flex: 3;
-            padding-left: 20px;
-        }
+    /* Right Section */
+    .right-section {
+        flex: 3;
+        padding-left: 20px;
+    }
 
-        .right-section h2 {
-            text-align: center;
-            /* margin-bottom: 20px; */
-        }
+    .right-section h2 {
+        text-align: center;
+        /* margin-bottom: 20px; */
+    }
 
-        .info {
-            display: flex;
-            justify-content: space-between;
-            /* margin-bottom: 2px; */
-        }
+    .info {
+        display: flex;
+        justify-content: space-between;
+        /* margin-bottom: 2px; */
+    }
 
-        .info div {
-            flex: 1;
-        }
+    .info div {
+        flex: 1;
+    }
 
-        /* Table Section */
-        .earnings-deductions {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
+    /* Table Section */
+    .earnings-deductions {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
 
-        .earnings,
-        .deductions {
-            width: 48%;
-        }
+    .earnings,
+    .deductions {
+        width: 48%;
+    }
 
-        .earnings h3,
-        h4,
-        .deductions h3 {
-            /* border-bottom: 1px solid #000; */
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-        }
+    .earnings h3,
+    h4,
+    .deductions h3 {
+        /* border-bottom: 1px solid #000; */
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+    }
 
-        .row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
+    .row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
 
-        .totals {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-top: 20px;
-        }
+    .totals {
+        display: flex;
+        justify-content: space-between;
+        font-weight: bold;
+        margin-top: 20px;
+    }
 
-        .assignment-name {
-            display: inline-block;
-            max-width: 100%;
-            font-size: 10px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            vertical-align: middle;
-        }
+    .assignment-name {
+        display: inline-block;
+        max-width: 100%;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
     </style>
 </head>
 
