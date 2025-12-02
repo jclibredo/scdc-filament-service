@@ -137,11 +137,9 @@
 
     @php
     // fetch values from the thirteenth_months table
-    $thirteenth = $employee->thirteenthMonth;
-    $totalAmount = $thirteenth->total_amount ?? 0;
+    // $thirteenth = $employee->total_amount;
+    $totalAmount = $employee->thirteenth_total ?? 0;
     @endphp
-
-
     <div class="payslip-container">
         <!-- Left Section -->
         <div class="left-section">
@@ -180,7 +178,7 @@
                 <div>
                     <p><strong>Assignment:</strong>
                         <span class="assignment-name">
-                            {{ optional($employee->projectHistories->first()->project)->name ?? 'N/A' }}
+                            {{ $employee->project_name ?? 'N/A' }}
                         </span>
                     </p>
                 </div>
@@ -207,7 +205,7 @@
 
                     {{-- Earnings --}}
                     <tr>
-                        <td>{{ $datePeriod->category->name }}</td>
+                        <td>{{ $category->name }}</td>
                         <td></td>
                         <td style="text-align: left;">{{ number_format($totalAmount, 2) }}</td>
 
@@ -283,14 +281,14 @@
                     @php
                     // Total earnings (from thirteenthMonth relationship)
                     $earnings = $employees->sum(function($employee) {
-                    return $employee->thirteenthMonth->total_amount ?? 0;
+                    return $employee->thirteenth_total ?? 0;
                     });
                     // Total deductions (flatten grouped collection)
                     $totalDeduction = $deductions->flatten()->sum('amount');
                     @endphp
                     {{-- Earnings --}}
                     <tr>
-                        <td>{{ $category }}</td>
+                        <td>{{ $category->name }}</td>
                         <td style="text-align: left;"> {{ number_format($earnings, 2) }}</td>
                         {{-- First deduction (if any) --}}
                         <td>Deductions</td>

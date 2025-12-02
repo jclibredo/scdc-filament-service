@@ -12,6 +12,8 @@ class CreateEmployee extends CreateRecord
 
     // protected function mutateFormDataBeforeCreate(array $data): array
     // {
+
+    //     // dd($data);
     //     // // ✅ contains the form data
     //     // EmployeeProjectHistory::create([
     //     //     'employeeid'      => $data['employeeid'],    // or another source
@@ -27,7 +29,6 @@ class CreateEmployee extends CreateRecord
 
     protected function afterCreate()
     {
-        // dd($this->data);
         EmployeeProjectHistory::create([
             'employeeid'      => $this->data['employeeid'],    // or another source
             'projectid'       => $this->data['project_id'],    // map category → projectid

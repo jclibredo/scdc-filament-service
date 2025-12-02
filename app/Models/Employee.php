@@ -27,18 +27,18 @@ class Employee extends Model
         'project_id',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
+    // protected static function boot()
+    // {
+    //     parent::boot();
 
-        static::creating(function ($employee) {
-            if (empty($employee->employeeid)) {
-                $latest = static::latest('id')->first();
-                $nextId = $latest ? $latest->id + 1 : 1;
-                $employee->employeeid = str_pad($nextId, 4, '0', STR_PAD_LEFT);
-            }
-        });
-    }
+    //     static::creating(function ($employee) {
+    //         if (empty($employee->employeeid)) {
+    //             $latest = static::latest('id')->first();
+    //             $nextId = $latest ? $latest->id + 1 : 1;
+    //             $employee->employeeid = str_pad($nextId, 4, '0', STR_PAD_LEFT);
+    //         }
+    //     });
+    // }
 
     public function skill()
     {
@@ -47,7 +47,7 @@ class Employee extends Model
 
     public function project()
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Project::class, 'project_id', 'project_code');
     }
 
     public function projectHistories()
