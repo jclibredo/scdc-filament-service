@@ -24,7 +24,7 @@ Route::get('/payslips/view/{id}', function ($id) {
         ->with('otherDeduction')
         ->get()
         ->groupBy('employee_id');
-
+    $SumDeduction = $deductions->collapse()->sum('amount');
     $employees = DB::table('employees as e')
         ->join('projects as p', 'p.project_code', '=', 'e.project_id') // join with projects
         ->join('thirteenth_months as tm', function ($join) use ($id) {
@@ -40,9 +40,7 @@ Route::get('/payslips/view/{id}', function ($id) {
         ->orderBy('e.lastname', 'asc')
         ->get();
 
-    // dd($employees);
-
-    return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'category'));
+    return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'category', 'SumDeduction'));
 })->name('payslips.view');
 
 
