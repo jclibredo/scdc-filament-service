@@ -17,6 +17,7 @@ use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -83,8 +84,13 @@ class ThirteenthMonthResource extends Resource
                     ->searchable(),
                 TextColumn::make('employee.fullname')
                     ->label('Employee')
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable('employees.lastname') // directly reference the database column
+                    ->searchable(query: function ($query, $search) {
+                        $query->whereHas('employee', function ($q) use ($search) {
+                            $q->where('firstname', 'like', "%{$search}%")
+                                ->orWhere('lastname', 'like', "%{$search}%");
+                        });
+                    }),
                 TextColumn::make('total_amount')
                     ->label('Total Amount')
                     ->money('php')
@@ -116,6 +122,7 @@ class ThirteenthMonthResource extends Resource
             ->defaultSort('period.datefrom')
             ->emptyStateActions([])
             ->actions([
+                DeleteAction::make(),
                 EditAction::make(),
                 Action::make('otherDeduction')
                     ->label('Manage Other Deductions')

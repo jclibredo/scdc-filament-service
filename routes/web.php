@@ -20,11 +20,6 @@ Route::get('/payslips/view/{id}', function ($id) {
     $category = DB::table('categories')
         ->where('id', $datePeriod->category_id) // replace $categoryId with your value
         ->first();
-    $deductions = OtherDeductionLog::where('date_period_id', $id)
-        ->with('otherDeduction')
-        ->get()
-        ->groupBy('employee_id');
-    $SumDeduction = $deductions->collapse()->sum('amount');
     $employees = DB::table('employees as e')
         ->join('projects as p', 'p.project_code', '=', 'e.project_id') // join with projects
         ->join('thirteenth_months as tm', function ($join) use ($id) {
@@ -39,6 +34,14 @@ Route::get('/payslips/view/{id}', function ($id) {
         )
         ->orderBy('e.lastname', 'asc')
         ->get();
+    $employeeIds = $employees->pluck('employeeid');
+    $deductions = OtherDeductionLog::where('date_period_id', $id)
+        ->whereIn('employee_id', $employeeIds)   // <-- added filter
+        ->with('otherDeduction')
+        ->get()
+        ->groupBy('employee_id');
+
+    $SumDeduction = $deductions->collapse()->sum('amount');
 
     return view('payslips.view', compact('employees', 'datePeriod', 'deductions', 'type', 'category', 'SumDeduction'));
 })->name('payslips.view');
