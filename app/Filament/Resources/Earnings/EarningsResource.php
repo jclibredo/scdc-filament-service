@@ -11,6 +11,8 @@ use App\Models\Category;
 use App\Models\Earnings;
 use App\Models\Employee;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -65,6 +67,7 @@ class EarningsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('employee.lastname') // relationship-based column
                     ->label('Employee')
@@ -85,6 +88,11 @@ class EarningsResource extends Resource
                 TextColumn::make('category.name')->label('Category')->sortable(),
                 TextColumn::make('amount')->sortable(),
                 IconColumn::make('status')->boolean()->label('Active'),
+            ])
+            ->actions([
+                EditAction::make(),
+                DeleteAction::make(),
+
             ])
             ->filters([
                 // 🔹 Filter by Employee

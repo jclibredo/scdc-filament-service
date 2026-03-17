@@ -68,8 +68,8 @@ class HolidayLogsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
-                TextColumn::make('id')->label('ID')->sortable(),
                 TextColumn::make('holiday.type')->label('Holiday')->sortable(),
                 TextColumn::make('employee.lastname') // relationship-based column
                     ->label('Employee')
@@ -112,9 +112,6 @@ class HolidayLogsResource extends Resource
             ->actions([
                 EditAction::make(),
                 DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
             ]);
     }
 

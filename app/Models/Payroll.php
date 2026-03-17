@@ -13,10 +13,24 @@ class Payroll extends Model
 
     protected $fillable = [
         'employeeid',
-        'periodid',
+        'period', // Change to 'periodid' if that is your actual column name
         'totalhours',
         'acquirehours',
         'status',
+
+        // Days of the week
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+
+        // Overtime and Metadata
+        'RegularOT',
+        'Project',
+        'created_by',
     ];
 
     public function employee()

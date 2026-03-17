@@ -78,6 +78,8 @@ class DatePeriodResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)    // Disables the URL redirect on click
+            ->recordAction(null)
             ->columns([
                 TextColumn::make('code')
                     ->label('Control Code')
@@ -139,12 +141,18 @@ class DatePeriodResource extends Resource
                 Action::make('clean_data')
                     ->label('Clean Data')
                     ->color('success')
-                    ->visible(
-                        fn($record) =>
-                        DB::table('thirteenth_months')
+                    ->visible(function ($record) {
+                        // 1. Check if category is 'REGULARPAYROLL'
+                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
+
+                        // 2. Check if data already exists in the table
+                        $dataExists = DB::table('thirteenth_months')
                             ->where('periodid', $record->id)
-                            ->exists()
-                    )
+                            ->exists();
+
+                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                        return !$isRegularPayroll &&  $dataExists;
+                    })
                     ->icon('heroicon-o-trash')
                     ->requiresConfirmation()
                     ->modalHeading('Clean Thirteenth Month Data')
@@ -172,6 +180,7 @@ class DatePeriodResource extends Resource
 
                 Action::make('view_payslip')
                     ->label('View Payslip')
+                    ->visible(fn($record) => $record->category?->name !== 'REGULARPAYROLL')
                     ->color('primary')
                     ->button()
                     ->url(fn($record) => route('payslips.view', $record->id))
@@ -180,13 +189,18 @@ class DatePeriodResource extends Resource
                 Action::make('upload_data')
                     ->label('Upload Data')
                     ->button()
-                    ->visible(
-                        fn($record) =>
+                    ->visible(function ($record) {
+                        // 1. Check if category is 'REGULARPAYROLL'
+                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
 
-                        ! DB::table('thirteenth_months')
+                        // 2. Check if data already exists in the table
+                        $dataExists = DB::table('thirteenth_months')
                             ->where('periodid', $record->id)
-                            ->exists()
-                    )
+                            ->exists();
+
+                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                        return !$isRegularPayroll && ! $dataExists;
+                    })
                     ->form([
                         FileUpload::make('uploadfile')
                             ->label('Upload CSV File')
@@ -223,25 +237,23 @@ class DatePeriodResource extends Resource
                     ->label('Download Template')
                     ->color('success')
                     ->button()
-                    ->visible(
-                        fn($record) =>
-                        ! DB::table('thirteenth_months')
+                    ->visible(function ($record) {
+                        // 1. Check if category is 'REGULARPAYROLL'
+                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
+
+                        // 2. Check if data already exists in the table
+                        $dataExists = DB::table('thirteenth_months')
                             ->where('periodid', $record->id)
-                            ->exists()
-                    )
+                            ->exists();
+
+                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                        return !$isRegularPayroll && ! $dataExists;
+                    })
                     ->action(function ($record) {
                         $emptype = $record->employeetype;
-                        // 🧩 Filter employees by selected employee type in active project histories
-                        // $employees = Employee::whereHas('projectHistories', function ($query) use ($emptype) {
-                        //     $query->where('employeetype', $emptype);
-                        // })
-                        //     ->with('projectHistories')
-                        //     ->orderBy('lastname', 'asc') // eager load histories
-                        //     ->get();
                         $employees = Employee::query()
                             ->where('employeetype', $emptype)   // now filtered directly from Employee table
-                            ->where('status', 1)                // optional: only active employees
-                            // ->with('projectHistories')          // still load histories if needed
+                            ->where('status', 1)                   // still load histories if needed
                             ->orderBy('lastname', 'asc')
                             ->get();
 
@@ -283,9 +295,16 @@ class DatePeriodResource extends Resource
                         // ✅ Return the CSV file for download
                         return response()->download($path)->deleteFileAfterSend(true);
                     }),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+
+                //THIS ACTION IS FOR REGULAR PAYROLL PROCESS
+                Action::make('your_action_name')
+                    ->label('Process Payroll')
+                    ->color('success')
+                    ->button()
+                    ->visible(function ($record) {
+                        // Check if the relationship exists and the name matches
+                        return $record->category && $record->category->name === 'REGULARPAYROLL';
+                    })
             ]);
     }
 

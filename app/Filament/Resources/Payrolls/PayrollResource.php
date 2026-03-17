@@ -5,8 +5,6 @@ namespace App\Filament\Resources\Payrolls;
 use App\Filament\Resources\Payrolls\Pages\CreatePayroll;
 use App\Filament\Resources\Payrolls\Pages\EditPayroll;
 use App\Filament\Resources\Payrolls\Pages\ListPayrolls;
-use App\Filament\Resources\Payrolls\Schemas\PayrollForm;
-use App\Filament\Resources\Payrolls\Tables\PayrollsTable;
 use App\Models\DatePeriod;
 use App\Models\Payroll;
 use BackedEnum;
@@ -15,7 +13,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -48,10 +45,6 @@ class PayrollResource extends Resource
                     ->searchable()
                     ->preload()
                     ->required(),
-
-                // TextInput::make('period')
-                //     ->label('Payroll Period')
-                //     ->required(),
                 Select::make('periodid')
                     ->label('Payroll Period')
                     ->options(

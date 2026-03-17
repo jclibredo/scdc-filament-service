@@ -96,6 +96,16 @@ class AtlogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
+            // ->query(function () {
+            //     $user = Auth::user();
+            //     if (! $user || ! $user->facility) {
+            //         return Cbc::whereRaw('1 = 0');
+            //     }
+            //     // Eager load the relationships
+            //     return Cbc::query()
+            //         ->where('main_accreno', $user->facility);
+            // })
             ->columns([
                 TextColumn::make('employee.lastname') // relationship-based column
                     ->label('Employee')
@@ -155,9 +165,6 @@ class AtlogResource extends Resource
             ])
             ->actions([
                 EditAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
             ]);
     }
 

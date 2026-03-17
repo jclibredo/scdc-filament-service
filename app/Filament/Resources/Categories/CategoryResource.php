@@ -34,8 +34,6 @@ class CategoryResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-
-        // return CategoryForm::configure($schema);
         return $schema
             ->schema([
                 Section::make('Category Details')
@@ -55,8 +53,8 @@ class CategoryResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return CategoriesTable::configure($table);
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('name')
                     ->label('Name')
@@ -72,9 +70,6 @@ class CategoryResource extends Resource
             ->actions([
                 EditAction::make(),
                 DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
             ]);
     }
 
