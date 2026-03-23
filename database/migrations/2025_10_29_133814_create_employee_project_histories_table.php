@@ -21,8 +21,8 @@ return new class extends Migration
             $table->timestamps();
 
             // Optional foreign keys if you have employees and projects tables
-            $table->foreign('employeeid')->references('id')->on('employees')->onDelete('cascade');
-            $table->foreign('projectid')->references('id')->on('projects')->onDelete('cascade');
+            // $table->foreign('employeeid')->references('id')->on('employees')->onDelete('cascade');
+            // $table->foreign('projectid')->references('id')->on('projects')->onDelete('cascade');
         });
     }
 
