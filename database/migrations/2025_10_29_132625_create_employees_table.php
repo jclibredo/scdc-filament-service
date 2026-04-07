@@ -28,9 +28,6 @@ return new class extends Migration
             $table->unsignedBigInteger('skill_id')->nullable();
             $table->unsignedBigInteger('project_id')->nullable();
             $table->timestamps();
-
-            $table->foreign('skill_id')->references('id')->on('skills')->nullOnDelete();
-            $table->foreign('project_id')->references('id')->on('projects')->nullOnDelete();
         });
     }
 

@@ -61,8 +61,10 @@ class Employee extends Model
         return $this->hasOne(ThirteenthMonth::class, 'employeeid', 'employeeid');
     }
 
-    public function getFullnameAttribute()
+    public function getFullNameAttribute(): string
     {
-        return $this->lastname . ' ' . $this->firstname;
+        return collect([$this->firstname, $this->middlename, $this->lastname])
+            ->filter()
+            ->implode(' ');
     }
 }

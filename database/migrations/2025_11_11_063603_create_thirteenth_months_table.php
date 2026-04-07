@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('thirteenth_months', function (Blueprint $table) {
             $table->id(); // Primary key
             $table->unsignedBigInteger('periodid');   // Period ID
-            $table->unsignedBigInteger('employeeid'); // Employee ID
+            $table->string('employeeid')->index(); // Employee ID
             $table->decimal('total_amount', 12, 2);    // Total 13th month pay
             $table->timestamps();
         });

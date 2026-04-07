@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('holiday_logs', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('holidayid');       // primary key
-            $table->string('employeeid');   // string employee id
+            $table->unsignedBigInteger('holidayid')->index();       // primary key
+            $table->string('employeeid')->index();   // string employee id
             $table->decimal('numberofhours', 5, 2);
             $table->date('date');
             $table->timestamps();

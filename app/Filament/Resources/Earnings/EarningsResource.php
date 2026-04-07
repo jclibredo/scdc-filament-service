@@ -37,17 +37,13 @@ class EarningsResource extends Resource
     {
         return $schema
             ->schema([
-                Select::make('employeeid')
+                Select::make('employee_id')
                     ->label('Employee')
-                    ->options(
-                        DB::table('employees')
-                            ->orderBy('lastname', 'asc')
-                            ->get()
-                            ->mapWithKeys(fn($emp) => [
-                                $emp->employeeid => $emp->lastname . ', ' . $emp->firstname
-                            ])
-                    )
-                    ->searchable()
+                    ->relationship('employee')
+                    // This tells Filament to use your custom accessor for the dropdown labels
+                    ->getOptionLabelFromRecordUsing(fn($record) => $record->full_name)
+                    // This ensures searching works across all name parts
+                    ->searchable(['firstname', 'middlename', 'lastname'])
                     ->preload()
                     ->required(),
                 Select::make('category_id')
@@ -69,22 +65,24 @@ class EarningsResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                TextColumn::make('employee.lastname') // relationship-based column
+                TextColumn::make('employee.full_name')
                     ->label('Employee')
-                    ->formatStateUsing(
-                        fn($state, $record) =>
-                        $record->employee?->lastname . ', ' . $record->employee?->firstname
-                    )
-                    ->sortable() // sorts via relationship automatically
-                    ->searchable(
-                        query: fn($query, $search) =>
-                        $query->whereHas(
-                            'employee',
-                            fn($q) =>
+                    // Using the accessor logic: Lastname, Firstname Middlename
+                    ->formatStateUsing(function ($record) {
+                        $employee = $record->employee;
+                        if (!$employee) return '-';
+
+                        return "{$employee->lastname}, {$employee->firstname} {$employee->middlename}";
+                    })
+                    ->sortable(['lastname', 'firstname']) // Tells Filament which columns to use for sorting
+                    ->searchable(query: function ($query, string $search) {
+                        $query->whereHas('employee', function ($q) use ($search) {
                             $q->where('firstname', 'like', "%{$search}%")
                                 ->orWhere('lastname', 'like', "%{$search}%")
-                        )
-                    ),
+                                ->orWhere('middlename', 'like', "%{$search}%")
+                                ->orWhere('employeeid', 'like', "%{$search}%");
+                        });
+                    }),
                 TextColumn::make('category.name')->label('Category')->sortable(),
                 TextColumn::make('amount')->sortable(),
                 IconColumn::make('status')->boolean()->label('Active'),

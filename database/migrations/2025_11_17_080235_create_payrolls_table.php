@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('payrolls', function (Blueprint $table) {
             $table->id(); // primary key
-            $table->string('employeeid'); // string employee id
-            $table->unsignedBigInteger('period'); // e.g., "2025-11"
+            $table->string('employeeid')->index(); // string employee id
+            $table->unsignedBigInteger('periodid')->index(); // e.g., "2025-11"
             $table->decimal('totalhours', 8, 2);
             $table->decimal('acquirehours', 8, 2);
             $table->boolean('status')->default(true); // active by default

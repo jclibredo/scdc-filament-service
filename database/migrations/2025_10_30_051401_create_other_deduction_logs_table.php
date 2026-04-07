@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('other_deduction_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('other_deduction_id')->constrained('other_deductions')->cascadeOnDelete();
-            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('date_period_id')->constrained('date_periods')->cascadeOnDelete();
+            $table->unsignedBigInteger('other_deduction_id')->index();
+            $table->string('employee_id')->index();
+            $table->unsignedBigInteger('date_period_id')->index();
             $table->timestamps();
         });
     }

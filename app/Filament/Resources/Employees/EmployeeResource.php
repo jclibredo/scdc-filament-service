@@ -44,7 +44,15 @@ class EmployeeResource extends Resource
             ->schema([
                 TextInput::make('employeeid')
                     ->label('Employee ID')
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true)
+                    // Generates a number between 1000 and 9999
+                    ->default(fn() => (string) random_int(1000, 9999))
+                    ->required()
+                    ->readOnly()
+                    ->length(4) // Ensures it is exactly 4 characters
+                    ->numeric(),
+
+
                 TextInput::make('firstname')->required()->maxLength(255),
                 TextInput::make('middlename')->maxLength(255),
                 TextInput::make('lastname')->required()->maxLength(255),
@@ -53,7 +61,7 @@ class EmployeeResource extends Resource
                 TextInput::make('email')->label('Email Address')
                     ->email()
                     ->unique(ignoreRecord: true),
-                DatePicker::make('birthdate'),
+                DatePicker::make('birthdate')->required(),
                 Select::make('sex')
                     ->options([
                         'Male' => 'Male',
@@ -62,7 +70,7 @@ class EmployeeResource extends Resource
                     ])
                     ->required(),
                 Textarea::make('address')->rows(3),
-                DatePicker::make('datehired'),
+                DatePicker::make('datehired')->required(),
                 DatePicker::make('dateseperated'),
                 Select::make('employeetype')
                     ->options([
@@ -130,7 +138,7 @@ class EmployeeResource extends Resource
                     ->modalContent(function ($record) {
                         // Query active earnings for this employee
                         $earnings = DB::table('earnings')
-                            ->where('employeeid', $record->employeeid)
+                            ->where('employee_id', $record->employeeid)
                             ->where('status', true)
                             ->get();
 

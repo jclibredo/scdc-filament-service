@@ -13,16 +13,12 @@ return new class extends Migration
     {
         Schema::create('employee_project_histories', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employeeid');
-            $table->unsignedBigInteger('projectid');
+            $table->string('employeeid')->index();
+            $table->string('projectid')->index();
             $table->date('datestarted');
             $table->date('dateended')->nullable();
             $table->boolean('status')->default(false);
             $table->timestamps();
-
-            // Optional foreign keys if you have employees and projects tables
-            // $table->foreign('employeeid')->references('id')->on('employees')->onDelete('cascade');
-            // $table->foreign('projectid')->references('id')->on('projects')->onDelete('cascade');
         });
     }
 

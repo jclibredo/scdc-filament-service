@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('earnings', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('category_id');
+            $table->string('employee_id')->index();
+            $table->unsignedBigInteger('category_id')->index();
             $table->decimal('amount', 10, 2);
-            $table->string('status')->default('active');
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }
