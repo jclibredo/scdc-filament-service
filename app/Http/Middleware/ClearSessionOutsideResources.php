@@ -22,9 +22,9 @@ class ClearSessionOutsideResources
         // Use patterns to match all sub-routes of a resource
         // This covers .index, .create, .edit, .view, etc.
         $allowedPatterns = [
-            'filament.admin.resources.earnings.index.*',
-            'filament.admin.resources.earnings.create.*',
-            'filament.admin.resources.earnings.edit.*',
+            'filament.admin.resources.earnings.index',
+            'filament.admin.resources.earnings.create',
+            'filament.admin.resources.earnings.edit',
         ];
 
         $isAllowed = false;
