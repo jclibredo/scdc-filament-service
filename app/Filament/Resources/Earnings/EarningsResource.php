@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Earnings;
 use App\Models\Employee;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -18,11 +19,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class EarningsResource extends Resource
@@ -32,6 +33,11 @@ class EarningsResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'Earnings';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -40,19 +46,28 @@ class EarningsResource extends Resource
                 Select::make('employee_id')
                     ->label('Employee')
                     ->relationship('employee')
-                    // This tells Filament to use your custom accessor for the dropdown labels
                     ->getOptionLabelFromRecordUsing(fn($record) => $record->full_name)
-                    // This ensures searching works across all name parts
                     ->searchable(['firstname', 'middlename', 'lastname'])
                     ->preload()
-                    ->required(),
-                Select::make('category_id')
-                    ->label('Category')
-                    ->options(
-                        DB::table('categories')->pluck('name', 'id')
-                    )
-                    ->searchable()
-                    ->required(),
+                    ->required()
+                    ->disabled(true)
+                    ->dehydrated()
+                    // Set the default value from the session
+                    ->default(session('earnings_employeeid')),
+                // Optional: If you want to prevent users from changing it
+                // ->disabled(fn () => session()->has('earnings_employeeid'))
+                // ->dehydrated(),
+                // New Earnings Type Select
+                Select::make('title')
+                    ->label('Earnings Type')
+                    ->options([
+                        'basicpay' => 'Basic Pay',
+                        'foodallowance' => 'Food Allowance',
+                        'transportallowance' => 'Transpo Allowance',
+                        'clothingallowance' => 'Clothing Allowance',
+                    ])
+                    ->required()
+                    ->native(false), // Optional: makes it look more like a modern SaaS UI
 
                 TextInput::make('amount')
                     ->numeric()
@@ -64,6 +79,15 @@ class EarningsResource extends Resource
     {
         return $table
             ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (! $user || ! $user->id) {
+                    return Earnings::whereRaw('1 = 0');
+                }
+                // Eager load the relationships
+                return Earnings::query()
+                    ->where('employee_id', session('earnings_employeeid'));
+            })
             ->columns([
                 TextColumn::make('employee.full_name')
                     ->label('Employee')
@@ -83,14 +107,17 @@ class EarningsResource extends Resource
                                 ->orWhere('employeeid', 'like', "%{$search}%");
                         });
                     }),
-                TextColumn::make('category.name')->label('Category')->sortable(),
+                TextColumn::make('title')->label('Earnings Type')->sortable(),
                 TextColumn::make('amount')->sortable(),
                 IconColumn::make('status')->boolean()->label('Active'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ])
             ->filters([
                 // 🔹 Filter by Employee
@@ -105,12 +132,15 @@ class EarningsResource extends Resource
                             ])
                     ),
 
-                // 🔹 Filter by Category
-                SelectFilter::make('category_id')
-                    ->label('Category')
-                    ->options(
-                        DB::table('categories')->pluck('name', 'id')
-                    ),
+                // 🔹 Filter by Earnings Type
+                SelectFilter::make('title')
+                    ->label('Earnings Type')
+                    ->options([
+                        'basicpay' => 'Basic Pay',
+                        'foodallowance' => 'Food Allowance',
+                        'transportallowance' => 'Transpo Allowance',
+                        'clothingallowance' => 'Clothing Allowance',
+                    ]),
 
                 // 🔹 Filter by Status (boolean)
                 SelectFilter::make('status')

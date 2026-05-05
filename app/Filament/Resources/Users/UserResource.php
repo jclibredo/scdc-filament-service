@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\User;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -72,33 +73,39 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         // return UsersTable::configure($table);
-        return $table->columns([
-            TextColumn::make('id')->sortable(),
-            TextColumn::make('name')->searchable(),
-            TextColumn::make('email')->searchable(),
-            // 👇 Show user role
-            BadgeColumn::make('role')
-                ->colors([
-                    'primary',
-                    'success' => 'admin',
-                    'secondary' => 'user',
-                ])
-                ->sortable(),
+        return $table
+            ->recordUrl(null)
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->searchable(),
+                TextColumn::make('email')->searchable(),
+                // 👇 Show user role
+                BadgeColumn::make('role')
+                    ->colors([
+                        'primary',
+                        'success' => 'admin',
+                        'secondary' => 'user',
+                    ])
+                    ->sortable(),
 
-            // 👇 Show active/inactive status
-            IconColumn::make('status')
-                ->boolean()
-                ->label('Active'),
-            TextColumn::make('created_at')->dateTime('M d, Y'),
-        ])
+                // 👇 Show active/inactive status
+                IconColumn::make('status')
+                    ->boolean()
+                    ->label('Active'),
+                TextColumn::make('created_at')->dateTime('M d, Y'),
+            ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ]);
+        // ->bulkActions([
+        //     DeleteBulkAction::make(),
+        // ]);
     }
 
     public static function getRelations(): array

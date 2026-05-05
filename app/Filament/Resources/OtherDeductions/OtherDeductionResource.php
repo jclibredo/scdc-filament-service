@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OtherDeductions;
 use App\Filament\Resources\OtherDeductions\Pages\ListOtherDeductions;
 use App\Models\OtherDeduction;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -44,27 +45,33 @@ class OtherDeductionResource extends Resource
     public static function table(Table $table): Table
     {
         // return OtherDeductionsTable::configure($table);
-        return $table->columns([
-            TextColumn::make('id')->sortable(),
-            TextColumn::make('title')
-                ->label('Title')
-                ->searchable(),
-            TextColumn::make('description')
-                ->limit(50)
-                ->label('Description'),
-            TextColumn::make('created_at')
-                ->label('Created')
-                ->dateTime('M d, Y')
-                ->sortable(),
-        ])
+        return $table
+            ->recordUrl(null)
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('title')
+                    ->label('Title')
+                    ->searchable(),
+                TextColumn::make('description')
+                    ->limit(50)
+                    ->label('Description'),
+                TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime('M d, Y')
+                    ->sortable(),
+            ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ]);
+        // ->bulkActions([
+        //     DeleteBulkAction::make(),
+        // ]);
     }
 
     public static function getRelations(): array

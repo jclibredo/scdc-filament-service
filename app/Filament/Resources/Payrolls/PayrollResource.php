@@ -8,6 +8,7 @@ use App\Filament\Resources\Payrolls\Pages\ListPayrolls;
 use App\Models\DatePeriod;
 use App\Models\Payroll;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -76,6 +77,7 @@ class PayrollResource extends Resource
     {
         // return PayrollsTable::configure($table);
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('period.datefrom')
                     ->label('Date From')
@@ -119,12 +121,16 @@ class PayrollResource extends Resource
             ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ]);
+        // ->bulkActions([
+        //     DeleteBulkAction::make(),
+        // ]);
     }
 
     public static function getRelations(): array

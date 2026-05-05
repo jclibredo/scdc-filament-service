@@ -7,14 +7,10 @@ use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
-use App\Models\GovDeductionLog;
-use App\Models\OtherDeductionLog;
-use App\Models\ThirteenthMonth;
 use BackedEnum;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -122,189 +118,195 @@ class DatePeriodResource extends Resource
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormWidth('2xl')
             ->actions([
-                EditAction::make(),
-                DeleteAction::make()
-                    ->before(function ($record) {
-                        DB::table('thirteenth_months')
-                            ->where('periodid', $record->id)
-                            ->delete();
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove')
+                        ->before(function ($record) {
+                            DB::table('thirteenth_months')
+                                ->where('periodid', $record->id)
+                                ->delete();
 
-                        DB::table('gov_deduction_logs')
-                            ->where('date_period_id', $record->id)
-                            ->delete();
+                            DB::table('gov_deduction_logs')
+                                ->where('date_period_id', $record->id)
+                                ->delete();
 
-                        DB::table('other_deduction_logs')
-                            ->where('date_period_id', $record->id)
-                            ->delete();
-                    }),
+                            DB::table('other_deduction_logs')
+                                ->where('date_period_id', $record->id)
+                                ->delete();
+                        }),
 
-                Action::make('clean_data')
-                    ->label('Clean Data')
-                    ->color('success')
-                    ->visible(function ($record) {
-                        // 1. Check if category is 'REGULARPAYROLL'
-                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
+                    Action::make('clean_data')
+                        ->label('Clean Data')
+                        ->color('success')
+                        ->visible(function ($record) {
+                            // 1. Check if category is 'REGULARPAYROLL'
+                            $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
 
-                        // 2. Check if data already exists in the table
-                        $dataExists = DB::table('thirteenth_months')
-                            ->where('periodid', $record->id)
-                            ->exists();
+                            // 2. Check if data already exists in the table
+                            $dataExists = DB::table('thirteenth_months')
+                                ->where('periodid', $record->id)
+                                ->exists();
 
-                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
-                        return !$isRegularPayroll &&  $dataExists;
-                    })
-                    ->icon('heroicon-o-trash')
-                    ->requiresConfirmation()
-                    ->modalHeading('Clean Thirteenth Month Data')
-                    ->modalSubheading('This will delete all 13th month data associated with this period. This action cannot be undone.')
-                    ->modalButton('Yes, delete')
-                    ->action(function ($record) {
-                        // Direct DB delete queries
-                        DB::table('thirteenth_months')
-                            ->where('periodid', $record->id)
-                            ->delete();
+                            // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                            return !$isRegularPayroll &&  $dataExists;
+                        })
+                        ->icon('heroicon-o-trash')
+                        ->requiresConfirmation()
+                        ->modalHeading('Clean Thirteenth Month Data')
+                        ->modalSubheading('This will delete all 13th month data associated with this period. This action cannot be undone.')
+                        ->modalButton('Yes, delete')
+                        ->action(function ($record) {
+                            // Direct DB delete queries
+                            DB::table('thirteenth_months')
+                                ->where('periodid', $record->id)
+                                ->delete();
 
-                        DB::table('gov_deduction_logs')
-                            ->where('date_period_id', $record->id)
-                            ->delete();
+                            DB::table('gov_deduction_logs')
+                                ->where('date_period_id', $record->id)
+                                ->delete();
 
-                        DB::table('other_deduction_logs')
-                            ->where('date_period_id', $record->id)
-                            ->delete();
-                        Notification::make()
-                            ->title('Data Cleaned')
-                            ->body("All thirteenth month data for Period #{$record->id} has been removed.")
-                            ->success()
-                            ->send();
-                    }),
-
-                Action::make('view_payslip')
-                    ->label('View Payslip')
-                    ->visible(fn($record) => $record->category?->name !== 'REGULARPAYROLL')
-                    ->color('primary')
-                    ->button()
-                    ->url(fn($record) => route('payslips.view', $record->id))
-                    ->openUrlInNewTab(),
-
-                Action::make('upload_data')
-                    ->label('Upload Data')
-                    ->button()
-                    ->visible(function ($record) {
-                        // 1. Check if category is 'REGULARPAYROLL'
-                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
-
-                        // 2. Check if data already exists in the table
-                        $dataExists = DB::table('thirteenth_months')
-                            ->where('periodid', $record->id)
-                            ->exists();
-
-                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
-                        return !$isRegularPayroll && ! $dataExists;
-                    })
-                    ->form([
-                        FileUpload::make('uploadfile')
-                            ->label('Upload CSV File')
-                            ->required()
-                            ->acceptedFileTypes(['text/csv'])
-                            ->disk('public')
-                            ->directory('uploads/csv'),
-                    ])
-                    ->action(function (array $data, $record) {
-                        $filePath = storage_path('app/public/' . $data['uploadfile']);
-                        $csv = Reader::createFromPath($filePath, 'r');
-                        $csv->setHeaderOffset(0);
-                        $records = $csv->getRecords(); // iterable
-                        foreach ($records as $row) {
-                            // Map CSV columns to your ThirteenthMonth fields
-                            DB::table('thirteenth_months')->insert([
-                                'periodid'      => $record->id,
-                                'employeeid'    => $row['EmployeeID'],
-                                'total_amount'  => $row['TotalAmount'],
-                                'created_at'    => now(),
-                                'updated_at'    => now(),
-                            ]);
-                        }
-                        // ✅ Delete the uploaded CSV file
-                        Storage::disk('public')->delete($data['uploadfile']);
-                        Notification::make()
-                            ->title('CSV Uploaded Successfully')
-                            ->body("File for DatePeriod #{$record->id} imported successfully.")
-                            ->success()
-                            ->send();
-                    }),
-
-                Action::make('export_csv')
-                    ->label('Download Template')
-                    ->color('success')
-                    ->button()
-                    ->visible(function ($record) {
-                        // 1. Check if category is 'REGULARPAYROLL'
-                        $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
-
-                        // 2. Check if data already exists in the table
-                        $dataExists = DB::table('thirteenth_months')
-                            ->where('periodid', $record->id)
-                            ->exists();
-
-                        // Visible ONLY if it is Regular Payroll AND data does not exist yet
-                        return !$isRegularPayroll && ! $dataExists;
-                    })
-                    ->action(function ($record) {
-                        $emptype = $record->employeetype;
-                        $employees = Employee::query()
-                            ->where('employeetype', $emptype)   // now filtered directly from Employee table
-                            ->where('status', 1)                   // still load histories if needed
-                            ->orderBy('lastname', 'asc')
-                            ->get();
-
-                        // 🧩 Check if there are any employees
-                        if ($employees->isEmpty()) {
+                            DB::table('other_deduction_logs')
+                                ->where('date_period_id', $record->id)
+                                ->delete();
                             Notification::make()
-                                ->title('No Data Found')
-                                ->body('There are no employees to export.')
-                                ->warning()
+                                ->title('Data Cleaned')
+                                ->body("All thirteenth month data for Period #{$record->id} has been removed.")
+                                ->success()
                                 ->send();
-                            return;
-                        }
+                        }),
 
-                        $filename = 'employees_export_' . now()->format('Y_m_d_His') . '.csv';
-                        $path = storage_path('app/' . $filename);
+                    Action::make('view_payslip')
+                        ->label('View Payslip')
+                        ->visible(fn($record) => $record->category?->name !== 'REGULARPAYROLL')
+                        ->color('primary')
+                        ->button()
+                        ->url(fn($record) => route('payslips.view', $record->id))
+                        ->openUrlInNewTab(),
 
-                        $handle = fopen($path, 'w');
-                        fputcsv($handle, ['EmployeeID', 'LastName', 'FirstName', 'MiddleName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
-                        foreach ($employees as $employee) {
-                            // $activeHistory = $employee->projectHistories->first();
-                            fputcsv($handle, [
-                                $employee->employeeid,
-                                $employee->lastname,
-                                $employee->firstname,
-                                $employee->middlename,
-                                $employee->project_id,
-                                $employee->employeetype,
-                                'Enter Amount Here',
-                            ]);
-                        }
-                        fclose($handle);
-                        // ✅ Success notification
-                        Notification::make()
-                            ->title('Export Successful')
-                            ->body('The employee data has been exported successfully.')
-                            ->success()
-                            ->send();
+                    Action::make('upload_data')
+                        ->label('Upload Data')
+                        ->button()
+                        ->visible(function ($record) {
+                            // 1. Check if category is 'REGULARPAYROLL'
+                            $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
 
-                        // ✅ Return the CSV file for download
-                        return response()->download($path)->deleteFileAfterSend(true);
-                    }),
+                            // 2. Check if data already exists in the table
+                            $dataExists = DB::table('thirteenth_months')
+                                ->where('periodid', $record->id)
+                                ->exists();
 
-                //THIS ACTION IS FOR REGULAR PAYROLL PROCESS
-                Action::make('your_action_name')
-                    ->label('Process Payroll')
-                    ->color('success')
-                    ->button()
-                    ->visible(function ($record) {
-                        // Check if the relationship exists and the name matches
-                        return $record->category && $record->category->name === 'REGULARPAYROLL';
-                    })
+                            // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                            return !$isRegularPayroll && ! $dataExists;
+                        })
+                        ->form([
+                            FileUpload::make('uploadfile')
+                                ->label('Upload CSV File')
+                                ->required()
+                                ->acceptedFileTypes(['text/csv'])
+                                ->disk('public')
+                                ->directory('uploads/csv'),
+                        ])
+                        ->action(function (array $data, $record) {
+                            $filePath = storage_path('app/public/' . $data['uploadfile']);
+                            $csv = Reader::createFromPath($filePath, 'r');
+                            $csv->setHeaderOffset(0);
+                            $records = $csv->getRecords(); // iterable
+                            foreach ($records as $row) {
+                                // Map CSV columns to your ThirteenthMonth fields
+                                DB::table('thirteenth_months')->insert([
+                                    'periodid'      => $record->id,
+                                    'employeeid'    => $row['EmployeeID'],
+                                    'total_amount'  => $row['TotalAmount'],
+                                    'created_at'    => now(),
+                                    'updated_at'    => now(),
+                                ]);
+                            }
+                            // ✅ Delete the uploaded CSV file
+                            Storage::disk('public')->delete($data['uploadfile']);
+                            Notification::make()
+                                ->title('CSV Uploaded Successfully')
+                                ->body("File for DatePeriod #{$record->id} imported successfully.")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('export_csv')
+                        ->label('Download Template')
+                        ->color('success')
+                        ->button()
+                        ->visible(function ($record) {
+                            // 1. Check if category is 'REGULARPAYROLL'
+                            $isRegularPayroll = $record->category?->name === 'REGULARPAYROLL';
+
+                            // 2. Check if data already exists in the table
+                            $dataExists = DB::table('thirteenth_months')
+                                ->where('periodid', $record->id)
+                                ->exists();
+
+                            // Visible ONLY if it is Regular Payroll AND data does not exist yet
+                            return !$isRegularPayroll && ! $dataExists;
+                        })
+                        ->action(function ($record) {
+                            $emptype = $record->employeetype;
+                            $employees = Employee::query()
+                                ->where('employeetype', $emptype)   // now filtered directly from Employee table
+                                ->where('status', 1)                   // still load histories if needed
+                                ->orderBy('lastname', 'asc')
+                                ->get();
+
+                            // 🧩 Check if there are any employees
+                            if ($employees->isEmpty()) {
+                                Notification::make()
+                                    ->title('No Data Found')
+                                    ->body('There are no employees to export.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+
+                            $filename = 'employees_export_' . now()->format('Y_m_d_His') . '.csv';
+                            $path = storage_path('app/' . $filename);
+
+                            $handle = fopen($path, 'w');
+                            fputcsv($handle, ['EmployeeID', 'LastName', 'FirstName', 'MiddleName', 'Project', 'EmployeeType', 'TotalAmount']); // headers
+                            foreach ($employees as $employee) {
+                                // $activeHistory = $employee->projectHistories->first();
+                                fputcsv($handle, [
+                                    $employee->employeeid,
+                                    $employee->lastname,
+                                    $employee->firstname,
+                                    $employee->middlename,
+                                    $employee->project_id,
+                                    $employee->employeetype,
+                                    'Enter Amount Here',
+                                ]);
+                            }
+                            fclose($handle);
+                            // ✅ Success notification
+                            Notification::make()
+                                ->title('Export Successful')
+                                ->body('The employee data has been exported successfully.')
+                                ->success()
+                                ->send();
+
+                            // ✅ Return the CSV file for download
+                            return response()->download($path)->deleteFileAfterSend(true);
+                        }),
+
+                    //THIS ACTION IS FOR REGULAR PAYROLL PROCESS
+                    Action::make('your_action_name')
+                        ->label('Process Payroll')
+                        ->color('success')
+                        ->button()
+                        ->visible(function ($record) {
+                            // Check if the relationship exists and the name matches
+                            return $record->category && $record->category->name === 'REGULARPAYROLL';
+                        })
+                ]),
+
+
             ]);
     }
 

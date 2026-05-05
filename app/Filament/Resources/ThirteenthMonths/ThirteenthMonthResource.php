@@ -5,9 +5,6 @@ namespace App\Filament\Resources\ThirteenthMonths;
 use App\Filament\Resources\ThirteenthMonths\Pages\CreateThirteenthMonth;
 use App\Filament\Resources\ThirteenthMonths\Pages\EditThirteenthMonth;
 use App\Filament\Resources\ThirteenthMonths\Pages\ListThirteenthMonths;
-use App\Filament\Resources\ThirteenthMonths\Schemas\ThirteenthMonthForm;
-use App\Filament\Resources\ThirteenthMonths\Tables\ThirteenthMonthsTable;
-use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\OtherDeduction;
@@ -16,6 +13,7 @@ use App\Models\ThirteenthMonth;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -122,57 +120,61 @@ class ThirteenthMonthResource extends Resource
             ->defaultSort('period.datefrom')
             ->emptyStateActions([])
             ->actions([
-                DeleteAction::make(),
-                EditAction::make(),
-                Action::make('otherDeduction')
-                    ->label('Manage Other Deductions')
-                    ->icon('heroicon-o-plus-circle')
-                    ->color('warning')
-                    ->modalHeading('Other Deductions')
-                    ->modalContent(fn($record) => view('livewire.other-deduction-modal', [
-                        'employeeId' => $record->employeeid,
-                        'datePeriodId' => $record->periodid,
-                    ]))
-                    ->modalContent(function ($record) {
-                        $deductionLogs = OtherDeductionLog::where('employee_id', $record->employeeid)
-                            ->where('date_period_id', $record->periodid)
-                            ->with('otherDeduction')
-                            ->get();
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                    Action::make('otherDeduction')
+                        ->label('Manage Other Deductions')
+                        ->icon('heroicon-o-plus-circle')
+                        ->color('warning')
+                        ->modalHeading('Other Deductions')
+                        ->modalContent(fn($record) => view('livewire.other-deduction-modal', [
+                            'employeeId' => $record->employeeid,
+                            'datePeriodId' => $record->periodid,
+                        ]))
+                        ->modalContent(function ($record) {
+                            $deductionLogs = OtherDeductionLog::where('employee_id', $record->employeeid)
+                                ->where('date_period_id', $record->periodid)
+                                ->with('otherDeduction')
+                                ->get();
 
-                        // Display current deductions with a remove button
-                        return view('filament.partials.other-deduction-modal', [
-                            'deductionLogs' => $deductionLogs,
-                            'record' => $record,
-                        ]);
-                    })
-                    ->modalFooterActions([
-                        Action::make('addDeduction')
-                            ->label('Add Deduction')
-                            ->form([
-                                Select::make('other_deduction_id')
-                                    ->label('Deduction Type')
-                                    ->options(OtherDeduction::pluck('title', 'id'))
-                                    ->searchable()
-                                    ->required(),
-                                TextInput::make('amount')
-                                    ->label('Amount')
-                                    ->numeric()
-                                    ->required(),
-                            ])
-                            ->action(function ($record, array $data) {
-                                OtherDeductionLog::create([
-                                    'other_deduction_id' => $data['other_deduction_id'],
-                                    'employee_id'        => $record->employeeid,
-                                    'date_period_id'     => $record->periodid,
-                                    'amount'             => $data['amount'],
-                                ]);
-                                Notification::make()
-                                    ->title('Deduction Added')
-                                    ->body('Deduction saved successfully.')
-                                    ->success()
-                                    ->send();
-                            }),
-                    ]),
+                            // Display current deductions with a remove button
+                            return view('filament.partials.other-deduction-modal', [
+                                'deductionLogs' => $deductionLogs,
+                                'record' => $record,
+                            ]);
+                        })
+                        ->modalFooterActions([
+                            Action::make('addDeduction')
+                                ->label('Add Deduction')
+                                ->form([
+                                    Select::make('other_deduction_id')
+                                        ->label('Deduction Type')
+                                        ->options(OtherDeduction::pluck('title', 'id'))
+                                        ->searchable()
+                                        ->required(),
+                                    TextInput::make('amount')
+                                        ->label('Amount')
+                                        ->numeric()
+                                        ->required(),
+                                ])
+                                ->action(function ($record, array $data) {
+                                    OtherDeductionLog::create([
+                                        'other_deduction_id' => $data['other_deduction_id'],
+                                        'employee_id'        => $record->employeeid,
+                                        'date_period_id'     => $record->periodid,
+                                        'amount'             => $data['amount'],
+                                    ]);
+                                    Notification::make()
+                                        ->title('Deduction Added')
+                                        ->body('Deduction saved successfully.')
+                                        ->success()
+                                        ->send();
+                                }),
+                        ]),
+                ]),
 
             ])
             ->bulkActions([

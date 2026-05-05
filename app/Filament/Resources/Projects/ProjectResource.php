@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -55,6 +56,7 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('project_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
@@ -68,12 +70,17 @@ class ProjectResource extends Resource
             ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
-            ])->headerActions([
+            // ->bulkActions([
+            //     DeleteBulkAction::make(),
+            // ])
+            ->headerActions([
                 Action::make('importEmployees')
                     ->label('Import Employees CSV')
                     ->icon('heroicon-o-arrow-up-tray')

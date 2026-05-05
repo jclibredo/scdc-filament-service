@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees;
 
+use App\Filament\Resources\Earnings\EarningsResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Jobs\ProcessEmployeeCsv;
@@ -9,8 +10,8 @@ use App\Models\Employee;
 use App\Models\Project;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -58,6 +59,14 @@ class EmployeeResource extends Resource
                 TextInput::make('lastname')->required()->maxLength(255),
                 Toggle::make('status')->label('Active')->default(true),
                 TextInput::make('mobile')->maxLength(20),
+                // Add this Select component
+                Select::make('empstatus')
+                    ->label('Employment Status')
+                    ->required()
+                    ->options([
+                        'admin' => 'SCDC Admin',
+                        'subcon' => 'Subcontractor',
+                    ]),
                 TextInput::make('email')->label('Email Address')
                     ->email()
                     ->unique(ignoreRecord: true),
@@ -94,6 +103,7 @@ class EmployeeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
                 TextColumn::make('firstname')->sortable()->searchable(),
@@ -101,12 +111,18 @@ class EmployeeResource extends Resource
                 TextColumn::make('lastname')->sortable()->searchable(),
                 TextColumn::make('employeetype')->sortable()->searchable(),
                 IconColumn::make('status')->boolean()->label('Active'),
-                TextColumn::make('mobile'),
-                TextColumn::make('email'),
+                // Add this column
+                TextColumn::make('empstatus')
+                    ->label('Emp. Status')
+                    ->badge() // Optional: makes it look like a pill
+                    ->color('info')
+                    ->sortable(),
+                // TextColumn::make('mobile'),
+                // TextColumn::make('email'),
                 TextColumn::make('skill.title')->label('Skill'),
                 TextColumn::make('project.name')->label('Project'),
-                TextColumn::make('datehired')->date(),
-                TextColumn::make('dateseperated')->date(),
+                // TextColumn::make('datehired')->date(),
+                // TextColumn::make('dateseperated')->date(),
             ])
             ->filters([
                 // Filter by Employee Type
@@ -117,6 +133,15 @@ class EmployeeResource extends Resource
                         'W'  => 'Weekly',
                     ])
                     ->placeholder('Select Employee Type'),
+
+                // NEW: Employment Status Filter
+                SelectFilter::make('empstatus')
+                    ->label('Employment Status')
+                    ->options([
+                        'admin' => 'SCDC Admin',
+                        'subcon' => 'Subcontractor',
+                    ])
+                    ->placeholder('Select Status'),
                 // FILTER: Project
                 SelectFilter::make('project_id')
                     ->label('Project')
@@ -127,32 +152,22 @@ class EmployeeResource extends Resource
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormWidth('2xl')
             ->actions([
-                Action::make('viewEarnings')
-                    ->label('View Earnings')
-                    ->icon('heroicon-o-banknotes')
-                    ->modalHeading('Active Earnings')
-                    ->modalWidth('lg')
-                    ->action(function () {
-                        // No action needed, modal only
-                    })
-                    ->modalContent(function ($record) {
-                        // Query active earnings for this employee
-                        $earnings = DB::table('earnings')
-                            ->where('employee_id', $record->employeeid)
-                            ->where('status', true)
-                            ->get();
+                ActionGroup::make([
+                    Action::make('viewEarnings')
+                        ->label('View Earnings')
+                        ->icon('heroicon-o-banknotes')
+                        ->action(function (Employee $record) {
+                            // Store the values in the session temporarily
+                            session(['earnings_employeeid' => $record->employeeid]);
+                            // Redirect to the create page WITHOUT query parameters
+                            return redirect(EarningsResource::getUrl('index'));
+                        }),
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
 
-                        // Return a blade view with the earnings table
-                        return view('filament.custom.earnings-list', [
-                            'employee' => $record,
-                            'earnings' => $earnings,
-                        ]);
-                    }),
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+                ]),
             ])
             ->headerActions([
                 Action::make('upload_employee')

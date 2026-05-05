@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Skills;
 use App\Filament\Resources\Skills\Pages\ListSkills;
 use App\Models\Skill;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -46,6 +47,7 @@ class SkillResource extends Resource
     {
         // return SkillsTable::configure($table);
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('title')->searchable()->sortable(),
                 TextColumn::make('details')->limit(50),
@@ -53,12 +55,17 @@ class SkillResource extends Resource
             ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
+
             ]);
+        // ->bulkActions([
+        //     DeleteBulkAction::make(),
+        // ]);
     }
 
     public static function getRelations(): array

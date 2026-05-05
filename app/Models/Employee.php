@@ -15,6 +15,7 @@ class Employee extends Model
         'middlename',
         'lastname',
         'status',
+        'empstatus',
         'mobile',
         'email',
         'birthdate',

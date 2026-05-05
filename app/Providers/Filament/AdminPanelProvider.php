@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\ClearSessionOutsideResources;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -55,6 +56,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                ClearSessionOutsideResources::class,
                 // fn($request, $next) => auth()->user()?->role === 'admin'
                 //     ? $next($request)
                 //     : redirect('/staff'),

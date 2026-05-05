@@ -7,8 +7,8 @@ use App\Filament\Resources\HolidayLogs\Pages\EditHolidayLogs;
 use App\Filament\Resources\HolidayLogs\Pages\ListHolidayLogs;
 use App\Models\HolidayLogs;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -110,8 +110,12 @@ class HolidayLogsResource extends Resource
                     ),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ]);
     }
 

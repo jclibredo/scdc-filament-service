@@ -13,7 +13,7 @@ class Earnings extends Model
 
     protected $fillable = [
         'employee_id',
-        'category_id',
+        'title',
         'amount',
         'status',
     ];
@@ -26,13 +26,5 @@ class Earnings extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employeeid');
-    }
-
-
-
-    // If you have a Category model
-    public function category()
-    {
-        return $this->belongsTo(Category::class, 'category_id');
     }
 }

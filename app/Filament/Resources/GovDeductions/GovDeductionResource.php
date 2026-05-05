@@ -5,6 +5,7 @@ namespace App\Filament\Resources\GovDeductions;
 use App\Filament\Resources\GovDeductions\Pages\ListGovDeductions;
 use App\Models\GovDeduction;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -58,19 +59,25 @@ class GovDeductionResource extends Resource
     public static function table(Table $table): Table
     {
         // return GovDeductionsTable::configure($table);
-        return $table->columns([
-            TextColumn::make('id')->sortable(),
-            TextColumn::make('title')->searchable(),
-            TextColumn::make('date_started')->label('Start Date')->date('M d, Y')->sortable(),
-            TextColumn::make('date_ended')->label('End Date')->date('M d, Y')->sortable(),
-            TextColumn::make('amount')->label('Amount'),
-            IconColumn::make('status')->boolean()->label('Active'),
-            TextColumn::make('created_at')->dateTime('M d, Y')->sortable(),
-        ])
+        return $table
+            ->recordUrl(null)
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('title')->searchable(),
+                TextColumn::make('date_started')->label('Start Date')->date('M d, Y')->sortable(),
+                TextColumn::make('date_ended')->label('End Date')->date('M d, Y')->sortable(),
+                TextColumn::make('amount')->label('Amount'),
+                IconColumn::make('status')->boolean()->label('Active'),
+                TextColumn::make('created_at')->dateTime('M d, Y')->sortable(),
+            ])
             ->filters([])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),

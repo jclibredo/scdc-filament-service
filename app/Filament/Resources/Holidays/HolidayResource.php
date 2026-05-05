@@ -9,6 +9,8 @@ use App\Filament\Resources\Holidays\Schemas\HolidayForm;
 use App\Filament\Resources\Holidays\Tables\HolidaysTable;
 use App\Models\Holiday;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -52,6 +54,7 @@ class HolidayResource extends Resource
     {
         // return HolidaysTable::configure($table);
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('type')->label('Type')->sortable()->searchable(),
                 TextColumn::make('percentage')->label('Percentage')->suffix('%')->sortable(),
@@ -61,7 +64,12 @@ class HolidayResource extends Resource
                 //
             ])
             ->actions([
-                EditAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ]),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
