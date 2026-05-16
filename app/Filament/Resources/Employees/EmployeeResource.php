@@ -28,7 +28,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class EmployeeResource extends Resource
@@ -117,12 +116,8 @@ class EmployeeResource extends Resource
                     ->badge() // Optional: makes it look like a pill
                     ->color('info')
                     ->sortable(),
-                // TextColumn::make('mobile'),
-                // TextColumn::make('email'),
                 TextColumn::make('skill.title')->label('Skill'),
                 TextColumn::make('project.name')->label('Project'),
-                // TextColumn::make('datehired')->date(),
-                // TextColumn::make('dateseperated')->date(),
             ])
             ->filters([
                 // Filter by Employee Type

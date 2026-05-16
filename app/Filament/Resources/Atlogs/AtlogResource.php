@@ -40,9 +40,6 @@ class AtlogResource extends Resource
                 Section::make('Log Details')
                     ->columnSpanFull()
                     ->schema([
-                        // TextInput::make('user_id')
-                        //     ->required()
-                        //     ->label('Employee/User ID'),
                         Select::make('user_id')
                             ->label('Employee')
                             ->required()

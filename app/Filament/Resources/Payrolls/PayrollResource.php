@@ -10,7 +10,6 @@ use App\Models\Payroll;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -67,9 +66,6 @@ class PayrollResource extends Resource
                     ->label('Acquire Hours')
                     ->numeric()
                     ->required(),
-                // Toggle::make('status')
-                //     ->label('Active')
-                //     ->default(true),
             ]);
     }
 

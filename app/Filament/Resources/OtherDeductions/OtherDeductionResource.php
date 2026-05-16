@@ -7,7 +7,6 @@ use App\Models\OtherDeduction;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -28,7 +27,6 @@ class OtherDeductionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // return OtherDeductionForm::configure($schema);
         return $schema->schema([
             TextInput::make('title')
                 ->label('Title')
@@ -44,7 +42,6 @@ class OtherDeductionResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return OtherDeductionsTable::configure($table);
         return $table
             ->recordUrl(null)
             ->columns([
@@ -74,9 +71,6 @@ class OtherDeductionResource extends Resource
                     ->outlined()
                     ->color('warning'),
             ]);
-        // ->bulkActions([
-        //     DeleteBulkAction::make(),
-        // ]);
     }
 
     public static function getRelations(): array
@@ -90,8 +84,6 @@ class OtherDeductionResource extends Resource
     {
         return [
             'index' => ListOtherDeductions::route('/'),
-            // 'create' => CreateOtherDeduction::route('/create'),
-            // 'edit' => EditOtherDeduction::route('/{record}/edit'),
         ];
     }
 }

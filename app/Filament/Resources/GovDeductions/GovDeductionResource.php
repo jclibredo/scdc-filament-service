@@ -30,7 +30,6 @@ class GovDeductionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        // return GovDeductionForm::configure($schema);
         return $schema->schema([
             TextInput::make('title')
                 ->label('Title')
@@ -58,7 +57,6 @@ class GovDeductionResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return GovDeductionsTable::configure($table);
         return $table
             ->recordUrl(null)
             ->columns([
