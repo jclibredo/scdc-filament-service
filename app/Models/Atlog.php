@@ -4,33 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Employee;
 
 class Atlog extends Model
 {
     use HasFactory;
 
-    protected $table = 'atlogs';
+    protected $table = 'attendance_logs';
 
     protected $fillable = [
-        'employeeid',
-        'date',
-        'time_in',
-        'break_out',
-        'break_in',
-        'time_out',
+        'user_id',
+        'recorded_at',
+        'status',
+        'verification_mode',
+        'work_code',
+        'reserved'
     ];
 
     /**
      * Relation: Atlog belongs to an Employee
      */
-    public function employee()
+   public function employee()
     {
-        return $this->belongsTo(Employee::class, 'employeeid', 'employeeid');
-    }
-
-    public function scopeWithEmployee($query)
-    {
-        return $query->select('atlogs.*')
-            ->join('employees', 'atlogs.employeeid', '=', 'employees.employeeid');
+        return $this->belongsTo(Employee::class, 'user_id', 'employeeid');
     }
 }

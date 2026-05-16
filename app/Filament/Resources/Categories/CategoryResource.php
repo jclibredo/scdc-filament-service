@@ -2,15 +2,12 @@
 
 namespace App\Filament\Resources\Categories;
 
-use App\Filament\Resources\Categories\Pages\CreateCategory;
-use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
-use App\Filament\Resources\Categories\Schemas\CategoryForm;
-use App\Filament\Resources\Categories\Tables\CategoriesTable;
 use App\Models\Category;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -30,13 +27,16 @@ class CategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static ?string $recordTitleAttribute = 'Category';
+    protected static ?string $recordTitleAttribute = 'Earnings Category';
+
+    protected static ?string $navigationLabel = 'Earnings Category';
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
                 Section::make('Category Details')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('name')
                             ->label('Category Name')
@@ -48,7 +48,8 @@ class CategoryResource extends Resource
                             ->rows(3),
                     ])
                     ->columns(1),
-            ]);
+            ])
+            ->columns(2);
     }
 
     public static function table(Table $table): Table
@@ -68,8 +69,16 @@ class CategoryResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                ])
+                    ->iconButton()
+                    ->icon(Heroicon::ArrowDown)
+                    ->label('Actions'),
+
             ]);
     }
 
