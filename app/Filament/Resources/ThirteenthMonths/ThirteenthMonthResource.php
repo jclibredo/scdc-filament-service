@@ -174,7 +174,12 @@ class ThirteenthMonthResource extends Resource
                                         ->send();
                                 }),
                         ]),
-                ]),
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
 
             ])
             ->bulkActions([
@@ -184,7 +189,6 @@ class ThirteenthMonthResource extends Resource
                     ->icon('heroicon-o-printer')
                     ->requiresConfirmation()
                     ->action(function ($records) {
-                        dd($records);
                         foreach ($records as $record) {
 
 

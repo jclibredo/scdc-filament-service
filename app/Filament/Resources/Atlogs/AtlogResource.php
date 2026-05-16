@@ -8,16 +8,13 @@ use App\Models\Atlog;
 use App\Models\Employee;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TimePicker;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -27,7 +24,6 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Svg\Tag\Group;
 
 class AtlogResource extends Resource
 {
@@ -133,20 +129,6 @@ class AtlogResource extends Resource
                 TextColumn::make('status')
                     ->badge()
                     ->sortable(),
-                // ->color(fn(int $state): string => match ($state) {
-                //     0 => 'success',
-                //     1 => 'danger',
-                //     4 => 'info',
-                //     5 => 'warning',
-                //     default => 'gray',
-                // })
-                // ->formatStateUsing(fn(int $state): string => match ($state) {
-                //     0 => 'Check-In',
-                //     1 => 'Check-Out',
-                //     4 => 'OT In',
-                //     5 => 'OT Out',
-                //     default => 'Other',
-                // }),
 
                 TextColumn::make('verification_mode')
                     ->label('Method')
@@ -186,22 +168,19 @@ class AtlogResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    ViewAction::make()
+                        ->label('Details'),
                     EditAction::make()
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
                 ])
-                    ->label('Actions')
-                    ->icon('heroicon-m-ellipsis-horizontal')
-                    ->dropdown(),
-
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
             ])
-            // ->bulkActions([
-            //     BulkActionGroup::make([
-            //         DeleteBulkAction::make(),
-            //     ]),
-            // ])
             ->defaultSort('recorded_at', 'desc');
     }
 

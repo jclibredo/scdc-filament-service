@@ -111,7 +111,11 @@ class EarningsResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ]),
+                ])->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
             ])
             ->filters([
                 // 🔹 Filter by Employee

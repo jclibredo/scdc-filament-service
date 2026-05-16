@@ -115,7 +115,12 @@ class HolidayLogsResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ]),
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
             ]);
     }
 

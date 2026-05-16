@@ -304,7 +304,12 @@ class DatePeriodResource extends Resource
                             // Check if the relationship exists and the name matches
                             return $record->category && $record->category->name === 'REGULARPAYROLL';
                         })
-                ]),
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
 
 
             ]);

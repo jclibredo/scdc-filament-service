@@ -75,11 +75,13 @@ class ProjectResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ]),
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
             ])
-            // ->bulkActions([
-            //     DeleteBulkAction::make(),
-            // ])
             ->headerActions([
                 Action::make('importEmployees')
                     ->label('Import Employees CSV')

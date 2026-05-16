@@ -75,9 +75,11 @@ class CategoryResource extends Resource
                     DeleteAction::make()
                         ->label('Remove'),
                 ])
-                    ->iconButton()
-                    ->icon(Heroicon::ArrowDown)
-                    ->label('Actions'),
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
 
             ]);
     }

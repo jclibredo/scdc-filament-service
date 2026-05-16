@@ -7,7 +7,6 @@ use App\Models\Skill;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -60,12 +59,14 @@ class SkillResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ]),
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
 
             ]);
-        // ->bulkActions([
-        //     DeleteBulkAction::make(),
-        // ]);
     }
 
     public static function getRelations(): array

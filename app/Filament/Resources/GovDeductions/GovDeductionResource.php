@@ -77,7 +77,11 @@ class GovDeductionResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ]),
+                ])->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
+                    ->outlined()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 DeleteBulkAction::make(),
