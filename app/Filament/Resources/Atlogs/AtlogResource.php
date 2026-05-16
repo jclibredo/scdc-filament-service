@@ -105,13 +105,14 @@ class AtlogResource extends Resource
                 }
                 // Eager load the relationships
                 return Atlog::query()
-                    ->with('employee');
+                    ->with('employee')
+                    ->with('project');
             })
             ->columns([
+                TextColumn::make('project.name')
+                    ->label('Project'),
                 TextColumn::make('employee.full_name')
                     ->label('Employee'),
-                // ->searchable()
-                // ->sortable(),
 
                 TextColumn::make('user_id')
                     ->label('ID')

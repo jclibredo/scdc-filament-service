@@ -18,14 +18,20 @@ class Atlog extends Model
         'status',
         'verification_mode',
         'work_code',
-        'reserved'
+        'reserved',
+        'project_code',
     ];
 
     /**
      * Relation: Atlog belongs to an Employee
      */
-   public function employee()
+    public function employee()
     {
         return $this->belongsTo(Employee::class, 'user_id', 'employeeid');
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_code', 'project_code');
     }
 }
