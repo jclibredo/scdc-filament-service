@@ -51,12 +51,11 @@ class DatePeriodResource extends Resource
                     ->schema([
                         TextInput::make('code')
                             ->label('Code')
-                            ->disabled()               // User cannot edit
-                            ->dehydrated()             // Still save to DB
+                            ->disabled()
+                            ->dehydrated()
                             ->default(fn() => strtoupper(Str::random(6)))
-                            ->rule(
-                                Rule::unique('date_periods', 'code') // Direct DB table check
-                            )
+                            // 💡 Filament automatically ignores the current record when updating
+                            ->unique(table: 'date_periods', column: 'code', ignoreRecord: true)
                             ->required(),
                         Select::make('employeetype')
                             ->label('Employee Type')
@@ -74,7 +73,7 @@ class DatePeriodResource extends Resource
                             ->options(function () {
                                 // Dynamically filters categories matching the 'PAYROLL' handle
                                 return Category::query()
-                                    ->where('cat', 'PAYROLL')
+                                    ->where('cat', 'EMPLOYEE_STATUS')
                                     ->pluck('name', 'id');
                             })
                             ->searchable()
@@ -168,8 +167,8 @@ class DatePeriodResource extends Resource
                             return redirect(PayrollResource::getUrl('index'));
                         }),
 
-                    // EditAction::make()
-                    //     ->label('Update'),
+                    EditAction::make()
+                        ->label('Update'),
                     // DeleteAction::make()
                     //     ->label('Remove')
                     //     ->before(function ($record) {

@@ -29,18 +29,16 @@ class Employee extends Model
         'project_id',
     ];
 
-    // protected static function boot()
-    // {
-    //     parent::boot();
+    public function empStat()
+    {
+        return $this->belongsTo(Category::class, 'empstatus');
+    }
 
-    //     static::creating(function ($employee) {
-    //         if (empty($employee->employeeid)) {
-    //             $latest = static::latest('id')->first();
-    //             $nextId = $latest ? $latest->id + 1 : 1;
-    //             $employee->employeeid = str_pad($nextId, 4, '0', STR_PAD_LEFT);
-    //         }
-    //     });
-    // }
+    public function empType()
+    {
+        // Points employeetype (which holds the category ID) to the Category model
+        return $this->belongsTo(Category::class, 'employeetype');
+    }
 
     protected static function booted()
     {

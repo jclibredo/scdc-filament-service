@@ -109,83 +109,6 @@ class EmployeeResource extends Resource
                             ->preload(),
                     ]),
             ]);
-        // return $schema
-        //     ->schema([
-        //         Section::make('Employee Information')
-        //             ->description('Please fill out all the required fields to manage this employee record.')
-        //             ->columns(3) // Sets a 3-column grid layout for the entire section
-        //             ->schema([
-        //                 TextInput::make('employeeid')
-        //                     ->label('Employee ID')
-        //                     ->unique(ignoreRecord: true)
-        //                     // Generates a number between 1000 and 9999
-        //                     ->default(fn() => (string) random_int(1000, 9999))
-        //                     ->required()
-        //                     ->readOnly()
-        //                     ->length(4) // Ensures it is exactly 4 characters
-        //                     ->numeric(),
-
-        //                 Toggle::make('status')
-        //                     ->label('Active')
-        //                     ->default(true)
-        //                     ->inline(false), // Places the toggle nicely inline with inputs
-
-        //                 Select::make('empstatus')
-        //                     ->label('Employment Status')
-        //                     ->required()
-        //                     ->options([
-        //                         'admin' => 'SCDC Admin',
-        //                         'subcon' => 'Subcontractor',
-        //                     ]),
-
-        //                 TextInput::make('firstname')->required()->maxLength(255),
-        //                 TextInput::make('middlename')->maxLength(255),
-        //                 TextInput::make('lastname')->required()->maxLength(255),
-
-        //                 DatePicker::make('birthdate')->required(),
-        //                 Select::make('sex')
-        //                     ->options([
-        //                         'Male' => 'Male',
-        //                         'Female' => 'Female',
-        //                         'Other' => 'Other',
-        //                     ])
-        //                     ->required(),
-        //                 TextInput::make('mobile')->maxLength(20),
-
-        //                 TextInput::make('email')
-        //                     ->label('Email Address')
-        //                     ->email()
-        //                     ->unique(ignoreRecord: true)
-        //                     ->columnSpan(2), // Takes up 2 columns for a wider input field
-
-        //                 Select::make('employeetype')
-        //                     ->label('Employee Type')
-        //                     ->options([
-        //                         'SM' => 'Semi-monthly',
-        //                         'W' => 'Weekly',
-        //                     ])
-        //                     ->required(),
-
-        //                 DatePicker::make('datehired')->required(),
-        //                 DatePicker::make('dateseperated'),
-
-        //                 Select::make('skill_id')
-        //                     ->label('Skill')
-        //                     ->relationship('skill', 'title')
-        //                     ->searchable()
-        //                     ->preload(),
-
-        //                 Select::make('project_id')
-        //                     ->label('Project')
-        //                     ->relationship('project', 'name')
-        //                     ->searchable()
-        //                     ->preload(),
-
-        //                 Textarea::make('address')
-        //                     ->rows(3)
-        //                     ->columnSpanFull(), // Forces the address to span across all 3 columns
-        //             ]),
-        //     ]);
     }
 
     public static function table(Table $table): Table
@@ -194,13 +117,33 @@ class EmployeeResource extends Resource
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
-                TextColumn::make('firstname')->sortable()->searchable(),
-                TextColumn::make('middlename')->sortable(),
-                TextColumn::make('lastname')->sortable()->searchable(),
-                TextColumn::make('employeetype')->sortable()->searchable(),
+                // TextColumn::make('firstname')->sortable()->searchable(),
+                // TextColumn::make('middlename')->sortable(),
+                // TextColumn::make('lastname')->sortable()->searchable(),
+                // Combined Full Name Column
+                TextColumn::make('full_name')
+                    ->label('Full Name')
+                    // This allows users to search by any of the name parts
+                    ->searchable(query: function ($query, string $search) {
+                        $query->where(function ($q) use ($search) {
+                            $q->where('lastname', 'like', "%{$search}%")
+                                ->orWhere('firstname', 'like', "%{$search}%")
+                                ->orWhere('middlename', 'like', "%{$search}%");
+                        });
+                    })
+                    // This allows sorting by Lastname
+                    ->sortable(query: function ($query, string $direction) {
+                        return $query->orderBy('lastname', $direction)
+                            ->orderBy('firstname', $direction);
+                    })
+                    // This handles the string concatenation cleanly
+                    ->formatStateUsing(function ($record) {
+                        return "{$record->lastname}, {$record->firstname} {$record->middlename}";
+                    }),
+                TextColumn::make('empType.name')->sortable()->searchable(),
                 IconColumn::make('status')->boolean()->label('Active'),
                 // Add this column
-                TextColumn::make('empstatus')
+                TextColumn::make('empStat.name')
                     ->label('Emp. Status')
                     ->badge() // Optional: makes it look like a pill
                     ->color('info')
