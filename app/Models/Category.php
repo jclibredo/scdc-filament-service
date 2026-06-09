@@ -12,5 +12,11 @@ class Category extends Model
     protected $fillable = [
         'name',
         'description',
+        'cat',    // 🟢 Added
+        'status', // 🟢 Added
+    ];
+
+    protected $casts = [
+        'status' => 'boolean', // 🟢 Forces 1/0 from DB to be true/false in PHP
     ];
 }

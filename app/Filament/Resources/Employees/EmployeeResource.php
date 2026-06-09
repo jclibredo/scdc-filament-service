@@ -6,6 +6,7 @@ use App\Filament\Resources\Earnings\EarningsResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Jobs\ProcessEmployeeCsv;
+use App\Models\Category;
 use App\Models\Employee;
 use App\Models\Project;
 use BackedEnum;
@@ -21,6 +22,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -42,61 +44,148 @@ class EmployeeResource extends Resource
     {
         return $schema
             ->schema([
-                TextInput::make('employeeid')
-                    ->label('Employee ID')
-                    ->unique(ignoreRecord: true)
-                    // Generates a number between 1000 and 9999
-                    ->default(fn() => (string) random_int(1000, 9999))
-                    ->required()
-                    ->readOnly()
-                    ->length(4) // Ensures it is exactly 4 characters
-                    ->numeric(),
+                Section::make('Employee Information')
+                    ->description('Please fill out all the required fields to manage this employee record.')
+                    ->columns(3) // Sets a 3-column grid layout for the entire section
+                    ->columnSpanFull() // Makes the section span the full width of the form
+                    ->schema([
+                        TextInput::make('employeeid')
+                            ->label('Employee ID')
+                            ->unique(table: 'employees', column: 'employeeid', ignoreRecord: true)
+                            ->required(),
+                        TextInput::make('firstname')->required()->maxLength(255),
+                        TextInput::make('middlename')->maxLength(255),
+                        TextInput::make('lastname')->required()->maxLength(255),
+                        Toggle::make('status')->label('Active')->default(true),
+                        TextInput::make('mobile')->maxLength(20),
+                        Select::make('empstatus')
+                            ->label('Employee Status')
+                            ->options(function () {
+                                // Dynamically filters categories matching the 'EMPLOYEE_TYPE' handle
+                                return Category::query()
+                                    ->where('cat', 'EMPLOYEE_STATUS')
+                                    ->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                        TextInput::make('email')->label('Email Address')
+                            ->email()
+                            ->unique(ignoreRecord: true),
+                        DatePicker::make('birthdate')->required(),
+                        Select::make('sex')
+                            ->options([
+                                'Male' => 'Male',
+                                'Female' => 'Female',
+                                'Other' => 'Other',
+                            ])
+                            ->required(),
+                        Textarea::make('address')->rows(3),
+                        DatePicker::make('datehired')->required(),
+                        DatePicker::make('dateseperated'),
+                        Select::make('employeetype')
+                            ->label('Employee Type')
+                            ->options(function () {
+                                // Dynamically filters categories matching the 'EMPLOYEE_TYPE' handle
+                                return Category::query()
+                                    ->where('cat', 'EMPLOYEE_TYPE')
+                                    ->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->required(),
 
 
-                TextInput::make('firstname')->required()->maxLength(255),
-                TextInput::make('middlename')->maxLength(255),
-                TextInput::make('lastname')->required()->maxLength(255),
-                Toggle::make('status')->label('Active')->default(true),
-                TextInput::make('mobile')->maxLength(20),
-                // Add this Select component
-                Select::make('empstatus')
-                    ->label('Employment Status')
-                    ->required()
-                    ->options([
-                        'admin' => 'SCDC Admin',
-                        'subcon' => 'Subcontractor',
+                        Select::make('skill_id')
+                            ->label('Skill')
+                            ->relationship('skill', 'title')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('project_id')
+                            ->label('Project')
+                            ->relationship('project', 'name')
+                            ->searchable()
+                            ->preload(),
                     ]),
-                TextInput::make('email')->label('Email Address')
-                    ->email()
-                    ->unique(ignoreRecord: true),
-                DatePicker::make('birthdate')->required(),
-                Select::make('sex')
-                    ->options([
-                        'Male' => 'Male',
-                        'Female' => 'Female',
-                        'Other' => 'Other',
-                    ])
-                    ->required(),
-                Textarea::make('address')->rows(3),
-                DatePicker::make('datehired')->required(),
-                DatePicker::make('dateseperated'),
-                Select::make('employeetype')
-                    ->options([
-                        'SM' => 'Semi-monthly',
-                        'W' => 'Weekly',
-                    ])
-                    ->required(),
-                Select::make('skill_id')
-                    ->label('Skill')
-                    ->relationship('skill', 'title')
-                    ->searchable()
-                    ->preload(),
-                Select::make('project_id')
-                    ->label('Project')
-                    ->relationship('project', 'name')
-                    ->searchable()
-                    ->preload(),
             ]);
+        // return $schema
+        //     ->schema([
+        //         Section::make('Employee Information')
+        //             ->description('Please fill out all the required fields to manage this employee record.')
+        //             ->columns(3) // Sets a 3-column grid layout for the entire section
+        //             ->schema([
+        //                 TextInput::make('employeeid')
+        //                     ->label('Employee ID')
+        //                     ->unique(ignoreRecord: true)
+        //                     // Generates a number between 1000 and 9999
+        //                     ->default(fn() => (string) random_int(1000, 9999))
+        //                     ->required()
+        //                     ->readOnly()
+        //                     ->length(4) // Ensures it is exactly 4 characters
+        //                     ->numeric(),
+
+        //                 Toggle::make('status')
+        //                     ->label('Active')
+        //                     ->default(true)
+        //                     ->inline(false), // Places the toggle nicely inline with inputs
+
+        //                 Select::make('empstatus')
+        //                     ->label('Employment Status')
+        //                     ->required()
+        //                     ->options([
+        //                         'admin' => 'SCDC Admin',
+        //                         'subcon' => 'Subcontractor',
+        //                     ]),
+
+        //                 TextInput::make('firstname')->required()->maxLength(255),
+        //                 TextInput::make('middlename')->maxLength(255),
+        //                 TextInput::make('lastname')->required()->maxLength(255),
+
+        //                 DatePicker::make('birthdate')->required(),
+        //                 Select::make('sex')
+        //                     ->options([
+        //                         'Male' => 'Male',
+        //                         'Female' => 'Female',
+        //                         'Other' => 'Other',
+        //                     ])
+        //                     ->required(),
+        //                 TextInput::make('mobile')->maxLength(20),
+
+        //                 TextInput::make('email')
+        //                     ->label('Email Address')
+        //                     ->email()
+        //                     ->unique(ignoreRecord: true)
+        //                     ->columnSpan(2), // Takes up 2 columns for a wider input field
+
+        //                 Select::make('employeetype')
+        //                     ->label('Employee Type')
+        //                     ->options([
+        //                         'SM' => 'Semi-monthly',
+        //                         'W' => 'Weekly',
+        //                     ])
+        //                     ->required(),
+
+        //                 DatePicker::make('datehired')->required(),
+        //                 DatePicker::make('dateseperated'),
+
+        //                 Select::make('skill_id')
+        //                     ->label('Skill')
+        //                     ->relationship('skill', 'title')
+        //                     ->searchable()
+        //                     ->preload(),
+
+        //                 Select::make('project_id')
+        //                     ->label('Project')
+        //                     ->relationship('project', 'name')
+        //                     ->searchable()
+        //                     ->preload(),
+
+        //                 Textarea::make('address')
+        //                     ->rows(3)
+        //                     ->columnSpanFull(), // Forces the address to span across all 3 columns
+        //             ]),
+        //     ]);
     }
 
     public static function table(Table $table): Table

@@ -8,13 +8,16 @@ use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -37,18 +40,38 @@ class CategoryResource extends Resource
                 Section::make('Category Details')
                     ->columnSpanFull()
                     ->schema([
+                        // Arranging layout items into two columns
                         TextInput::make('name')
                             ->label('Category Name')
                             ->required()
                             ->maxLength(255),
+                        Select::make('cat')
+                            ->label('Category Type')
+                            ->options([
+                                'PAYROLL' => 'Payroll',
+                                'EARNINGS' => 'Earnings',
+                                'ADJUSTMENT' => 'Adjustment',
+                                'DEDUCTION' => 'Deduction',
+                                'EMPLOYEE_STATUS' => 'Employee Status',
+                                'EMPLOYEE_TYPE' => 'Employee Type',
+                            ])
+                            // 💡 Optional: Makes it searchable if your options list grows later
+                            ->searchable()
+                            ->placeholder('Select category type')
+                            ->required(),
 
                         Textarea::make('description')
                             ->label('Description')
-                            ->rows(3),
+                            ->rows(3)
+                            ->columnSpanFull(), // Stretches out over full block width
+
+                        ToggleColumn::make('status')
+                            ->label('Active Status')
+                            ->default(true)
+                            ->inline(false), // Places label on top cleanly
                     ])
-                    ->columns(1),
-            ])
-            ->columns(2);
+                    ->columns(2), // Switches internal grid distribution to 2 columns
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -60,11 +83,25 @@ class CategoryResource extends Resource
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('cat')
+                    ->label('Category Code')
+                    ->badge()
+                    ->color('info')
+                    ->searchable()
+                    ->sortable(),
+
+                IconColumn::make('status')
+                    ->label('Status')
+                    ->boolean() // Automatically turns true into a green check/circle and false into a red cross/circle
+                    ->sortable(),
+
                 TextColumn::make('description')
                     ->label('Description')
                     ->limit(50),
+
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->dateTime('M d, Y h:i A')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
@@ -79,7 +116,6 @@ class CategoryResource extends Resource
                     ->button()
                     ->outlined()
                     ->color('warning'),
-
             ]);
     }
 

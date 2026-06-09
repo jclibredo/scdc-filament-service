@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Employee extends Model
 {
@@ -40,6 +41,31 @@ class Employee extends Model
     //         }
     //     });
     // }
+
+    protected static function booted()
+    {
+        static::updated(function ($employee) {
+            // Check if the employeeid attribute was actually changed
+            if ($employee->isDirty('employeeid')) {
+                $oldId = $employee->getOriginal('employeeid');
+                $newId = $employee->employeeid;
+                // Run everything inside a transaction to ensure database integrity
+                DB::transaction(function () use ($oldId, $newId) {
+                    // 1. Tables using 'employee_id'
+                    DB::table('earnings')->where('employee_id', $oldId)->update(['employee_id' => $newId]);
+                    DB::table('other_deduction_logs')->where('employee_id', $oldId)->update(['employee_id' => $newId]);
+                    DB::table('gov_deduction_logs')->where('employee_id', $oldId)->update(['employee_id' => $newId]);
+                    // 2. Tables using 'employeeid'
+                    DB::table('employee_project_histories')->where('employeeid', $oldId)->update(['employeeid' => $newId]);
+                    DB::table('thirteenth_months')->where('employeeid', $oldId)->update(['employeeid' => $newId]);
+                    DB::table('payrolls')->where('employeeid', $oldId)->update(['employeeid' => $newId]);
+                    DB::table('holiday_logs')->where('employeeid', $oldId)->update(['employeeid' => $newId]);
+                    // 3. Table using 'user_id'
+                    DB::table('attendance_logs')->where('user_id', $oldId)->update(['user_id' => $newId]);
+                });
+            }
+        });
+    }
 
     public function skill()
     {

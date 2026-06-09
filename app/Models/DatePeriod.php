@@ -21,4 +21,10 @@ class DatePeriod extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function employeeTypeCategory()
+    {
+        // Points employeetype (which holds the category ID) to the Category model
+        return $this->belongsTo(Category::class, 'employeetype');
+    }
 }

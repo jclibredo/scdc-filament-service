@@ -96,6 +96,95 @@ class AtlogResource extends Resource
 
     public static function table(Table $table): Table
     {
+        // return $table
+        //     ->recordUrl(null)
+        //     ->query(function () {
+        //         $user = Auth::user();
+        //         if (! $user || ! $user->id) {
+        //             return Atlog::whereRaw('1 = 0');
+        //         }
+        //         // Eager load the relationships
+        //         return Atlog::query()
+        //             ->with('employee')
+        //             ->with('project');
+        //     })
+        //     ->columns([
+        //         TextColumn::make('project.name')
+        //             ->label('Project'),
+        //         TextColumn::make('employee.full_name')
+        //             ->label('Employee'),
+
+        //         TextColumn::make('user_id')
+        //             ->label('ID')
+        //             ->searchable()
+        //             ->sortable(),
+
+        //         TextColumn::make('recorded_at')
+        //             ->dateTime('M d, Y h:i A')
+        //             ->label('Date')
+        //             ->sortable(),
+
+        //         TextColumn::make('status')
+        //             ->label('State ID')
+        //             ->badge()
+        //             ->sortable(),
+
+        //         TextColumn::make('verification_mode')
+        //             ->label('In/Out Status')
+        //             ->icon(fn(int $state): string => match ($state) {
+        //                 1 => 'heroicon-m-identification',
+        //                 5 => 'heroicon-m-user-circle',
+        //                 default => 'heroicon-m-key',
+        //             })
+        //             ->formatStateUsing(fn(int $state): string => match ($state) {
+        //                 1 => 'Finger',
+        //                 2 => 'Card',
+        //                 5 => 'Face',
+        //                 default => 'Code',
+        //             }),
+
+        //         TextColumn::make('status')
+        //             ->label('State ID')
+        //             ->badge()
+        //             ->sortable(),
+
+        //         TextColumn::make('reserved')
+        //             ->label('Verify Type')
+        //             ->toggleable(isToggledHiddenByDefault: true),
+        //     ])
+        //     ->filters([
+        //         SelectFilter::make('status')
+        //             ->options([
+        //                 0 => 'Check-In',
+        //                 1 => 'Check-Out',
+        //             ]),
+        //         Filter::make('recorded_at')
+        //             ->form([
+        //                 DatePicker::make('from'),
+        //                 DatePicker::make('until'),
+        //             ])
+        //             ->query(function ($query, array $data) {
+        //                 return $query
+        //                     ->when($data['from'], fn($q) => $q->whereDate('recorded_at', '>=', $data['from']))
+        //                     ->when($data['until'], fn($q) => $q->whereDate('recorded_at', '<=', $data['until']));
+        //             })
+        //     ])
+        //     ->actions([
+        //         ActionGroup::make([
+        //             ViewAction::make()
+        //                 ->label('Details'),
+        //             EditAction::make()
+        //                 ->label('Update'),
+        //             DeleteAction::make()
+        //                 ->label('Remove'),
+        //         ])
+        //             ->label('Action')
+        //             ->icon('heroicon-m-chevron-down')
+        //             ->button()
+        //             ->outlined()
+        //             ->color('warning'),
+        //     ])
+        //     ->defaultSort('recorded_at', 'desc');
         return $table
             ->recordUrl(null)
             ->query(function () {
@@ -119,33 +208,52 @@ class AtlogResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                // 2. Date & Time
                 TextColumn::make('recorded_at')
                     ->dateTime('M d, Y h:i A')
-                    ->label('Timestamp')
+                    ->label('Date & Time')
                     ->sortable(),
 
+                // 5. Verification Method (Column 5 in your raw logs)
                 TextColumn::make('status')
+                    ->label('Att State')
                     ->badge()
-                    ->sortable(),
-
-                TextColumn::make('verification_mode')
-                    ->label('Method')
+                    ->color('info') // Cool blue badge style for hardware properties
                     ->icon(fn(int $state): string => match ($state) {
-                        1 => 'heroicon-m-identification',
-                        5 => 'heroicon-m-user-circle',
-                        default => 'heroicon-m-key',
+                        1 => 'heroicon-m-identification',    // Changed to actual fingerprint icon
+                        2 => 'heroicon-m-credit-card',    // Changed to credit card for RFID badge
+                        5 => 'heroicon-m-user-circle',    // Face scan icon
+                        default => 'heroicon-m-key',      // Password/Code pin entry
                     })
                     ->formatStateUsing(fn(int $state): string => match ($state) {
                         1 => 'Finger',
                         2 => 'Card',
                         5 => 'Face',
                         default => 'Code',
-                    }),
+                    })
+                    ->sortable(),
+                TextColumn::make('verification_mode')
+                    ->label('Verify Type')
+                    ->badge()
+                    // 🎨 Using neutral gray since this is a technical hardware status code
+                    ->color('gray')
+                    ->icon('heroicon-m-squares-plus')
+                    ->formatStateUsing(fn(int $state): string => match ($state) {
+                        0 => 'Check-In',
+                        1 => 'Check-Out',
+                        2 => 'Break Out',
+                        3 => 'Break In',
+                        default => "Code ({$state})",
+                    })
+                    ->sortable(),
 
-                TextColumn::make('created_at')
-                    ->label('Imported On')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
+
+
+
+                // 6. Machine Terminal ID / Reserved (Column 6 in your raw logs)
+                TextColumn::make('reserved')
+                    ->label('Device ID')
+                    ->fontFamily('mono'),
             ])
             ->filters([
                 SelectFilter::make('status')
