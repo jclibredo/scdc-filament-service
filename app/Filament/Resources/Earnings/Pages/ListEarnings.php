@@ -38,9 +38,29 @@ class ListEarnings extends ListRecords
                     return redirect(EmployeeResource::getUrl('index'));
                 }),
 
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('New Earning')
+                ->color('warning')
+                ->icon('heroicon-m-plus-circle'),
 
 
         ];
+    }
+    public function mount(): void
+    {
+        // 1. Check if your required session variable is completely missing or empty
+        if (
+            !session()->has('session_employee_id')
+            || empty(session('session_employee_id'))
+        ) {
+            // 2. Prevent disrupting background Livewire requests 
+            if (request()->hasHeader('X-Livewire')) {
+                abort(401, 'Session expired.');
+            }
+            // 3. Cleanly redirect standard requests straight to the dashboard
+            redirect()->route('filament.admin.pages.dashboard');
+            return; // Halt further page execution
+        }
+        parent::mount();
     }
 }

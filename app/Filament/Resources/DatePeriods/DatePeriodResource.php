@@ -8,6 +8,8 @@ use App\Filament\Resources\Payrolls\PayrollResource;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
+use App\Models\GovDeduction;
+use App\Models\GovDeductionLog;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -15,17 +17,23 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -48,6 +56,7 @@ class DatePeriodResource extends Resource
                 Section::make('Date Period Configuration')
                     ->description('Manage employee type groups, payroll categories, and active timelines.')
                     ->columns(2) // Aligns fields nicely in a 2-column grid layout
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('code')
                             ->label('Code')
@@ -97,6 +106,25 @@ class DatePeriodResource extends Resource
         return $table
             ->recordUrl(null)    // Disables the URL redirect on click
             ->recordAction(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (! $user || ! $user->id) {
+                    return DatePeriod::whereRaw('1 = 0');
+                }
+                if (
+                    session('session_employeestatus')
+                    && session('session_employeetype')
+                    && session('session_periodcode')
+                ) {
+                    return DatePeriod::query()
+                        ->where('status', true)
+                        ->where('code', session('session_periodcode'))
+                        ->where('category_id', session('session_employeestatus'))
+                        ->where('employeetype', session('session_employeetype'));
+                }
+                return DatePeriod::query()
+                    ->where('status', true);
+            })
             ->columns([
                 TextColumn::make('code')
                     ->label('Control Code')
@@ -126,6 +154,41 @@ class DatePeriodResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                // 4. Filter by Date Range (Date From & Date To combined)
+                Filter::make('date_range')
+                    ->label('Date Range')
+                    ->form([
+                        DatePicker::make('datefrom')
+                            ->label('Date From')
+                            ->native(false)
+                            ->displayFormat('M d, Y'),
+                        DatePicker::make('dateto')
+                            ->label('Date To')
+                            ->native(false)
+                            ->displayFormat('M d, Y'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['datefrom'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('datefrom', '>=', $date),
+                            )
+                            ->when(
+                                $data['dateto'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('dateto', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['datefrom'] ?? null) {
+                            $indicators[] = 'From: ' . \Carbon\Carbon::parse($data['datefrom'])->toFormattedDateString();
+                        }
+                        if ($data['dateto'] ?? null) {
+                            $indicators[] = 'To: ' . \Carbon\Carbon::parse($data['dateto'])->toFormattedDateString();
+                        }
+                        return $indicators;
+                    }),
                 // Filter by Control Code
                 SelectFilter::make('code')
                     ->label('Control Code')
@@ -136,35 +199,129 @@ class DatePeriodResource extends Resource
                             ->orderBy('code')
                             ->pluck('code', 'code')
                     )
+                    ->columns(1)
                     ->placeholder('Select Code'),
+                // 1. FILTER: Employee Type (Filtered by Category: EMPLOYEE_TYPE)
+                SelectFilter::make('employeetype_id')
+                    ->label('Emp. Type')
+                    ->relationship(
+                        name: 'employeeTypeCategory',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_TYPE')
+                    )
+                    ->preload()
+                    ->columns(1)
+                    ->placeholder('All Employee Types'),
 
-                // Filter by Employee Type
-                SelectFilter::make('employeetype')
-                    ->label('Employee Type')
-                    ->options([
-                        'SM' => 'Semi Monthly',
-                        'W'  => 'Weekly',
-                    ])
-                    ->placeholder('Select Employee Type'),
+                // 2. FILTER: Employment Status (Filtered by Category: EMPLOYEE_STATUS)
+                SelectFilter::make('empstatus_id')
+                    ->label('Emp. Status')
+                    ->relationship(
+                        name: 'category',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_STATUS')
+                    )
+                    ->preload()
+                    ->columns(1)
+                    ->placeholder('All Statuses'),
+
             ], layout: FiltersLayout::AboveContent)
-            ->filtersFormWidth('2xl')
+            ->filtersFormColumns(4)
+            ->filtersFormWidth('full')
             ->actions([
                 ActionGroup::make([
-
                     Action::make('proceedToPayroll')
-                        ->label('Go to Payroll')
-                        ->icon('heroicon-m-arrow-right-circle')
+                        ->label('Process')
                         ->color('success')
+                        ->icon('heroicon-m-calculator')
                         ->action(function (DatePeriod $record) {
-                            // 1. Set the exact session keys required by PayrollResource query
+                            session(['session_periodcode' => $record->code]);
                             session(['session_employeetype' => $record->employeetype]);
-
-                            // Adjust this if your employee status relies on another field 
-                            // e.g., if date period implies a status, or if you use its category ID
-                            session(['session_employeestatus' => $record->category_id]); // Example fallback, or map dynamically
-
-                            // 2. Redirect straight to the PayrollResource Index page
+                            session(['session_employeestatus' => $record->category_id]);
                             return redirect(PayrollResource::getUrl('index'));
+                        }),
+
+                    Action::make('gov_contribution')
+                        ->label('Contribution')
+                        ->icon('heroicon-m-shield-check')
+                        ->color('success')
+                        ->modalHeading('Manage Government Contributions')
+                        ->modalWidth('md')
+                        ->form(function ($record) {
+                            return [
+                                Select::make('gov_deduction_ids')
+                                    ->label('Select Contributions')
+                                    ->options(
+                                        GovDeduction::query()
+                                            ->pluck('title', 'id')
+                                            ->toArray()
+                                    )
+                                    ->multiple()
+                                    ->statePath('gov_deduction_ids')
+                                    ->formatStateUsing(function () use ($record) {
+                                        return GovDeductionLog::where('date_period_id', $record->code)
+                                            ->distinct()
+                                            ->pluck('gov_deduction_id')
+                                            ->toArray() ?? [];
+                                    })
+                                    ->preload()
+                                    ->searchable()
+                                    ->native(false),
+                            ];
+                        })
+                        ->action(function (array $data, $record) {
+                            $selectedDeductionIds = data_get($data, 'gov_deduction_ids', []);
+                            // 2. Fetch the target employee IDs
+                            $employeeIds = Employee::where('empstatus', $record->category_id)
+                                ->where('employeetype', $record->employeetype)
+                                ->where('status', true)
+                                ->pluck('employeeid')
+                                ->toArray();
+                            if (empty($employeeIds)) {
+                                Notification::make()
+                                    ->title('No matching active employees found')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            DB::transaction(function () use ($selectedDeductionIds, $employeeIds, $record) {
+                                GovDeductionLog::where('date_period_id', $record->code)
+                                    ->whereIn('employee_id', $employeeIds)
+                                    ->delete();
+                                if (empty($selectedDeductionIds)) {
+                                    return;
+                                }
+                                $insertData = [];
+                                $timestamp = now();
+                                foreach ($employeeIds as $employeeId) {
+                                    foreach ($selectedDeductionIds as $deductionId) {
+                                        $insertData[] = [
+                                            'gov_deduction_id' => $deductionId,
+                                            'employee_id'      => $employeeId,
+                                            'date_period_id'   => $record->code,
+                                            'created_at'       => $timestamp,
+                                            'updated_at'       => $timestamp,
+                                        ];
+                                    }
+                                }
+
+                                // UPDATED: Replaced delete + insert loop with an intelligent native upsert block
+                                foreach (array_chunk($insertData, 500) as $chunk) {
+                                    GovDeductionLog::upsert(
+                                        $chunk,
+                                        ['gov_deduction_id', 'employee_id', 'date_period_id'], // 1. Unique keys to check for matching rows
+                                        ['updated_at']                                        // 2. What columns to change if a duplicate is found (just touch timestamp, skipping changes to the main structural data)
+                                    );
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Government Contributions Synchronized')
+                                ->body('New items were added, while existing data was safely skipped.')
+                                ->success()
+                                ->send();
                         }),
 
                     EditAction::make()
@@ -374,7 +531,7 @@ class DatePeriodResource extends Resource
     {
         return [
             'index' => ListDatePeriods::route('/'),
-            'create' => CreateDatePeriod::route('/create'),
+            // 'create' => CreateDatePeriod::route('/create'),
             // 'edit' => EditDatePeriod::route('/{record}/edit'),
         ];
     }

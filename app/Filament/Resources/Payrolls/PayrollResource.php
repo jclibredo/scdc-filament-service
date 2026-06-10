@@ -7,17 +7,29 @@ use App\Filament\Resources\Payrolls\Pages\CreatePayroll;
 use App\Filament\Resources\Payrolls\Pages\EditPayroll;
 use App\Filament\Resources\Payrolls\Pages\ListPayrolls;
 use App\Models\Category;
+use App\Models\DatePeriod;
 use App\Models\Employee;
+use App\Models\GovDeduction;
+use App\Models\GovDeductionLog;
+use App\Models\OtherDeduction;
+use App\Models\OtherDeductionLog;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 
 class PayrollResource extends Resource
 {
@@ -34,36 +46,114 @@ class PayrollResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // return PayrollsTable::configure($table);
+        $periodcode     = session('session_periodcode');
+        $sessionStatus  = session('session_employeestatus');
+        $sessionType    = session('session_employeetype');
+
+        if (!$periodcode || !$sessionStatus || !$sessionType) {
+            return $table;
+        }
+        $datePerioDetails = cache()->remember(
+            "header_admission_full_{$periodcode}",
+            3600,
+            function () use ($periodcode) {
+                return DatePeriod::where('code', $periodcode)
+                    ->where('status', true)
+                    ->first();
+            }
+        );
+        $emtype = $datePerioDetails?->employeeTypeCategory?->name ?? 'N/A';
+        $emstat = $datePerioDetails?->category?->name ?? 'N/A';
+        $startdate = $datePerioDetails->datefrom
+            ? Carbon::parse($datePerioDetails->datefrom)->format('M d, Y') : 'N/A';
+        $enddate = $datePerioDetails->dateto
+            ? Carbon::parse($datePerioDetails->dateto)->format('M d, Y') : 'N/A';
+        $details = [
+            "DATE START: {$startdate}",
+            "DATE END: {$enddate}",
+            "EMP TYPE: {$emtype}",
+            "EMP STATUS: {$emstat}",
+        ];
+        $formattedBadges = collect($details)
+            ->map(fn($detail) => "
+                    <span style='
+                        padding: 0.25rem 0.625rem; 
+                        font-size: 0.75rem; 
+                        font-weight: 600; 
+                        background-color: #ffffff; 
+                        color: #374151; 
+                        border-radius: 0.375rem; 
+                        border: 1px solid #e5e7eb; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+                        white-space: nowrap;
+                        font-family: system-ui, sans-serif;
+                    '>{$detail}</span>
+                ")
+            ->implode(' ');
         return $table
+            ->header(fn() => new HtmlString("
+                    <div style='
+                        padding: 1rem; 
+                        margin: 1rem 1rem 0 1rem; 
+                        border-left: 4px solid #d97706; 
+                        background-color: rgba(254, 243, 199, 0.4); 
+                        border-top-right-radius: 0.75rem; 
+                        border-bottom-right-radius: 0.75rem; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                    '>
+                        <div style='
+                            display: flex; 
+                            flex-direction: column; 
+                            gap: 0.75rem;
+                        '>
+                            <div style='display: flex; align-items: center; gap: 0.5rem;'>
+                                <span style='
+                                    width: 0.5rem; 
+                                    height: 0.5rem; 
+                                    background-color: #f59e0b; 
+                                    border-radius: 9999px;
+                                '></span>
+                                <h3 style='
+                                    font-size: 1rem; 
+                                    font-weight: 700; 
+                                    color: #111827; 
+                                    margin: 0;
+                                    font-family: system-ui, sans-serif;
+                                '>
+                                    DATE PERIOD CODE : <span style='font-family: monospace; color: #b45309;'>{$periodcode}</span>
+                                </h3>
+                            </div>
+                            <div style='
+                                display: flex; 
+                                flex-wrap: wrap; 
+                                align-items: center; 
+                                gap: 0.5rem;
+                            '>
+                                {$formattedBadges}
+                            </div>
+                        </div>
+                    </div>
+                "))
             ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
                 if (! $user || ! $user->id) {
                     return Employee::whereRaw('1 = 0');
                 }
-                $sessionStatus = session('session_employeestatus');
-                $sessionType = session('session_employeetype');
-
-                // dd("STATUS ".$sessionType." TYPE:".$sessionStatus);
-                // Fallback if someone hits this page without using your redirect action button
-                // if (!$sessionStatus || !$sessionType) {
-                //     return Employee::query()->where('status', true);
-                // }
-                return Employee::where('empstatus', $sessionStatus)
-                    ->where('employeetype', $sessionType)
+                if (
+                    session('session_employeestatus')
+                    || session('session_employeetype')
+                ) {
+                    return Employee::query()->where('status', true);
+                }
+                return Employee::where('empstatus', session('session_employeestatus'))
+                    ->where('employeetype', session('session_employeetype'))
                     ->where('status', true);
             })
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
-                // TextColumn::make('firstname')->sortable()->searchable(),
-                // TextColumn::make('middlename')->sortable(),
-                // TextColumn::make('lastname')->sortable()->searchable(),
-
-                // Combined Full Name Column
                 TextColumn::make('full_name')
                     ->label('Full Name')
-                    // This allows users to search by any of the name parts
                     ->searchable(query: function ($query, string $search) {
                         $query->where(function ($q) use ($search) {
                             $q->where('lastname', 'like', "%{$search}%")
@@ -71,12 +161,10 @@ class PayrollResource extends Resource
                                 ->orWhere('middlename', 'like', "%{$search}%");
                         });
                     })
-                    // This allows sorting by Lastname
                     ->sortable(query: function ($query, string $direction) {
                         return $query->orderBy('lastname', $direction)
                             ->orderBy('firstname', $direction);
                     })
-                    // This handles the string concatenation cleanly
                     ->formatStateUsing(function ($record) {
                         return "{$record->lastname}, {$record->firstname} {$record->middlename}";
                     }),
@@ -84,7 +172,7 @@ class PayrollResource extends Resource
                 TextColumn::make('empType.name')->sortable()->searchable(),
                 TextColumn::make('empStat.name')
                     ->label('Emp. Status')
-                    ->badge() // Optional: makes it look like a pill
+                    ->badge()
                     ->color('info')
                     ->sortable(),
                 TextColumn::make('skill.title')->label('Skill'),
@@ -93,16 +181,178 @@ class PayrollResource extends Resource
             ->filters([])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make()
-                        ->label('Update'),
-                    DeleteAction::make()
-                        ->label('Remove'),
                     Action::make('view_timesheet')
-                        ->label('View Timesheet')
+                        ->color('warning')
+                        ->icon('heroicon-m-calendar-days')
+                        ->label('Timesheet')
                         ->action(function (Employee $record) {
-                            session(['session_employee_id' => $record->employeeid]); // If you need to filter by e
+                            session([
+                                'session_employee_id' => $record->employeeid,
+                                'session_periodcode' => session('session_periodcode'),
+                                'session_employeetype' => $record->employeetype,
+                                'session_employeestatus' => $record->empstatus,
+                            ]);
                             return redirect(AtlogResource::getUrl('index'));
                         }),
+                    //GOV. DEDUCTIONS
+                    Action::make('gov_contribution')
+                        ->label('Gov. Deduction')
+                        ->icon('heroicon-m-minus-circle')
+                        ->color('danger')
+                        ->modalHeading('Manage Government Contributions')
+                        ->modalWidth('md')
+                        ->form(function ($record) {
+                            return [
+                                Select::make('gov_deduction_ids')
+                                    ->label('Select Contributions')
+                                    ->options(
+                                        GovDeduction::query()
+                                            ->pluck('title', 'id')
+                                            ->toArray()
+                                    )
+                                    ->multiple()
+                                    ->statePath('gov_deduction_ids')
+                                    // 1. Fetch and display existing saved data when the modal opens
+                                    ->formatStateUsing(function () use ($record) {
+                                        return GovDeductionLog::where('date_period_id', session('session_periodcode'))
+                                            ->where('employee_id', $record->employeeid)
+                                            ->distinct()
+                                            ->pluck('gov_deduction_id')
+                                            ->toArray() ?? [];
+                                    })
+                                    ->preload()
+                                    ->searchable()
+                                    ->native(false),
+                            ];
+                        })
+                        ->action(function (array $data, $record) {
+                            $selectedDeductionIds = data_get($data, 'gov_deduction_ids', []);
+                            DB::transaction(function () use ($selectedDeductionIds,  $record) {
+                                GovDeductionLog::where('date_period_id', $record->code)
+                                    ->where('employee_id', $record->employeeid)
+                                    ->delete();
+                                if (empty($selectedDeductionIds)) {
+                                    return;
+                                }
+                                $insertData = [];
+                                $timestamp = now();
+                                foreach ($selectedDeductionIds as $deductionId) {
+                                    $insertData[] = [
+                                        'gov_deduction_id' => $deductionId,
+                                        'employee_id'      => $record->employeeid,
+                                        'date_period_id'   => session('session_periodcode'),
+                                        'created_at'       => $timestamp,
+                                        'updated_at'       => $timestamp,
+                                    ];
+                                }
+
+                                // UPDATED: Replaced delete + insert loop with an intelligent native upsert block
+                                foreach (array_chunk($insertData, 500) as $chunk) {
+                                    GovDeductionLog::upsert(
+                                        $chunk,
+                                        ['gov_deduction_id', 'employee_id', 'date_period_id'], // 1. Unique keys to check for matching rows
+                                        ['updated_at']                                        // 2. What columns to change if a duplicate is found (just touch timestamp, skipping changes to the main structural data)
+                                    );
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Government Contributions Synchronized')
+                                ->body('New items were added, while existing data was safely skipped.')
+                                ->success()
+                                ->send();
+                        }),
+
+
+                    //OTHER. DEDUCTIONS
+                    Action::make('other_contribution')
+                        ->label('Other Deduction')
+                        ->icon('heroicon-m-minus-circle')
+                        ->color('danger')
+                        ->modalHeading('Other Deductions')
+                        ->modalWidth('lg') // Widened to 'lg' so the selection option and amount sit cleanly side-by-side
+                        ->form(function ($record) {
+                            return [
+                                Repeater::make('deductions')
+                                    ->label('Deduction Entries')
+                                    ->schema([
+                                        Select::make('other_deduction_id')
+                                            ->label('Deduction Type')
+                                            ->options(
+                                                OtherDeduction::query()
+                                                    ->pluck('title', 'id')
+                                                    ->toArray()
+                                            )
+                                            ->placeholder('Select deduction...')
+                                            ->required()
+                                            ->searchable()
+                                            ->native(false)
+                                            ->distinct() // Prevents choosing the same type more than once in the same repeater block
+                                            ->columnSpan(2),
+
+                                        TextInput::make('amount')
+                                            ->label('Amount')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->placeholder('0.00')
+                                            ->minValue(0)
+                                            ->required()
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columns(3) // Organizes inputs neatly across columns
+                                    ->statePath('deductions')
+                                    // 1. Fetch, combine, and pre-populate saved deduction items + amounts when modal launches
+                                    ->formatStateUsing(function () use ($record) {
+                                        return OtherDeductionLog::where('date_period_id', session('session_periodcode'))
+                                            ->where('employee_id', $record->employeeid)
+                                            ->get(['other_deduction_id', 'amount'])
+                                            ->toArray() ?? [];
+                                    })
+                                    ->createItemButtonLabel('Add New Deduction Row'),
+                            ];
+                        })
+                        ->action(function (array $data, $record) {
+                            $repeaterItems = data_get($data, 'deductions', []);
+                            $periodCode = session('session_periodcode');
+                            DB::transaction(function () use ($repeaterItems, $record, $periodCode) {
+                                // 2. Clean Sync Pattern: Purge existing entries for this period + employee first.
+                                // This ensures any row deleted by the user via the repeater 'x' button gets deleted from the database.
+                                OtherDeductionLog::where('date_period_id', $periodCode)
+                                    ->where('employee_id', $record->employeeid)
+                                    ->delete();
+
+                                if (empty($repeaterItems)) {
+                                    return; // Gracefully exit if they removed all rows
+                                }
+                                $timestamp = now();
+                                $insertData = [];
+                                // 3. Construct payload data with the accurate user-supplied amount variants
+                                foreach ($repeaterItems as $item) {
+                                    if (empty($item['other_deduction_id'])) {
+                                        continue;
+                                    }
+                                    $insertData[] = [
+                                        'other_deduction_id' => $item['other_deduction_id'],
+                                        'employee_id'        => $record->employeeid,
+                                        'date_period_id'     => $periodCode,
+                                        'amount'             => data_get($item, 'amount', 0.00),
+                                        'created_at'         => $timestamp,
+                                        'updated_at'         => $timestamp,
+                                    ];
+                                }
+
+                                // 4. Batch write entries safely into the database
+                                foreach (array_chunk($insertData, 250) as $chunk) {
+                                    OtherDeductionLog::insert($chunk);
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Other Deductions Updated Successfully')
+                                ->success()
+                                ->send();
+                        }),
+
 
 
 

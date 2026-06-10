@@ -3,24 +3,24 @@
 namespace App\Filament\Resources\Employees;
 
 use App\Filament\Resources\Earnings\EarningsResource;
-use App\Filament\Resources\Employees\Pages\CreateEmployee;
+// use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
-use App\Jobs\ProcessEmployeeCsv;
+// use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
-use App\Models\Project;
+// use App\Models\Project;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
+// use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Notification;
+// use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -30,6 +30,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class EmployeeResource extends Resource
@@ -117,10 +118,6 @@ class EmployeeResource extends Resource
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
-                // TextColumn::make('firstname')->sortable()->searchable(),
-                // TextColumn::make('middlename')->sortable(),
-                // TextColumn::make('lastname')->sortable()->searchable(),
-                // Combined Full Name Column
                 TextColumn::make('full_name')
                     ->label('Full Name')
                     // This allows users to search by any of the name parts
@@ -152,30 +149,43 @@ class EmployeeResource extends Resource
                 TextColumn::make('project.name')->label('Project'),
             ])
             ->filters([
-                // Filter by Employee Type
-                SelectFilter::make('employeetype')
+                // 1. FILTER: Employee Type (Filtered by Category: EMPLOYEE_TYPE)
+                SelectFilter::make('employeetype_id')
                     ->label('Employee Type')
-                    ->options([
-                        'SM' => 'Semi Monthly',
-                        'W'  => 'Weekly',
-                    ])
-                    ->placeholder('Select Employee Type'),
+                    ->relationship(
+                        name: 'empType',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_TYPE')
+                    )
+                    ->preload()
+                    ->placeholder('All Employee Types'),
 
-                // NEW: Employment Status Filter
-                SelectFilter::make('empstatus')
+                // 2. FILTER: Employment Status (Filtered by Category: EMPLOYEE_STATUS)
+                SelectFilter::make('empstatus_id')
                     ->label('Employment Status')
-                    ->options([
-                        'admin' => 'SCDC Admin',
-                        'subcon' => 'Subcontractor',
-                    ])
-                    ->placeholder('Select Status'),
-                // FILTER: Project
+                    ->relationship(
+                        name: 'empStat',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_STATUS')
+                    )
+                    ->preload()
+                    ->placeholder('All Statuses'),
+
+                // 3. FILTER: Project
                 SelectFilter::make('project_id')
                     ->label('Project')
-                    ->options(
-                        Project::orderBy('name', 'asc')->pluck('name', 'id')
-                    )
-                    ->placeholder('Select Project'),
+                    ->relationship('project', 'name')
+                    ->preload()
+                    ->placeholder('All Projects'),
+                // // FILTER: Project
+                // SelectFilter::make('project_id')
+                //     ->label('Project')
+                //     ->options(
+                //         Project::orderBy('name', 'asc')->pluck('name', 'id')
+                //     )
+                //     ->placeholder('Select Project'),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormWidth('2xl')
             ->actions([
@@ -185,7 +195,7 @@ class EmployeeResource extends Resource
                         ->icon('heroicon-o-banknotes')
                         ->action(function (Employee $record) {
                             // Store the values in the session temporarily
-                            session(['earnings_employeeid' => $record->employeeid]);
+                            session(['session_employee_id' => $record->employeeid]);
                             // Redirect to the create page WITHOUT query parameters
                             return redirect(EarningsResource::getUrl('index'));
                         }),
@@ -199,29 +209,6 @@ class EmployeeResource extends Resource
                     ->button()
                     ->outlined()
                     ->color('warning'),
-            ])
-            ->headerActions([
-                Action::make('upload_employee')
-                    ->label('Upload Employees')
-                    ->button()
-                    ->form([
-                        FileUpload::make('uploadfile')
-                            ->label('Employee CSV File')
-                            ->required()
-                            ->acceptedFileTypes(['text/csv'])
-                            ->disk('public')
-                            ->directory('employees'), // Stores in storage/app/public/employees
-                    ])
-                    ->action(function (array $data) {
-                        // Handle uploaded CSV import logic here
-                        $file = $data['uploadfile'];
-                        ProcessEmployeeCsv::dispatch($file);
-                        Notification::make()
-                            ->title('CSV Queued for Processing')
-                            ->body('The CSV file will be processed shortly.')
-                            ->success()
-                            ->send();
-                    }),
             ])
         ;
     }
@@ -237,7 +224,7 @@ class EmployeeResource extends Resource
     {
         return [
             'index' => ListEmployees::route('/'),
-            'create' => CreateEmployee::route('/create'),
+            // 'create' => CreateEmployee::route('/create'),
         ];
     }
 }

@@ -48,7 +48,7 @@ class ProjectResource extends Resource
 
                 Toggle::make('status')
                     ->label('Set project status')
-                    ->default(false),
+                    ->default(true),
             ]);
     }
 

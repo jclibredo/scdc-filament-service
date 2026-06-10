@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Earnings;
 
-use App\Filament\Resources\Earnings\Pages\CreateEarnings;
-use App\Filament\Resources\Earnings\Pages\EditEarnings;
 use App\Filament\Resources\Earnings\Pages\ListEarnings;
 use App\Models\Category;
 use App\Models\Earnings;
@@ -23,6 +21,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
+use Illuminate\View\View;
 
 class EarningsResource extends Resource
 {
@@ -53,7 +53,7 @@ class EarningsResource extends Resource
                             ->disabled(true)
                             ->dehydrated()
                             // Set the default value from the session
-                            ->default(session('earnings_employeeid')),
+                            ->default(session('session_employee_id')),
                         Select::make('title')
                             ->label('Earnings Type')
                             ->options(Category::pluck('name', 'id'))
@@ -65,12 +65,93 @@ class EarningsResource extends Resource
                             ->required(),
                     ])
                     ->columns(1),
-            ]);
+            ])
+            ->columns(1);
     }
 
     public static function table(Table $table): Table
     {
+        $empid = session('session_employee_id');
+        if (! $empid) {
+            return $table;
+        }
+
+        $earningDetails = cache()->remember(
+            "header_admission_full_{$empid}",
+            3600,
+            function () use ($empid) {
+                return Earnings::where('employee_id', $empid)
+                    ->first();
+            }
+        );
+        $emtype = $earningDetails?->employee?->empType?->name ?? 'N/A';
+        $emstat = $earningDetails?->employee?->empStat?->name ?? 'N/A';
+        $empname = $earningDetails?->employee?->full_name ?? 'N/A';
+        $details = [
+            "EMPLOYEE: {$empname}",
+            "EMP. TYPE: {$emtype}",
+            "EMP. STATUS: {$emstat}",
+        ];
+        $formattedBadges = collect($details)
+            ->map(fn($detail) => "
+                    <span style='
+                        padding: 0.25rem 0.625rem; 
+                        font-size: 0.75rem; 
+                        font-weight: 600; 
+                        background-color: #ffffff; 
+                        color: #374151; 
+                        border-radius: 0.375rem; 
+                        border: 1px solid #e5e7eb; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+                        white-space: nowrap;
+                        font-family: system-ui, sans-serif;
+                    '>{$detail}</span>
+                ")
+            ->implode(' ');
         return $table
+            ->header(fn() => new HtmlString("
+                    <div style='
+                        padding: 1rem; 
+                        margin: 1rem 1rem 0 1rem; 
+                        border-left: 4px solid #d97706; 
+                        background-color: rgba(254, 243, 199, 0.4); 
+                        border-top-right-radius: 0.75rem; 
+                        border-bottom-right-radius: 0.75rem; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                    '>
+                        <div style='
+                            display: flex; 
+                            flex-direction: column; 
+                            gap: 0.75rem;
+                        '>
+                            <div style='display: flex; align-items: center; gap: 0.5rem;'>
+                                <span style='
+                                    width: 0.5rem; 
+                                    height: 0.5rem; 
+                                    background-color: #f59e0b; 
+                                    border-radius: 9999px;
+                                '></span>
+                                <h3 style='
+                                    font-size: 1rem; 
+                                    font-weight: 700; 
+                                    color: #111827; 
+                                    margin: 0;
+                                    font-family: system-ui, sans-serif;
+                                '>
+                                    Earnings for Employee ID: <span style='font-family: monospace; color: #b45309;'>{$empid}</span>
+                                </h3>
+                            </div>
+                            <div style='
+                                display: flex; 
+                                flex-wrap: wrap; 
+                                align-items: center; 
+                                gap: 0.5rem;
+                            '>
+                                {$formattedBadges}
+                            </div>
+                        </div>
+                    </div>
+                "))
             ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
@@ -79,7 +160,10 @@ class EarningsResource extends Resource
                 }
                 // Eager load the relationships
                 return Earnings::query()
-                    ->where('employee_id', session('earnings_employeeid'));
+                    ->where(
+                        'employee_id',
+                        session('session_employee_id')
+                    );
             })
             ->columns([
                 TextColumn::make('employee.full_name')
@@ -117,37 +201,7 @@ class EarningsResource extends Resource
                     ->outlined()
                     ->color('warning'),
             ])
-            ->filters([
-                // 🔹 Filter by Employee
-                SelectFilter::make('employeeid')
-                    ->label('Employee')
-                    ->options(
-                        DB::table('employees')
-                            ->orderBy('lastname')
-                            ->get()
-                            ->mapWithKeys(fn($emp) => [
-                                $emp->employeeid => $emp->lastname . ', ' . $emp->firstname
-                            ])
-                    ),
-
-                // 🔹 Filter by Earnings Type
-                SelectFilter::make('title')
-                    ->label('Earnings Type')
-                    ->options([
-                        'basicpay' => 'Basic Pay',
-                        'foodallowance' => 'Food Allowance',
-                        'transportallowance' => 'Transpo Allowance',
-                        'clothingallowance' => 'Clothing Allowance',
-                    ]),
-
-                // 🔹 Filter by Status (boolean)
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options([
-                        1 => 'Active',
-                        0 => 'Inactive',
-                    ]),
-            ]);
+            ->filters([]);
     }
 
     public static function getRelations(): array
@@ -161,8 +215,6 @@ class EarningsResource extends Resource
     {
         return [
             'index' => ListEarnings::route('/'),
-            'create' => CreateEarnings::route('/create'),
-            'edit' => EditEarnings::route('/{record}/edit'),
         ];
     }
 }

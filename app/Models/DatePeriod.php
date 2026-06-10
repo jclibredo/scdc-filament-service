@@ -15,8 +15,13 @@ class DatePeriod extends Model
         'code',
         'datefrom',
         'dateto',
+        'status',
     ];
-
+    protected $casts = [
+        'datefrom' => 'date',
+        'dateto' => 'date',
+        'status' => 'boolean',
+    ];
     public function category()
     {
         return $this->belongsTo(Category::class);

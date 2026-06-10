@@ -9,22 +9,22 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ClearSessionOutsideResources
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get the current route name
         $currentRoute = Route::currentRouteName();
-
-        // Use patterns to match all sub-routes of a resource
-        // This covers .index, .create, .edit, .view, etc.
         $allowedPatterns = [
             'filament.admin.resources.earnings.index',
             'filament.admin.resources.earnings.create',
             'filament.admin.resources.earnings.edit',
+            'filament.admin.resources.payrolls.index',
+            'filament.admin.resources.payrolls.create',
+            'filament.admin.resources.payrolls.edit',
+            'filament.admin.resources.date-periods.index',
+            'filament.admin.resources.date-periods.create',
+            'filament.admin.resources.date-periods.edit',
+            'filament.admin.resources.atlogs.index',
+            'filament.admin.resources.atlogs.create',
+            'filament.admin.resources.atlogs.edit',
         ];
 
         $isAllowed = false;
@@ -35,10 +35,18 @@ class ClearSessionOutsideResources
             }
         }
 
-        // If not on an allowed resource, purge the specific session keys
         if (!$isAllowed) {
             session()->forget([
                 'earnings_employeeid', // Added to clean up your earnings session too
+            ]);
+        }
+
+        if (!in_array($currentRoute, $allowedPatterns)) {
+            session()->forget([
+                'session_employeestatus',
+                'session_employeetype',
+                'session_employee_id',
+                'session_periodcode', // Just in case you have this one floating around too
             ]);
         }
 

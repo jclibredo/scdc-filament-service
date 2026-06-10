@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Atlogs;
 
-use App\Filament\Resources\Atlogs\Pages\EditAtlog;
+// use App\Filament\Resources\Atlogs\Pages\EditAtlog;
 use App\Filament\Resources\Atlogs\Pages\ListAtlogs;
 use App\Models\Atlog;
+use App\Models\DatePeriod;
 use App\Models\Employee;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -20,9 +22,11 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class AtlogResource extends Resource
@@ -72,6 +76,7 @@ class AtlogResource extends Resource
                                 5 => 'Face',
                                 0 => 'Code', // Using 0 as fallback/default value
                             ])
+                            ->disabled(fn(string $operation): bool => $operation === 'edit')
                             ->required()
                             ->native(false),
 
@@ -105,44 +110,73 @@ class AtlogResource extends Resource
 
     public static function table(Table $table): Table
     {
+        // $periodcode     = session('session_periodcode');
+        // $sessionStatus  = session('session_employeestatus');
+        // $sessionType    = session('session_employeetype');
+        // $sessionEmployeeId = session('session_employee_id');
 
+        // if (!$sessionEmployeeId || !$periodcode || !$sessionStatus || !$sessionType) {
+        //     return $table;
+        // }
+        // $atlogsDetails = cache()->remember(
+        //     "header_admission_full_{$periodcode}",
+        //     3600,
+        //     function () use ($sessionEmployeeId) {
+        //         return Atlog::where('user_id', $sessionEmployeeId)
+        //             ->with('employee')
+        //             ->with('project')
+        //             ->first();
+        //     }
+        // );
         return $table
             ->recordUrl(null)
             ->query(function () {
+                $sessionEmployeeId = session('session_employee_id');
+                $sessionPeriodCode = session('session_periodcode');
                 $user = Auth::user();
                 if (! $user || ! $user->id) {
                     return Atlog::whereRaw('1 = 0');
                 }
-
-                $sessionEmployeeId = session('session_employee_id');
                 if ($sessionEmployeeId) {
-                    // If no employee ID is set in the session, return an empty query
-                    return Atlog::query()
-                        ->where('user_id', $sessionEmployeeId);
+                    $datePerioDetails = DatePeriod::where('code', $sessionPeriodCode)
+                        ->where('status', true)
+                        ->first();
+                    if ($datePerioDetails) {
+                        $startdate = $datePerioDetails->datefrom
+                            ? Carbon::parse($datePerioDetails->datefrom)->startOfDay() : null;
+                        $enddate = $datePerioDetails->dateto
+                            ? Carbon::parse($datePerioDetails->dateto)->endOfDay() : null;
+                        return Atlog::query()
+                            ->when($startdate, fn($q) => $q->where('recorded_at', '>=', $startdate))
+                            ->when($enddate, fn($q) => $q->where('recorded_at', '<=', $enddate))
+                            ->with('employee')
+                            ->with('project')
+                            ->where('user_id', $sessionEmployeeId);
+                    } else {
+                        return Atlog::query()
+                            ->with('employee')
+                            ->with('project')
+                            ->where('user_id', $sessionEmployeeId);
+                    }
                 }
-                // Eager load the relationships
                 return Atlog::query()
                     ->with('employee')
                     ->with('project');
             })
             ->columns([
-
                 TextColumn::make('project.name')
                     ->label('Project'),
                 TextColumn::make('employee.full_name')
                     ->label('Employee'),
-
                 TextColumn::make('user_id')
                     ->label('ID')
                     ->searchable()
                     ->sortable(),
-
                 // 2. Date & Time
                 TextColumn::make('recorded_at')
                     ->dateTime('M d, Y h:i A')
                     ->label('Date & Time')
                     ->sortable(),
-
                 // 5. Verification Method (Column 5 in your raw logs)
                 TextColumn::make('status')
                     ->label('Att State')
@@ -181,22 +215,57 @@ class AtlogResource extends Resource
                     ->fontFamily('mono'),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->options([
-                        0 => 'Check-In',
-                        1 => 'Check-Out',
-                    ]),
-                Filter::make('recorded_at')
+                // 1 & 2. FILTER: Date Range (Handles both datefrom and dateto together)
+                Filter::make('date_range')
                     ->form([
-                        DatePicker::make('from'),
-                        DatePicker::make('until'),
+                        DatePicker::make('datefrom')
+                            ->label('Date From'),
+                        DatePicker::make('dateto')
+                            ->label('Date To'),
                     ])
-                    ->query(function ($query, array $data) {
+                    ->columns(2)
+                    ->columnSpan(2)
+                    ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'], fn($q) => $q->whereDate('recorded_at', '>=', $data['from']))
-                            ->when($data['until'], fn($q) => $q->whereDate('recorded_at', '<=', $data['until']));
+                            ->when(
+                                $data['datefrom'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('recorded_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['dateto'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('recorded_at', '<=', $date),
+                            );
+                    }),
+
+                // 3. FILTER: Project
+                SelectFilter::make('project_id')
+                    ->label('Project')
+                    ->relationship('project', 'name')
+                    ->preload()
+                    ->columnSpan(1)
+                    ->placeholder('All Projects'),
+
+                // 6. FILTER: Specific Employee Search dropdown
+                SelectFilter::make('employee_id')
+                    ->label('Employee')
+                    ->columnSpan(1)
+                    ->relationship(
+                        name: 'employee',
+                        titleAttribute: 'lastname', // Fallback identifier
+                        modifyQueryUsing: fn(Builder $query) => $query->orderBy('lastname')
+                    )
+                    // 💡 1. Allow searching across all individual name columns
+                    ->searchable(['lastname', 'firstname', 'middlename', 'employeeid'])
+
+                    // 💡 2. Format how the results look inside the dropdown list
+                    ->getOptionLabelFromRecordUsing(function ($record) {
+                        return "{$record->lastname}, {$record->firstname} {$record->middlename} ({$record->employeeid})";
                     })
-            ])
+                    ->placeholder('All Employees'),
+            ], layout: FiltersLayout::AboveContent)
+            // ->filtersFormWidth('xl')
+            ->filtersFormColumns(4)
+            ->filtersFormWidth('full')
             ->actions([
                 ActionGroup::make([
                     ViewAction::make()
