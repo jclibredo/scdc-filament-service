@@ -9,23 +9,41 @@ class HolidayLogs extends Model
 {
     use HasFactory;
 
-    // Table name
     protected $table = 'holiday_logs';
 
-    // Mass assignable fields
+    /**
+     * The attributes that are mass assignable.
+     */
     protected $fillable = [
-        'employeeid',
         'holidayid',
-        'numberofhours',
-        'date',
+        'employeeid',
+        'timein',         // 💡 Added
+        'timeout',        // 💡 Added
+        'dateperiod_id',  // 💡 Added
     ];
 
-    public function employee()
-    {
-        return $this->belongsTo(Employee::class, 'employeeid', 'employeeid');
-    }
+    /**
+     * The attributes that should be cast to native types.
+     */
+    protected $casts = [
+        'timein'  => 'datetime', // 💡 Allows clean ->format() methods directly in your views
+        'timeout' => 'datetime',
+    ];
+
+    // Relationships
+
     public function holiday()
     {
-        return $this->belongsTo(Holiday::class, 'holidayid', 'id');
+        return $this->belongsTo(Holiday::class, 'holidayid');
+    }
+
+    public function datePeriod()
+    {
+        return $this->belongsTo(DatePeriod::class, 'dateperiod_id', 'code');
+    }
+
+    public function employeeDetails()
+    {
+        return $this->belongsTo(Employee::class, 'employeeid', 'employeeid');
     }
 }

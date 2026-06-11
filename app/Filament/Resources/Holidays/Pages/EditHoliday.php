@@ -10,10 +10,4 @@ class EditHoliday extends EditRecord
 {
     protected static string $resource = HolidayResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

@@ -20,7 +20,7 @@ class OtherDeductionLog extends Model
 
     public function otherDeduction()
     {
-        return $this->belongsTo(OtherDeduction::class);
+        return $this->belongsTo(OtherDeduction::class, 'other_deduction_id');
     }
 
     public function employee()

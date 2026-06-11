@@ -24,8 +24,6 @@ use UnitEnum;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-    // protected static ?string $navigationGroup = 'User Management';
-    // protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Users';
     protected static ?int $navigationSort = 1;
 
@@ -75,7 +73,6 @@ class UserResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                TextColumn::make('id')->sortable(),
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('email')->searchable(),
                 // 👇 Show user role

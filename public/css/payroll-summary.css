@@ -1,0 +1,123 @@
+/* public/css/payroll-summary.css */
+
+body {
+    font-family: "Arial", sans-serif;
+    color: #333;
+    margin: 30px;
+    font-size: 14px;
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+}
+
+.company-name {
+    font-size: 22px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.doc-title {
+    font-size: 16px;
+    color: #555;
+    margin: 5px 0 0 0;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.info-box h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    color: #111;
+}
+
+.info-box p {
+    margin: 4px 0;
+}
+.info-box table td {
+    border-bottom: 1px dashed #eee !important;
+}
+.info-box table tr:last-child td {
+    border-bottom: none !important;
+}
+.text-pushed {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.text-empty {
+    color: #94a3b8;
+}
+
+.font-mono {
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+}
+
+.text-danger {
+    color: #dc2626 !important;
+}
+
+.text-success {
+    color: #16a34a !important;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+}
+
+th,
+td {
+    border: 1px solid #bbb;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.footer-card {
+    border: 1px solid #ccc;
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 4px;
+}
+
+.footer-card h4 {
+    margin: 0 0 8px 0;
+    border-bottom: 1px solid #aaa;
+    padding-bottom: 4px;
+}
+
+.text-right {
+    text-align: right;
+}
+
+@media print {
+    body {
+        margin: 15px;
+    }
+    .no-print {
+        display: none;
+    }
+}

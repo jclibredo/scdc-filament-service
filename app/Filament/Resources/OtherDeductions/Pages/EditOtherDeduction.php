@@ -9,11 +9,4 @@ use Filament\Resources\Pages\EditRecord;
 class EditOtherDeduction extends EditRecord
 {
     protected static string $resource = OtherDeductionResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

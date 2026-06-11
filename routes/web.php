@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
+use App\Http\Controllers\PayrollSummaryController;
 use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\OtherDeductionLog;
@@ -54,3 +56,12 @@ Route::delete('/deduction/{id}', [DeductionController::class, 'destroy'])->name(
 
 // Route::get('/employee-deductions/{employee}/{datePeriod}', [DeductionController::class, 'getDeductions'])
 //     ->name('employee.deductions');
+
+Route::get('/payroll-summary/{employee_id}/{period_code}', [PayrollSummaryController::class, 'show'])
+    ->name('payroll.summary');
+
+Route::post('/attendance-logs/store-double', [AttendanceLogController::class, 'storeDoubleRaw'])
+    ->name('attendance-logs.store-double');
+
+Route::delete('/attendance-logs/destroy-day', [AttendanceLogController::class, 'destroyDayRaw'])
+    ->name('attendance-logs.destroy-day');

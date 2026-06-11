@@ -56,7 +56,7 @@ class EarningsResource extends Resource
                             ->default(session('session_employee_id')),
                         Select::make('title')
                             ->label('Earnings Type')
-                            ->options(Category::pluck('name', 'id'))
+                            ->options(Category::where('cat','EARNINGS')->pluck('name', 'id'))
                             ->searchable()
                             ->native(false)
                             ->required(),

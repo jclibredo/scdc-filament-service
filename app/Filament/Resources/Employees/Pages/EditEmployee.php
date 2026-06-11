@@ -10,12 +10,10 @@ class EditEmployee extends EditRecord
 {
     protected static string $resource = EmployeeResource::class;
 
-    protected function afterSave(): void
-    {
+    // protected function afterSave(): void
+    // {
         // Access the updated model
-        $employee = $this->record;
-
-        dd($employee);
+        // $employee = $this->record;
 
         // // Example: generate a full name field after save
         // $employee->full_name = trim($employee->firstname . ' ' . $employee->middlename . ' ' . $employee->lastname);
@@ -25,5 +23,5 @@ class EditEmployee extends EditRecord
 
         // // Save changes
         // $employee->save();
-    }
+    // }
 }

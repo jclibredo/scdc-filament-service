@@ -6,6 +6,7 @@ use App\Filament\Resources\Atlogs\AtlogResource;
 use App\Filament\Resources\Payrolls\Pages\CreatePayroll;
 use App\Filament\Resources\Payrolls\Pages\EditPayroll;
 use App\Filament\Resources\Payrolls\Pages\ListPayrolls;
+use App\Models\Adjustment;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
@@ -354,6 +355,115 @@ class PayrollResource extends Resource
                         }),
 
 
+
+
+
+
+
+
+
+
+
+                    Action::make('payroll_adjustment')
+                        ->label('Adjustment')
+                        ->icon('heroicon-m-plus-circle')
+                        ->color('success')
+                        ->modalHeading('Salary Adjustment')
+                        ->modalWidth('lg')
+                        ->form(function ($record) {
+                            return [
+                                // 💡 FIXED: Unified the state key name to match statePath
+                                Repeater::make('adjustments')
+                                    ->label('Adjustment Entries')
+                                    ->schema([
+                                        Select::make('adjustment_id')
+                                            ->label('Adjustment Type')
+                                            ->options(
+                                                Category::query()
+                                                    ->where('cat', 'ADJUSTMENT')
+                                                    ->where('status', true) // Only list active categories
+                                                    ->pluck('name', 'id')
+                                                    ->toArray()
+                                            )
+                                            ->placeholder('Select adjust...')
+                                            ->required()
+                                            ->searchable()
+                                            ->native(false)
+                                            ->distinct()
+                                            ->columnSpan(2),
+
+                                        TextInput::make('amount')
+                                            ->label('Amount')
+                                            ->numeric()
+                                            ->inputMode('decimal')
+                                            ->placeholder('0.00')
+                                            ->minValue(0)
+                                            ->required()
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columns(3)
+                                    // 💡 FIXED: Keeping this explicitly matched with the model structures
+                                    ->statePath('adjustments')
+                                    ->formatStateUsing(function () use ($record) {
+                                        return Adjustment::where('date_period_id', session('session_periodcode'))
+                                            ->where('employee_id', $record->employeeid)
+                                            ->get(['adjustment_id', 'amount'])
+                                            ->toArray() ?? [];
+                                    })
+                                    ->createItemButtonLabel('Add New Adjustment'),
+                            ];
+                        })
+                        ->action(function (array $data, $record) {
+                            // 💡 FIXED: Changed from 'deductions' to 'adjustments' to match the state map above
+                            $repeaterItems = data_get($data, 'adjustments', []);
+                            $periodCode = session('session_periodcode');
+                            DB::transaction(function () use ($repeaterItems, $record, $periodCode) {
+                                // Clean Wipe Step
+                                Adjustment::where('date_period_id', $periodCode)
+                                    ->where('employee_id', $record->employeeid)
+                                    ->delete();
+                                if (empty($repeaterItems)) {
+                                    return;
+                                }
+                                $timestamp = now();
+                                $insertData = [];
+                                foreach ($repeaterItems as $item) {
+                                    if (empty($item['adjustment_id'])) {
+                                        continue;
+                                    }
+                                    $insertData[] = [
+                                        'adjustment_id'  => $item['adjustment_id'],
+                                        'employee_id'    => $record->employeeid,
+                                        'date_period_id' => $periodCode,
+                                        'amount'         => data_get($item, 'amount', 0.00),
+                                        'created_at'     => $timestamp,
+                                        'updated_at'     => $timestamp,
+                                    ];
+                                }
+                                // Batch Sync Loop
+                                foreach (array_chunk($insertData, 250) as $chunk) {
+                                    Adjustment::insert($chunk);
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Adjustment Updated Successfully')
+                                ->success()
+                                ->send();
+                        }),
+
+
+
+
+                    Action::make('payroll_summary')
+                        ->label('View Summary')
+                        ->icon('heroicon-m-printer') // Fixed printer icon
+                        ->color('success')
+                        ->url(fn($record) => route('payroll.summary', [
+                            'employee_id' => $record->employeeid,
+                            'period_code' => session('session_periodcode')
+                        ]))
+                        ->openUrlInNewTab(),
 
 
                 ])

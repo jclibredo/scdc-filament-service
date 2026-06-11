@@ -10,10 +10,4 @@ class EditGovDeduction extends EditRecord
 {
     protected static string $resource = GovDeductionResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

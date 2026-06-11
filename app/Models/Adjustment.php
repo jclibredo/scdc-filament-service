@@ -29,4 +29,9 @@ class Adjustment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
     ];
+
+    public function adjustmentName()
+    {
+        return $this->belongsTo(Category::class, 'adjustment_id');
+    }
 }

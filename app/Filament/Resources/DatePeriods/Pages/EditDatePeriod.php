@@ -9,11 +9,4 @@ use Filament\Resources\Pages\EditRecord;
 class EditDatePeriod extends EditRecord
 {
     protected static string $resource = DatePeriodResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

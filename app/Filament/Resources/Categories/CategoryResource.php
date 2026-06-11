@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -31,7 +32,7 @@ class CategoryResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Earnings Category';
 
-    protected static ?string $navigationLabel = 'Earnings Category';
+    protected static ?string $navigationLabel = 'Categories';
 
     public static function form(Schema $schema): Schema
     {
@@ -65,10 +66,10 @@ class CategoryResource extends Resource
                             ->rows(3)
                             ->columnSpanFull(), // Stretches out over full block width
 
-                        ToggleColumn::make('status')
+                        // 💡 FIXED: Changed from ToggleColumn to Toggle
+                        Toggle::make('status')
                             ->label('Active Status')
-                            ->default(true)
-                            ->inline(false), // Places label on top cleanly
+                            ->default(true),
                     ])
                     ->columns(2), // Switches internal grid distribution to 2 columns
             ]);
