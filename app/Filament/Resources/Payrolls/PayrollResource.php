@@ -18,8 +18,10 @@ use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+// use Filament\Actions\DeleteAction;
+// use Filament\Actions\EditAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -97,7 +99,7 @@ class PayrollResource extends Resource
                         padding: 1rem; 
                         margin: 1rem 1rem 0 1rem; 
                         border-left: 4px solid #d97706; 
-                        background-color: rgba(254, 243, 199, 0.4); 
+                        background-color: rgba(241, 201, 71, 0.4); 
                         border-top-right-radius: 0.75rem; 
                         border-bottom-right-radius: 0.75rem; 
                         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -180,6 +182,16 @@ class PayrollResource extends Resource
                 TextColumn::make('project.name')->label('Project'),
             ])
             ->filters([])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('payment')
+                        ->label('Process Cut-off')
+                        ->icon('heroicon-o-credit-card')
+                        ->color('success'),
+                ])
+                    ->color('success')
+                    ->label('Process Batch Record'),
+            ])
             ->actions([
                 ActionGroup::make([
                     Action::make('view_timesheet')

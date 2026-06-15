@@ -30,6 +30,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class AtlogResource extends Resource
 {
@@ -46,11 +47,49 @@ class AtlogResource extends Resource
                 Section::make('Log Details')
                     ->columnSpanFull()
                     ->schema([
+
+
+                        // Select::make('user_id')
+                        //     ->label('Employee')
+                        //     ->required()
+                        //     ->searchable()
+                        //     ->live()
+                        //     ->getSearchResultsUsing(
+                        //         fn(string $search): array =>
+                        //         Employee::where('firstname', 'like', "%{$search}%")
+                        //             ->orWhere('lastname', 'like', "%{$search}%")
+                        //             ->orWhere('employeeid', 'like', "%{$search}%")
+                        //             ->limit(50)
+                        //             ->get()
+                        //             ->mapWithKeys(fn($item) => [$item->employeeid => "{$item->full_name} ({$item->employeeid})"])
+                        //             ->toArray()
+                        //     )
+                        //     ->getOptionLabelUsing(
+                        //         fn($value): ?string =>
+                        //         Employee::where('employeeid', $value)->first()?->full_name
+                        //     )
+                        //     // 💡 REVISED: Directly passing the string code from project_id to project_code
+                        //     ->afterStateUpdated(function (string $state, Set $set) {
+                        //         if (empty($state)) {
+                        //             return;
+                        //         }
+
+                        //         $employee = Employee::where('employeeid', $state)->first();
+
+                        //         // Since employee's 'project_id' column already holds the text code string,
+                        //         // we feed it directly into the form field 'project_code'
+                        //         if ($employee && $employee->project_id) {
+                        //             $set('project_code', $employee->project_id);
+                        //         }
+                        //     })
+                        //     ->columnSpan(2),
                         Select::make('user_id')
                             ->label('Employee')
                             ->required()
                             ->searchable()
                             ->live()
+                            ->default(fn() => session('session_employee_id'))
+                            ->disabled(fn() => filled(session('session_employee_id')))
                             ->getSearchResultsUsing(
                                 fn(string $search): array =>
                                 Employee::where('firstname', 'like', "%{$search}%")
@@ -65,16 +104,10 @@ class AtlogResource extends Resource
                                 fn($value): ?string =>
                                 Employee::where('employeeid', $value)->first()?->full_name
                             )
-                            // 💡 REVISED: Directly passing the string code from project_id to project_code
-                            ->afterStateUpdated(function (string $state, Set $set) {
-                                if (empty($state)) {
-                                    return;
-                                }
+                            ->afterStateUpdated(function (?string $state, Set $set) {
+                                if (empty($state)) return;
 
                                 $employee = Employee::where('employeeid', $state)->first();
-
-                                // Since employee's 'project_id' column already holds the text code string,
-                                // we feed it directly into the form field 'project_code'
                                 if ($employee && $employee->project_id) {
                                     $set('project_code', $employee->project_id);
                                 }
@@ -95,7 +128,32 @@ class AtlogResource extends Resource
                             ->preload()
                             ->native(false)
                             ->required()
+                            // 💡 FIX: Hydrate the default project_code value directly inside this field
+                            ->default(function () {
+                                if (filled(session('session_employee_id'))) {
+                                    return Employee::where('employeeid', session('session_employee_id'))->first()?->project_id;
+                                }
+                                return null;
+                            })
+                            ->disabled(fn() => filled(session('session_employee_id')))
+                            ->dehydrated()
                             ->columnSpan(2),
+
+                        // Select::make('project_code')
+                        //     ->label('Assigned Project')
+                        //     ->placeholder('Select a project assignment...')
+                        //     ->options(
+                        //         Project::query()
+                        //             ->where('status', true)
+                        //             ->get()
+                        //             ->mapWithKeys(fn($project) => [$project->project_code => "{$project->name} ({$project->project_code})"])
+                        //             ->toArray()
+                        //     )
+                        //     ->searchable()
+                        //     ->preload()
+                        //     ->native(false)
+                        //     ->required()
+                        //     ->columnSpan(2),
 
                         DateTimePicker::make('recorded_at')
                             ->required()
@@ -144,25 +202,103 @@ class AtlogResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // $periodcode     = session('session_periodcode');
-        // $sessionStatus  = session('session_employeestatus');
-        // $sessionType    = session('session_employeetype');
-        // $sessionEmployeeId = session('session_employee_id');
+        $periodcode     = session('session_periodcode');
+        $sessionStatus  = session('session_employeestatus');
+        $sessionType    = session('session_employeetype');
+        $employeeid     = session('session_employee_id');
 
-        // if (!$sessionEmployeeId || !$periodcode || !$sessionStatus || !$sessionType) {
-        //     return $table;
-        // }
-        // $atlogsDetails = cache()->remember(
-        //     "header_admission_full_{$periodcode}",
-        //     3600,
-        //     function () use ($sessionEmployeeId) {
-        //         return Atlog::where('user_id', $sessionEmployeeId)
-        //             ->with('employee')
-        //             ->with('project')
-        //             ->first();
-        //     }
-        // );
+        if ($periodcode || $sessionStatus || $sessionType) {
+            $datePerioDetails = cache()->remember(
+                "header_admission_full_{$periodcode}",
+                3600,
+                function () use ($periodcode) {
+                    return DatePeriod::where('code', $periodcode)
+                        ->where('status', true)
+                        ->first();
+                }
+            );
+
+            $patientDetails = Employee::where('employeeid', $employeeid)->where('status', true)->first();
+            $nameParts = array_filter([
+                strtoupper($patientDetails->lastname) ?? null,
+                strtoupper($patientDetails->firstname) ?? null,
+                strtoupper($patientDetails->middlename) ?? null
+            ]);
+            $empFullname = implode(' ', $nameParts);
+            $emtype = $datePerioDetails?->employeeTypeCategory?->name ?? 'N/A';
+            $emstat = $datePerioDetails?->category?->name ?? 'N/A';
+            $startdate = $datePerioDetails->datefrom
+                ? Carbon::parse($datePerioDetails->datefrom)->format('M d, Y') : 'N/A';
+            $enddate = $datePerioDetails->dateto
+                ? Carbon::parse($datePerioDetails->dateto)->format('M d, Y') : 'N/A';
+            $details = [
+                "EMP. FULLNAME: {$empFullname}",
+                "DATE START: {$startdate}",
+                "DATE END: {$enddate}",
+                "EMP TYPE: {$emtype}",
+                "EMP STATUS: {$emstat}",
+            ];
+            $formattedBadges = collect($details)
+                ->map(fn($detail) => "
+                    <span style='
+                        padding: 0.25rem 0.625rem; 
+                        font-size: 0.75rem; 
+                        font-weight: 600; 
+                        background-color: #ffffff; 
+                        color: #374151; 
+                        border-radius: 0.375rem; 
+                        border: 1px solid #e5e7eb; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+                        white-space: nowrap;
+                        font-family: system-ui, sans-serif;
+                    '>{$detail}</span>
+                ")
+                ->implode(' ');
+        }
         return $table
+            ->header(fn() => blank(session('session_employee_id')) ? null : new HtmlString("
+                        <div style='
+                            padding: 1rem; 
+                            margin: 1rem 1rem 0 1rem; 
+                            border-left: 4px solid #d97706; 
+                            background-color: rgba(254, 243, 199, 0.4); 
+                            border-top-right-radius: 0.75rem; 
+                            border-bottom-right-radius: 0.75rem; 
+                            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                        '>
+                            <div style='
+                                display: flex; 
+                                flex-direction: column; 
+                                gap: 0.75rem;
+                            '>
+                                <div style='display: flex; align-items: center; gap: 0.5rem;'>
+                                    <span style='
+                                        width: 0.5rem; 
+                                        height: 0.5rem; 
+                                        background-color: #f59e0b; 
+                                        border-radius: 9999px;
+                                    '></span>
+                                    <h3 style='
+                                        font-size: 1rem; 
+                                        font-weight: 700; 
+                                        color: #111827; 
+                                        margin: 0;
+                                        font-family: system-ui, sans-serif;
+                                    '>
+                                        DATE PERIOD CODE : <span style='font-family: monospace; color: #b45309;'>{$periodcode}</span>
+                                    </h3>
+                                </div>
+                                <div style='
+                                    display: flex; 
+                                    flex-wrap: wrap; 
+                                    align-items: center; 
+                                    gap: 0.5rem;
+                                '>
+                                    {$formattedBadges}
+                                </div>
+                            </div>
+                        </div>
+                    "))
             ->recordUrl(null)
             ->query(function () {
                 $sessionEmployeeId = session('session_employee_id');
@@ -176,16 +312,20 @@ class AtlogResource extends Resource
                         ->where('status', true)
                         ->first();
                     if ($datePerioDetails) {
-                        $startdate = $datePerioDetails->datefrom
-                            ? Carbon::parse($datePerioDetails->datefrom)->startOfDay() : null;
-                        $enddate = $datePerioDetails->dateto
-                            ? Carbon::parse($datePerioDetails->dateto)->endOfDay() : null;
-                        return Atlog::query()
-                            ->when($startdate, fn($q) => $q->where('recorded_at', '>=', $startdate))
-                            ->when($enddate, fn($q) => $q->where('recorded_at', '<=', $enddate))
-                            ->with('employee')
-                            ->with('project')
-                            ->where('user_id', $sessionEmployeeId);
+                        $patientDetails = Employee::where('employeeid', session('session_employee_id'))->where('status', true)->first();
+                        if ($patientDetails) {
+                            $startdate = $datePerioDetails->datefrom
+                                ? Carbon::parse($datePerioDetails->datefrom)->startOfDay() : null;
+                            $enddate = $datePerioDetails->dateto
+                                ? Carbon::parse($datePerioDetails->dateto)->endOfDay() : null;
+                            return Atlog::query()
+                                ->when($startdate, fn($q) => $q->where('recorded_at', '>=', $startdate))
+                                ->when($enddate, fn($q) => $q->where('recorded_at', '<=', $enddate))
+                                ->with('employee')
+                                ->with('project')
+                                ->where('project_code', $patientDetails->project_id)
+                                ->where('user_id', $sessionEmployeeId);
+                        }
                     } else {
                         return Atlog::query()
                             ->with('employee')
@@ -199,8 +339,10 @@ class AtlogResource extends Resource
             })
             ->columns([
                 TextColumn::make('project.name')
+                    ->hidden(fn() => filled(session('session_employee_id')))
                     ->label('Project'),
                 TextColumn::make('employee.full_name')
+                    ->hidden(fn() => filled(session('session_employee_id')))
                     ->label('Employee'),
                 TextColumn::make('user_id')
                     ->label('ID')
@@ -269,7 +411,8 @@ class AtlogResource extends Resource
                                 $data['dateto'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('recorded_at', '<=', $date),
                             );
-                    }),
+                    })
+                    ->hidden(fn() => filled(session('session_employee_id'))),
 
                 // 3. FILTER: Project
                 SelectFilter::make('project_id')
@@ -277,9 +420,8 @@ class AtlogResource extends Resource
                     ->relationship('project', 'name')
                     ->preload()
                     ->columnSpan(1)
-                    ->placeholder('All Projects'),
-
-                // 6. FILTER: Specific Employee Search dropdown
+                    ->placeholder('All Projects')
+                    ->hidden(fn() => filled(session('session_employee_id'))),
                 SelectFilter::make('employee_id')
                     ->label('Employee')
                     ->columnSpan(1)
@@ -288,22 +430,19 @@ class AtlogResource extends Resource
                         titleAttribute: 'lastname', // Fallback identifier
                         modifyQueryUsing: fn(Builder $query) => $query->orderBy('lastname')
                     )
-                    // 💡 1. Allow searching across all individual name columns
                     ->searchable(['lastname', 'firstname', 'middlename', 'employeeid'])
-
-                    // 💡 2. Format how the results look inside the dropdown list
                     ->getOptionLabelFromRecordUsing(function ($record) {
                         return "{$record->lastname}, {$record->firstname} {$record->middlename} ({$record->employeeid})";
                     })
-                    ->placeholder('All Employees'),
+                    ->placeholder('All Employees')
+                    ->hidden(fn() => filled(session('session_employee_id'))),
             ], layout: FiltersLayout::AboveContent)
-            // ->filtersFormWidth('xl')
             ->filtersFormColumns(4)
             ->filtersFormWidth('full')
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make()
-                        ->label('Details'),
+                    // ViewAction::make()
+                    //     ->label('Details'),
                     EditAction::make()
                         ->label('Update'),
                     DeleteAction::make()

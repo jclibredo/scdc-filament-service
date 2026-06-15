@@ -89,6 +89,16 @@ class DatePeriodResource extends Resource
                             ->preload()
                             ->required(),
 
+                        TextInput::make('overtime_rate')
+                            ->label('Overtime Rate (%)')
+                            ->placeholder('e.g., 120.00')
+                            ->numeric()
+                            ->required()
+                            ->default(20.00) // Controls the default for NEW records
+                            ->formatStateUsing(fn($state) => $state ?? 20.00) // Controls fallback for EXISTING records
+                            ->rules(['regex:/^\d{1,6}(\.\d{1,2})?$/'])
+                            ->helperText('Specify the baseline percentage multiplier for overtime calculations (e.g., 120.00 for 120%).'),
+
                         DatePicker::make('datefrom')
                             ->label('Date From')
                             ->required(),
@@ -142,6 +152,15 @@ class DatePeriodResource extends Resource
                     ->label('Category')
                     ->sortable()
                     ->searchable(),
+
+                // 3. New Overtime Rate column
+                TextColumn::make('overtime_rate')
+                    ->label('OT Rate')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix('%')
+                    ->alignEnd() // Aligns numbers cleanly to the right side of the column
+                    ->sortable()
+                    ->placeholder('---'), // Displayed if no custom rate is specified (null)
 
                 TextColumn::make('datefrom')
                     ->date('M d, Y') // Nicely formatted (e.g., Jan 15, 2026)
@@ -213,7 +232,6 @@ class DatePeriodResource extends Resource
                     ->preload()
                     ->columns(1)
                     ->placeholder('All Employee Types'),
-
                 // 2. FILTER: Employment Status (Filtered by Category: EMPLOYEE_STATUS)
                 SelectFilter::make('empstatus_id')
                     ->label('Emp. Status')
@@ -242,7 +260,6 @@ class DatePeriodResource extends Resource
                             session(['session_employeestatus' => $record->category_id]);
                             return redirect(PayrollResource::getUrl('index'));
                         }),
-
                     Action::make('gov_contribution')
                         ->label('Contribution')
                         ->icon('heroicon-m-shield-check')

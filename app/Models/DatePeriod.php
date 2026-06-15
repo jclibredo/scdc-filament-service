@@ -16,11 +16,13 @@ class DatePeriod extends Model
         'datefrom',
         'dateto',
         'status',
+        'overtime_rate',
     ];
     protected $casts = [
         'datefrom' => 'date',
         'dateto' => 'date',
         'status' => 'boolean',
+        'overtime_rate' => 'float',
     ];
     public function category()
     {

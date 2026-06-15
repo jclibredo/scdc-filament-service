@@ -154,6 +154,7 @@ class ListAtlogs extends ListRecords
                 ->label('Import .DAT File')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('success')
+                ->hidden(fn () => filled(session('session_employee_id')))
                 ->form([
                     // Inline Warning Banner using Placeholder
                     Placeholder::make('duplicate_warning_message')
