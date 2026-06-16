@@ -34,4 +34,16 @@ class DatePeriod extends Model
         // Points employeetype (which holds the category ID) to the Category model
         return $this->belongsTo(Category::class, 'employeetype');
     }
+
+
+    public function payrollReportsData()
+    {
+        return $this->hasMany(PayrollReport::class, 'dateperiod_id', 'id');
+    }
+
+
+    public function payrollSummaryData()
+    {
+        return $this->hasMany(PayrollSummaryReport::class, 'dateperiod_id', 'id');
+    }
 }

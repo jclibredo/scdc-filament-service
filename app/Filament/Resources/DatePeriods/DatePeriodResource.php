@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\DatePeriods;
 
-use App\Filament\Resources\DatePeriods\Pages\CreateDatePeriod;
 use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Filament\Resources\Payrolls\PayrollResource;
 use App\Models\Category;
@@ -13,17 +12,12 @@ use App\Models\GovDeductionLog;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -35,10 +29,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use League\Csv\Reader;
 use UnitEnum;
 
 class DatePeriodResource extends Resource
@@ -261,8 +252,8 @@ class DatePeriodResource extends Resource
                             return redirect(PayrollResource::getUrl('index'));
                         }),
                     Action::make('gov_contribution')
-                        ->label('Contribution')
-                        ->icon('heroicon-m-shield-check')
+                        ->label('Deductables')
+                        ->icon('heroicon-m-calculator')
                         ->color('success')
                         ->modalHeading('Manage Government Contributions')
                         ->modalWidth('md')

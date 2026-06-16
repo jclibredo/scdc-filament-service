@@ -26,7 +26,7 @@ class GovDeductionResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowPathRoundedSquare;
 
-    protected static ?string $recordTitleAttribute = 'GovDeduction';
+    protected static ?string $recordTitleAttribute = 'Deduction';
 
     public static function form(Schema $schema): Schema
     {
@@ -34,19 +34,25 @@ class GovDeductionResource extends Resource
             TextInput::make('title')
                 ->label('Title')
                 ->required()
-                ->maxLength(255),
+                ->maxLength(255)
+                ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
+                ->dehydrateStateUsing(fn(string $state): string => strtoupper($state)),
 
             DatePicker::make('date_started')
                 ->label('Date Started')
+                ->default(now()) // Sets default to today
                 ->required(),
 
             DatePicker::make('date_ended')
                 ->label('Date Ended')
+                ->default(now()) // Sets default to today
                 ->required(),
 
             TextInput::make('amount')
                 ->label('Amount')
-                ->prefix('$')
+                ->numeric() // Ensures only numbers/decimals are allowed
+                ->prefix('PHP')
+                ->default('0.00') // Sets the default value to 0.00
                 ->required(),
 
             Toggle::make('status')
@@ -60,7 +66,7 @@ class GovDeductionResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                TextColumn::make('id')->sortable(),
+                // TextColumn::make('id')->sortable(),
                 TextColumn::make('title')->searchable(),
                 TextColumn::make('date_started')->label('Start Date')->date('M d, Y')->sortable(),
                 TextColumn::make('date_ended')->label('End Date')->date('M d, Y')->sortable(),
@@ -80,10 +86,10 @@ class GovDeductionResource extends Resource
                     ->button()
                     ->outlined()
                     ->color('warning'),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make(),
             ]);
+        // ->bulkActions([
+        //     DeleteBulkAction::make(),
+        // ]);
     }
 
     public static function getRelations(): array

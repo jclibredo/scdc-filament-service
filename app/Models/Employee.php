@@ -29,6 +29,25 @@ class Employee extends Model
         'project_id',
     ];
 
+
+    public function payrollReportsData()
+    {
+        return $this->hasMany(PayrollReport::class, 'employee_id', 'employeeid');
+    }
+
+
+    public function payrollSummaryData()
+    {
+        return $this->hasMany(PayrollSummaryReport::class, 'employee_id', 'employeeid');
+    }
+
+    public function earningsData()
+    {
+        return $this->hasMany(Earnings::class, 'employee_id', 'employeeid')->where('status', true);
+    }
+
+
+
     public function empStat()
     {
         return $this->belongsTo(Category::class, 'empstatus');
@@ -92,7 +111,4 @@ class Employee extends Model
             ->filter()
             ->implode(' ');
     }
-
-
-    
 }

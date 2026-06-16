@@ -65,3 +65,11 @@ Route::post('/attendance-logs/store-double', [AttendanceLogController::class, 's
 
 Route::delete('/attendance-logs/destroy-day', [AttendanceLogController::class, 'destroyDayRaw'])
     ->name('attendance-logs.destroy-day');
+
+// Route::middleware(['auth'])->group(function () {
+// Route::get('/payroll/process-sheet/{payroll_processing_employees}/{periodcode}', [PayrollSummaryController::class, 'showSheet'])
+//     ->name('payroll.process-sheet');
+
+Route::get('/payroll/process-sheet/{periodcode}', [PayrollSummaryController::class, 'showSheet'])
+    ->name('payroll.process-sheet');
+// });

@@ -13,7 +13,15 @@ class GovDeductionLog extends Model
         'gov_deduction_id',
         'employee_id',
         'date_period_id',
+        'amount',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'float',
+        ];
+    }
 
     // Relationships
 
@@ -24,11 +32,11 @@ class GovDeductionLog extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     public function datePeriod()
     {
-        return $this->belongsTo(DatePeriod::class);
+        return $this->belongsTo(DatePeriod::class, 'date_period_id');
     }
 }

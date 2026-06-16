@@ -14,7 +14,7 @@ class ListGovDeductions extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('New Contribution')
+                ->label('Deductions')
                 ->color('warning')
                 ->icon('heroicon-m-plus-circle'),
         ];

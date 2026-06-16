@@ -20,8 +20,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-// use Filament\Actions\DeleteAction;
-// use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
+use Filament\Support\Enums\Width;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -30,6 +30,7 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
@@ -171,7 +172,6 @@ class PayrollResource extends Resource
                     ->formatStateUsing(function ($record) {
                         return "{$record->lastname}, {$record->firstname} {$record->middlename}";
                     }),
-
                 TextColumn::make('empType.name')->sortable()->searchable(),
                 TextColumn::make('empStat.name')
                     ->label('Emp. Status')
@@ -186,11 +186,80 @@ class PayrollResource extends Resource
                 BulkActionGroup::make([
                     BulkAction::make('payment')
                         ->label('Process Cut-off')
-                        ->icon('heroicon-o-credit-card')
-                        ->color('success'),
+                        ->icon('heroicon-m-arrows-right-left')
+                        ->color('success')
+                        ->form(function (Collection $records) {
+                            $periodcode = session('session_periodcode');
+                            $employeeIds = $records->pluck('employeeid')->toArray();
+                            if (empty($employeeIds) || !$periodcode) {
+                                $errorMessage = match (true) {
+                                    empty($employeeIds) && !$periodcode => 'Both active session configurations and selected employees are missing.',
+                                    empty($employeeIds) => 'No employees were selected. Please select at least one employee to process.',
+                                    !$periodcode => 'Active session period code configuration is missing.',
+                                    default => 'An unexpected processing error occurred.'
+                                };
+
+                                return [
+                                    Placeholder::make('warning_message')
+                                        ->label(false)
+                                        ->content(new HtmlString("
+                                            <div class='p-3 border border-danger-500 rounded-lg bg-danger-50 dark:bg-red-950/20 flex items-center gap-3'>
+                                                <div style='color: #dc2626; flex-shrink: 0; display: flex; align-items: center;'>
+                                                    <svg style='width: 1.25rem; height: 1.25rem;' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>
+                                                        <path stroke-linecap='round' stroke-linejoin='round' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'></path>
+                                                    </svg>
+                                                </div>
+                                                <div class='text-left'>
+                                                    <h4 style='font-weight: 700; color: #991b1b; font-size: 0.85rem; tracking-tight: 0.025em; line-height: 1.25;'>Processing Failed</h4>
+                                                    <p style='font-size: 0.75rem; color: #b91c1c; line-height: 1.5; margin-top: 0.15rem;'>" . e($errorMessage) . "</p>
+                                                </div>
+                                            </div>
+                                        ")),
+                                ];
+                            }
+                            return [
+                                Placeholder::make('confirmation_message')
+                                    ->label(false)
+                                    ->content('Are you sure you want to process the cut-off sheets for the selected employees?'),
+                            ];
+                        })
+                        ->modalWidth(
+                            fn(Collection $records) => (empty($records->pluck('employeeid')->toArray()) || !session('session_periodcode'))
+                                ? Width::Small
+                                : Width::Medium
+                        )
+                        // 3. REMOVE SUBMIT BUTTON IF TRUE: Returns null to completely strip it from the footer markup
+                        ->modalSubmitAction(function (Action $action, Collection $records) {
+                            $periodcode = session('session_periodcode');
+                            $employeeIds = $records->pluck('employeeid')->toArray();
+                            if (empty($employeeIds) || !$periodcode) {
+                                return $action->hidden();
+                            }
+                            return $action
+                                ->label('Proceed')
+                                ->icon('heroicon-m-arrow-right-end-on-rectangle');
+                        })
+                        ->modalCancelActionLabel(
+                            fn(Collection $records) => (empty($records->pluck('employeeid')->toArray()) || !session('session_periodcode')) ? 'Close' : 'Cancel'
+                        )
+                        // 4. Run the redirect execution payload if valid
+                        ->action(function (BulkAction $action, Collection $records) {
+                            $periodcode = session('session_periodcode');
+                            $employeeIds = $records->pluck('employeeid')->toArray();
+
+                            $url = route('payroll.process-sheet', [
+                                'periodcode' => $periodcode,
+                                'employees' => $employeeIds,
+                            ]);
+
+                            $action->getLivewire()->js("window.open('{$url}', '_blank')");
+                        }),
                 ])
+                    ->button()
+                    ->outlined()
+                    ->icon('heroicon-m-chart-bar')
                     ->color('success')
-                    ->label('Process Batch Record'),
+                    ->label(' Actions'),
             ])
             ->actions([
                 ActionGroup::make([
@@ -480,7 +549,7 @@ class PayrollResource extends Resource
 
                 ])
                     ->label('Action')
-                    ->icon('heroicon-m-chevron-down')
+                    ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar
                     ->button()
                     ->outlined()
                     ->color('warning'),

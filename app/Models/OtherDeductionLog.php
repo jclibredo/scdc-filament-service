@@ -16,6 +16,13 @@ class OtherDeductionLog extends Model
         'amount',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'float',
+        ];
+    }
+
     // Relationships
 
     public function otherDeduction()

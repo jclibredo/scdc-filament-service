@@ -54,6 +54,8 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
             ->authMiddleware([
                 Authenticate::class,
                 ClearSessionOutsideResources::class,
