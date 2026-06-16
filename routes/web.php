@@ -73,3 +73,7 @@ Route::delete('/attendance-logs/destroy-day', [AttendanceLogController::class, '
 Route::get('/payroll/process-sheet/{periodcode}', [PayrollSummaryController::class, 'showSheet'])
     ->name('payroll.process-sheet');
 // });
+
+
+Route::put('/attendance-logs/update-batch', [AttendanceLogController::class, 'updateBatch'])
+    ->name('attendance-logs.update-batch');

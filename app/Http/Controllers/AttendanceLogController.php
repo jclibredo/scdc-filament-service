@@ -89,4 +89,44 @@ class AttendanceLogController extends Controller
         // 4. Return user back with visual flash feedback confirmation message
         return back()->with('success', 'Time In and Time Out stamps logged successfully!');
     }
+
+    public function updateBatch(Request $request)
+    {
+        // 1. Validate the incoming nested array payload
+        $validated = $request->validate([
+            'employee_id' => 'required',
+            'timesheet'   => 'required|array',
+        ]);
+
+        $employeeId = $request->input('employee_id');
+        $timesheets = $request->input('timesheet');
+
+        // 2. Loop through each date row submitted from the modal
+        foreach ($timesheets as $date => $punches) {
+
+            // Format or skip empty inputs based on your business logic
+            $timeIn   = $punches['time_in']   ? Carbon::parse($punches['time_in'])   : null;
+            $breakOut = $punches['break_out'] ? Carbon::parse($punches['break_out']) : null;
+            $breakIn  = $punches['break_in']  ? Carbon::parse($punches['break_in'])  : null;
+            $timeOut  = $punches['time_out']  ? Carbon::parse($punches['time_out'])  : null;
+
+            // Example Update Logic: Find the existing log record for this day or update it
+            // Adjust field names according to your database schema
+            // AttendanceLog::updateOrCreate(
+            //     [
+            //         'employee_id' => $employeeId,
+            //         'log_date'    => $date,
+            //     ],
+            //     [
+            //         'time_in'   => $timeIn,
+            //         'break_out' => $breakOut,
+            //         'break_in'  => $breakIn,
+            //         'time_out'  => $timeOut,
+            //     ]
+            // );
+        }
+
+        // 3. Redirect back to the matrix page with a success flash message
+        return redirect()->back()->with('success', 'Timesheet logs updated successfully.');
+    }
 }

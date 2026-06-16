@@ -158,7 +158,15 @@ class PayrollSummaryController extends Controller
                 // Pass $query as the only argument, and inherit $period using 'use'
                 'payrollReportsData' => function ($query) use ($period) {
                     $query->where('dateperiod_id', $period->id);
+                },
+                // Pass $query as the only argument, and inherit $period using 'use'   otherdeductionData
+                'adjustmentData' => function ($query) use ($period) {
+                    $query->where('date_period_id', $period->code);
+                },
+                'otherdeductionData' => function ($query) use ($period) {
+                    $query->where('date_period_id', $period->code);
                 }
+
             ])
             ->get();
 
@@ -269,7 +277,7 @@ class PayrollSummaryController extends Controller
             ->where('date_period_id', $period->id)->get()->groupBy('employee_id');
 
         $deductions = GovDeduction::where('status', true)->get();
-        
+
         $govDeductions = GovDeductionLog::whereIn('employee_id', $employeeids)
             ->where('date_period_id', $period->id)->get()->groupBy('employee_id');
 

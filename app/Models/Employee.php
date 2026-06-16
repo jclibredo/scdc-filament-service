@@ -29,6 +29,15 @@ class Employee extends Model
         'project_id',
     ];
 
+    public function otherdeductionData()
+    {
+        return $this->hasMany(OtherDeductionLog::class, 'employee_id', 'employeeid');
+    }
+
+    public function adjustmentData()
+    {
+        return $this->hasMany(Adjustment::class, 'employee_id', 'employeeid');
+    }
 
     public function payrollReportsData()
     {
