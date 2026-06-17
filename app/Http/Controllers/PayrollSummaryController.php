@@ -333,19 +333,15 @@ class PayrollSummaryController extends Controller
 
     public function updateBatch(Request $request)
     {
-        // dd($request);
         // 1. Validate incoming data framework context requirements
         $request->validate([
             'employee_id' => 'required',
             'period_code' => 'required|string',
         ]);
-
         $employeeId = $request->input('employee_id');
         $periodCode = $request->input('period_code');
-
         // 2. Wrap operations inside a single transaction isolation database block
         DB::beginTransaction();
-
         try {
             // ==========================================
             // SUB-SECTION 1: SYNCHRONIZE ADJUSTMENTS
@@ -384,7 +380,6 @@ class PayrollSummaryController extends Controller
                 ->delete();
             // 2. Loop through and insert only the non-zero rows from the frontend layout matrix
             if ($request->has('gov_deductions')) {
-                // dd($request->input('gov_deductions'));
                 foreach ($request->input('gov_deductions') as $idKey => $data) {
                     $amount = (float)($data['amount'] ?? 0.0);
                     $govDeductionId = $data['gov_deduction_id'] ?? null;
