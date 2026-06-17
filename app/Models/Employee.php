@@ -34,6 +34,12 @@ class Employee extends Model
         return $this->hasMany(OtherDeductionLog::class, 'employee_id', 'employeeid');
     }
 
+    public function govdeductionData()
+    {
+        return $this->hasMany(GovDeductionLog::class, 'employee_id', 'employeeid');
+    }
+
+
     public function adjustmentData()
     {
         return $this->hasMany(Adjustment::class, 'employee_id', 'employeeid');

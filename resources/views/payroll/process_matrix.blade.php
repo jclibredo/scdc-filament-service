@@ -3,35 +3,38 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Processing Matrix</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Payroll Processing Ledger Matrix</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
+        /* Custom scrollbar adjustments for comfortable matrix navigation */
         .custom-scrollbar::-webkit-scrollbar {
             height: 8px;
             width: 8px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
     </style>
 </head>
 
-<body class="bg-gray-100 p-3 sm:p-6 text-xs font-sans antialiased">
+<body class="bg-gray-100 p-6">
+
     <div class="max-w-full mx-auto bg-white shadow-md rounded-lg overflow-hidden flex flex-col">
-        
         <div class="p-4 bg-amber-50 border-l-4 border-amber-500 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div>
                 <h2 class="text-sm font-bold text-gray-800 tracking-wide uppercase">Payroll Processing Interface</h2>
                 <p class="text-gray-600 mt-0.5">
-                    Period: <span class="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 text-[11px]">{{ $period->code }}</span> 
+                    Period: <span class="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 text-[11px]">{{ $period->code }}</span>
                     <span class="block sm:inline sm:ml-2 text-gray-500">({{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }} - {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }})</span>
                 </p>
             </div>
@@ -45,13 +48,15 @@
                 <thead>
                     <tr class="bg-gray-50 text-gray-700 font-bold text-[10px]">
                         <th rowspan="2" class="sticky left-0 z-30 bg-gray-50 border border-gray-300 p-2 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[240px]">Employee Name</th>
+                        <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Designation</th>
                         <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Project</th>
                         <th colspan="{{ $earningsCategories->count() }}" class="border border-gray-300 p-1 bg-emerald-50 text-emerald-900 tracking-wider">EARNINGS CATEGORIES</th>
                         <th colspan="{{ count($periodDates) }}" class="border border-gray-300 p-1 bg-amber-100 text-amber-900 tracking-wider">Attendance Logs (Daily View Hours)</th>
-                        <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">OT</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 text-blue-600 bg-gray-50">OT</th>
                         <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">Late/Under.</th>
                         <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 text-green-900">Total Earnings</th>
                         <th colspan="{{ max($deductions->count(), 1) }}" class="border border-gray-300 p-1 bg-red-50 text-red-900 tracking-wider">DEDUCTIONS</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">OTHR. DEDUCTIONS</th>
                         <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">ADJUSTMENT</th>
                         <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">Total Deduction</th>
                         <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">Gross Pay</th>
@@ -76,35 +81,52 @@
                 <tbody class="divide-y divide-gray-200 font-mono">
                     @foreach($employees as $employee)
                     @php
-                        $empAdjustments = $adjustments ?? collect(); 
-                        $empOtherDeductions = $otherDeductions ?? collect();
-                        $empGovDeductions = $govDeductions->get($employee->employeeid, collect());
-                        $empTimesheetRecords = $employeeTimesheets[$employee->employeeid] ?? [];
+                    $empAdjustments = collect($employee->adjustmentData ?? []);
+                    $empOtherDeductions = collect($employee->otherdeductionData ?? []);
+                    $empGovDeductions = collect($employee->govdeductionData ?? []);
+                    $empTimesheetRecords = $employeeTimesheets[$employee->employeeid] ?? [];
+
+                    $reportMetrics = [];
+                    foreach ($periodDates as $pDate) {
+                    $dKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                    $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dKey);
+                    $dayData = $empTimesheetRecords[$dKey] ?? [];
+
+                    $reportMetrics[$dKey] = [
+                    'time_in' => $dayData['time_in'] ?? null,
+                    'break_out' => $dayData['break_out'] ?? null,
+                    'break_in' => $dayData['break_in'] ?? null,
+                    'time_out' => $dayData['time_out'] ?? null,
+                    'class' => $dayData['class'] ?? '',
+                    'acquired_hours' => $report ? number_format($report->acquired_hours, 2, '.', '') : '0.00',
+                    'overtime' => $report ? number_format($report->overtime, 2, '.', '') : '0.00',
+                    'late_undertime' => $report ? number_format($report->late_undertime, 2, '.', '') : '0.00',
+                    ];
+                    }
                     @endphp
                     <tr class="hover:bg-gray-50 text-gray-800 text-[10px] group transition-colors">
                         <td class="sticky left-0 z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 text-left font-sans font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
                             <div class="flex items-center justify-between gap-2">
-                                <span class="truncate">
-                                    {{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }}
-                                </span>
+                                <span class="truncate">{{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }} {{ strtoupper($employee->middlename) }}</span>
                                 <div class="flex items-center gap-1 shrink-0 no-print">
-                                    <button type="button" 
-                                        onclick="openPayrollDetailModal(
-                                            '{{ $employee->employeeid }}', 
-                                            '{{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }}',
-                                            '{{ $employee->project->name ?? '--' }}',
-                                            {{ json_encode($empTimesheetRecords) }},
-                                            {{ json_encode($empAdjustments) }},
-                                            {{ json_encode($empGovDeductions) }},
-                                            {{ json_encode($empOtherDeductions) }}
-                                        )"
-                                        class="cursor-pointer px-1.5 py-0.5 border border-blue-200 hover:border-blue-400 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold transition-all text-[10px]">
+                                    <button type="button"
+                                        class="payroll-modal-trigger cursor-pointer px-1.5 py-0.5 border border-blue-200 hover:border-blue-400 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold transition-all text-[10px]"
+                                        data-id="{{ $employee->employeeid }}"
+                                        data-skill="{{ $employee->skill->title ?? '--' }}"
+                                        data-name="{{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }} {{ strtoupper($employee->middlename) }}"
+                                        data-project="{{ $employee->project->name ?? '--' }}"
+                                        data-timesheets="{{ json_encode($reportMetrics) }}"
+                                        data-adjustments="{{ json_encode($empAdjustments) }}"
+                                        data-govdeductions="{{ json_encode($empGovDeductions) }}"
+                                        data-otherdeductions="{{ json_encode($empOtherDeductions) }}">
                                         📝 Open Modal
                                     </button>
                                 </div>
                             </div>
                         </td>
-                        
+                        <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                            {{ $employee->skill->title ?? '--' }}
+                        </td>
                         <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
                             {{ $employee->project->name ?? '--' }}
                         </td>
@@ -116,23 +138,42 @@
                         <td class="border border-gray-300 p-2 text-right">{{ $matchedEarning ? number_format($matchedEarning->amount, 2) : '0.00' }}</td>
                         @endforeach
 
-                        @foreach($employee->payrollReportsData as $report)
-                        @php $dateKey = $report->date_entry->toDateString(); $dayData = $empTimesheetRecords[$dateKey] ?? ['display' => '0.00', 'class' => 'bg-yellow-50 text-amber-700 font-bold text-center']; @endphp
-                        <td class="border border-gray-300 p-1 {{ $dayData['class'] }}">{{ $report->acquired_hours }}</td>
+                        @foreach($periodDates as $pDate)
+                        @php
+                        $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-center">{{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}</td>
                         @endforeach
 
                         <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">{{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}</td>
                         <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">{{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}</td>
-                        <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">2,550.00</td>
+                        <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">0.00</td>
 
                         @forelse($deductions as $deduction)
-                        <td class="border border-gray-300 p-1 text-right">{{ $deduction->amount ? number_format($deduction->amount, 2) : '0.00' }}</td>
-                        @empty <td class="border border-gray-300 p-1 bg-gray-50">--</td> @endforelse
-
+                        @php
+                        $matchedGovLog = $empGovDeductions->first(fn($log) => $log->gov_deduction_id == $deduction->id);
+                        $resolvedGovAmount = 0.00;
+                        if ($matchedGovLog) {
+                        $masterAmount = $matchedGovLog->govDeduction ? (float) $matchedGovLog->govDeduction->amount : 0;
+                        $resolvedGovAmount = ($masterAmount > 0) ? $masterAmount : (float) $matchedGovLog->amount;
+                        }
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-right font-mono text-red-700 bg-red-50/10">
+                            {{ number_format($resolvedGovAmount, 2) }}
+                        </td>
+                        @empty
+                        <td class="border border-gray-300 p-1 bg-gray-50 text-gray-400 italic text-center">No deductions set</td>
+                        @endforelse
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format($employee->otherdeductionData->sum('amount'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format($employee->adjustmentData->sum('amount'), 2) }}
+                        </td>
                         <td class="border border-gray-300 p-1 text-right">0.00</td>
                         <td class="border border-gray-300 p-1 text-right">0.00</td>
-                        <td class="border border-gray-300 p-1 text-right">2,550.00</td>
-                        <td class="border border-gray-300 p-2 bg-green-100 font-bold text-green-900 text-right">2,550.00</td>
+                        <td class="border border-gray-300 p-2 bg-green-100 font-bold text-green-900 text-right">0.00</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -140,197 +181,120 @@
         </div>
     </div>
 
-    <div id="payrollDetailModal" class="hidden fixed inset-0 z-[9999] bg-black/50 items-center justify-center p-4">
-        <form action="{{ route('attendance-logs.update-batch') }}" method="POST" class="bg-white rounded-lg w-full max-w-5xl shadow-2xl border border-gray-200 font-sans flex flex-col max-h-[90vh]">
-            @csrf
-            @method('PUT')
-            
-            <input type="hidden" id="modal_form_employee_id" name="employee_id" value="">
+    <div id="payrollDetailModal" class="hidden fixed inset-0 z-50 bg-black/60 items-center justify-center p-4 transition-all"
+        data-lookup-adjustments="{{ json_encode(\App\Models\Category::query()->where('cat', 'ADJUSTMENT')->where('status', true)->get(['id', 'name'])->toArray()) }}"
+        data-lookup-gov="{{ json_encode(\App\Models\GovDeduction::query()->get(['id', 'title', 'amount'])->toArray()) }}"
+        data-lookup-other="{{ json_encode(\App\Models\OtherDeduction::query()->get(['id', 'title'])->toArray()) }}">
 
-            <div class="p-4 bg-gray-900 text-white flex justify-between items-center rounded-t-lg shrink-0">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-900 text-white p-4 flex justify-between items-center shrink-0">
                 <div>
-                    <h3 class="text-sm font-bold tracking-wide uppercase">Edit Employee Payroll & Timesheet Logs</h3>
-                    <p class="text-[11px] text-gray-300 mt-0.5">
-                        Date Covered: <span class="font-mono font-bold text-amber-300">{{ \Carbon\Carbon::parse($period->datefrom)->format('M d, Y') }} — {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }}</span>
-                    </p>
+                    <h3 class="text-md font-bold tracking-wide"><span id="m_box_empname">-- Loading Ledger --</span></h3>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        Employee ID : <span id="m_box_empid" class="font-mono">--</span>
+                        | Project Assignment: <span id="m_box_empproject">--</span>
+                        | Skill : <span id="m_box_empskill" class="font-mono">--</span> </p>
                 </div>
-                <button type="button" onclick="closePayrollDetailModal();" class="text-xl text-gray-400 hover:text-white font-bold p-1 transition-colors">&times;</button>
+                <button type="button" onclick="closePayrollDetailModal()" class="text-gray-400 hover:text-white font-bold text-2xl px-2">&times;</button>
             </div>
 
-            <div class="p-5 overflow-y-auto space-y-6 text-xs text-gray-700">
-                
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div>
-                        <span class="block text-[10px] uppercase font-bold text-gray-400">Employee Identification</span>
-                        <strong id="m_box_empid" class="text-gray-900 font-mono">--</strong>
-                    </div>
-                    <div>
-                        <span class="block text-[10px] uppercase font-bold text-gray-400">Full Name</span>
-                        <strong id="m_box_empname" class="text-gray-900 uppercase">--</strong>
-                    </div>
-                    <div>
-                        <span class="block text-[10px] uppercase font-bold text-gray-400">Assigned Operational Project</span>
-                        <strong id="m_box_empproject" class="text-gray-900">--</strong>
-                    </div>
-                </div>
+            <form action="{{ route('payroll.update-batch') }}" method="POST" id="modal_form_engine" class="flex flex-col flex-1 overflow-hidden">
+                @csrf
+                <input type="hidden" name="employee_id" id="modal_form_employee_id" value="">
+                <input type="hidden" name="period_code" value="{{ $period->code }}">
 
-                <div>
-                    <h4 class="font-bold text-gray-800 border-b pb-1 mb-2 uppercase tracking-wider text-[11px] text-blue-600">Timesheet & Attendance Logs (Time Input Only View)</h4>
-                    <div class="overflow-x-auto border border-gray-200 rounded">
-                        <table class="w-full text-center border-collapse text-[11px]">
-                            <thead>
-                                <tr class="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
-                                    <th class="p-2 border-r text-left w-28">Date</th>
-                                    <th class="p-2 border-r min-w-[110px]">Time In</th>
-                                    <th class="p-2 border-r min-w-[110px]">Break Out</th>
-                                    <th class="p-2 border-r min-w-[110px]">Break In</th>
-                                    <th class="p-2 border-r min-w-[110px]">Time Out</th>
-                                    <th class="p-2 text-right w-20">Hrs Data</th>
-                                </tr>
-                            </thead>
-                            <tbody id="m_table_timesheet" class="divide-y divide-gray-200 font-mono">
+                <div class="p-5 overflow-y-auto flex-1 space-y-6 bg-gray-50/50">
+
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <h4 class="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 border-b pb-1">Adjust Cutoff Daily Work Sheets</h4>
+
+                        <div class="max-h-100 overflow-y-auto border border-gray-200 rounded"
+                            id="timesheet_table_wrapper"
+                            data-lookup-holidays="{{ json_encode($holidays->toArray()) }}">
+
+                            <table class="w-full text-left text-[11px] border-collapse">
+                                <thead class="bg-gray-100 sticky top-0 border-b border-gray-200 text-gray-600 font-semibold z-10">
+                                    <tr>
+                                        <th class="p-2">Date Frame</th>
+
+                                        <th class="p-1">Pay Type</th>
+                                        <th class="p-1">Pay Cat</th>
+
+                                        <th class="p-1">Time In</th>
+                                        <th class="p-1">Break Out</th>
+                                        <th class="p-1">Break In</th>
+                                        <th class="p-1">Time Out</th>
+                                        <th class="p-1 text-center">Reg Hours</th>
+                                        <th class="p-1 text-center text-blue-600">OT Hours</th>
+                                        <th class="p-1 text-center text-red-600">Late/UT</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="m_table_timesheet" class="divide-y divide-gray-100 font-mono">
                                 </tbody>
-                        </table>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <div class="bg-white border border-gray-200 rounded-lg p-3 flex flex-col shadow-sm">
+                            <div class="flex items-center justify-between border-b pb-2 mb-2">
+                                <h4 class="text-xs font-bold uppercase text-amber-600 tracking-wider">Adjustments</h4>
+                                <button type="button" onclick="addDynamicRow('adjustments')" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-[10px] font-semibold transition-colors">+ Add New</button>
+                            </div>
+                            <div class="overflow-y-auto flex-1 max-h-48">
+                                <table class="w-full text-[11px]">
+                                    <tbody id="m_list_adjustments"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-gray-200 rounded-lg p-3 flex flex-col shadow-sm">
+                            <div class="flex items-center justify-between border-b pb-2 mb-2">
+                                <h4 class="text-xs font-bold uppercase text-emerald-600 tracking-wider">Mandatory Deductions</h4>
+                                <button type="button" onclick="addDynamicRow('gov_deductions')" class="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[10px] font-semibold transition-colors">+ Add New</button>
+                            </div>
+                            <div class="overflow-y-auto flex-1 max-h-48">
+                                <table class="w-full text-[11px]">
+                                    <tbody id="m_list_govdeductions"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-gray-200 rounded-lg p-3 flex flex-col shadow-sm">
+                            <div class="flex items-center justify-between border-b pb-2 mb-2">
+                                <h4 class="text-xs font-bold uppercase text-purple-600 tracking-wider">Other Deductions</h4>
+                                <button type="button" onclick="addDynamicRow('other_deductions')" class="px-2 py-0.5 bg-purple-500 hover:bg-purple-600 text-white rounded text-[10px] font-semibold transition-colors">+ Add New</button>
+                            </div>
+                            <div class="overflow-y-auto flex-1 max-h-48">
+                                <table class="w-full text-[11px]">
+                                    <tbody id="m_list_otherdeductions"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="border border-gray-200 rounded p-3 bg-white shadow-sm">
-                        <h5 class="font-bold text-gray-900 border-b pb-1.5 mb-2 uppercase text-[10px] tracking-wide text-amber-600">Adjustments Ledger</h5>
-                        <table class="w-full text-left font-mono text-[11px]">
-                            <tbody id="m_list_adjustments" class="divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="border border-gray-200 rounded p-3 bg-white shadow-sm">
-                        <h5 class="font-bold text-gray-900 border-b pb-1.5 mb-2 uppercase text-[10px] tracking-wide text-red-600">Govt Deductions</h5>
-                        <table class="w-full text-left font-mono text-[11px]">
-                            <tbody id="m_list_govdeductions" class="divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="border border-gray-200 rounded p-3 bg-white shadow-sm">
-                        <h5 class="font-bold text-gray-900 border-b pb-1.5 mb-2 uppercase text-[10px] tracking-wide text-purple-600">Other Deductions</h5>
-                        <table class="w-full text-left font-mono text-[11px]">
-                            <tbody id="m_list_otherdeductions" class="divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
+                <div class="bg-gray-100 p-3 border-t border-gray-200 flex justify-between items-center shrink-0">
+                    <button type="button" onclick="closePayrollDetailModal()" class="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-xs font-medium rounded shadow transition-colors">Close</button>
+                    <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded shadow transition-all">Commit Changes</button>
                 </div>
-            </div>
-
-            <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 rounded-b-lg shrink-0">
-                <button type="button" onclick="closePayrollDetailModal();" class="px-4 py-2 border border-gray-300 hover:bg-gray-100 rounded text-xs font-semibold tracking-wide transition-colors">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow transition-colors">Save Structural Logs</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
     <script>
-        function handleCustomClose() {
-            if (confirm("Close matrix layout safely?")) { window.close(); }
-        }
-
-        window.openPayrollDetailModal = function(empId, empName, project, timesheets, adjustments, govDeductions, otherDeductions) {
-            const modal = document.getElementById('payrollDetailModal');
-            if (!modal) return;
-
-            document.getElementById('modal_form_employee_id').value = empId;
-            document.getElementById('m_box_empid').innerText = empId;
-            document.getElementById('m_box_empname').innerText = empName;
-            document.getElementById('m_box_empproject').innerText = project;
-
-            const tsBody = document.getElementById('m_table_timesheet');
-            tsBody.innerHTML = ''; 
-            
-            // Helper function to extract 24-hour HH:MM strings exactly as needed for native <input type="time"> fields
-            function convertTo24HourTime(timeString) {
-                if (!timeString || timeString === '---') return '';
-                
-                timeString = timeString.trim().toUpperCase();
-                const hasAM = timeString.includes('AM');
-                const hasPM = timeString.includes('PM');
-                let cleanTime = timeString.replace(/[^\d:]/g, '');
-                let [hours, minutes] = cleanTime.split(':');
-                
-                hours = parseInt(hours, 10);
-                if (isNaN(hours) || isNaN(parseInt(minutes, 10))) return '';
-                
-                if (hasPM && hours < 12) hours += 12;
-                if (hasAM && hours === 12) hours = 0;
-                
-                return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-            }
-
-            const entries = Object.entries(timesheets);
-            if(entries.length === 0) {
-                tsBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 italic bg-gray-50">No structural tracking histories logs found.</td></tr>`;
-            } else {
-                entries.forEach(([dateKey, data]) => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50 text-gray-700";
-
-                    // Extract only the HH:MM time strings
-                    const timeInValue = convertTo24HourTime(data.time_in);
-                    const breakOutValue = convertTo24HourTime(data.break_out);
-                    const breakInValue = convertTo24HourTime(data.break_in);
-                    const timeOutValue = convertTo24HourTime(data.time_out);
-
-                    tr.innerHTML = `
-                        <td class="p-2 border-r font-sans text-left font-semibold text-gray-900 bg-gray-50">${dateKey}</td>
-                        <td class="p-1 border-r">
-                            <input type="time" name="timesheet[${dateKey}][time_in]" value="${timeInValue}" 
-                                class="w-full p-1 border border-gray-300 rounded text-[11px] bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        </td>
-                        <td class="p-1 border-r">
-                            <input type="time" name="timesheet[${dateKey}][break_out]" value="${breakOutValue}" 
-                                class="w-full p-1 border border-gray-300 rounded text-[11px] bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        </td>
-                        <td class="p-1 border-r">
-                            <input type="time" name="timesheet[${dateKey}][break_in]" value="${breakInValue}" 
-                                class="w-full p-1 border border-gray-300 rounded text-[11px] bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        </td>
-                        <td class="p-1 border-r">
-                            <input type="time" name="timesheet[${dateKey}][time_out]" value="${timeOutValue}" 
-                                class="w-full p-1 border border-gray-300 rounded text-[11px] bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        </td>
-                        <td class="p-2 text-right font-bold ${data.class || ''} bg-gray-50">${data.display ?? '0.00'}</td>
-                    `;
-                    tsBody.appendChild(tr);
-                });
-            }
-
-            const formatCurrency = (val) => parseFloat(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            // Render Adjustments
-            const adjBody = document.getElementById('m_list_adjustments');
-            adjBody.innerHTML = adjustments.length === 0 ? '<tr><td class="py-2 text-gray-400 italic">None recorded</td></tr>' : '';
-            adjustments.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="py-1.5 text-gray-600">${item.adjustment_name?.name ?? 'Adjustment Entry'}</td><td class="py-1.5 text-right font-bold text-gray-900">${formatCurrency(item.amount)}</td>`;
-                adjBody.appendChild(tr);
-            });
-
-            // Render Government Deductions
-            const govBody = document.getElementById('m_list_govdeductions');
-            govBody.innerHTML = govDeductions.length === 0 ? '<tr><td class="py-2 text-gray-400 italic">None recorded</td></tr>' : '';
-            govDeductions.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="py-1.5 text-gray-600">${item.gov_deduction?.title ?? 'Statutory Def'}</td><td class="py-1.5 text-right font-bold text-gray-900">${formatCurrency(item.amount ?? item.gov_deduction?.amount)}</td>`;
-                govBody.appendChild(tr);
-            });
-
-            // Render Other Deductions
-            const othBody = document.getElementById('m_list_otherdeductions');
-            othBody.innerHTML = otherDeductions.length === 0 ? '<tr><td class="py-2 text-gray-400 italic">None recorded</td></tr>' : '';
-            otherDeductions.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="py-1.5 text-gray-600">${item.other_deduction?.title ?? 'Company Loan'}</td><td class="py-1.5 text-right font-bold text-gray-900">${formatCurrency(item.amount)}</td>`;
-                othBody.appendChild(tr);
-            });
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        let systemLookups = {
+            adjustments: [],
+            gov_deductions: [],
+            other_deductions: []
         };
+
+        // Safely closes the modal view space instead of closing down the browser tab execution layer
+        function handleCustomClose() {
+            window.closePayrollDetailModal();
+        }
 
         window.closePayrollDetailModal = function() {
             const modal = document.getElementById('payrollDetailModal');
@@ -339,6 +303,258 @@
                 modal.classList.add('hidden');
             }
         };
+
+        function convertTo24HourTime(t) {
+            if (!t || t === '---') return '';
+            t = t.trim().toUpperCase();
+            const pm = t.includes('PM'),
+                am = t.includes('AM');
+            let clean = t.replace(/[^\d:]/g, '').split(':');
+            let h = parseInt(clean[0], 10),
+                m = clean[1] ? parseInt(clean[1], 10) : 0;
+            if (isNaN(h)) return '';
+            if (pm && h < 12) h += 12;
+            if (am && h === 12) h = 0;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        }
+
+        function handleLookupAmountChange(selectElement, type) {
+            const selectedId = selectElement.value;
+            const row = selectElement.closest('tr');
+            if (!row) return;
+
+            const amountInput = row.querySelector('input[type="number"]');
+            if (!amountInput) return;
+
+            if (!selectedId) {
+                amountInput.value = "0.00";
+                return;
+            }
+
+            const dataset = systemLookups[type] || [];
+            const matchedItem = dataset.find(item => String(item.id) === String(selectedId));
+
+            if (matchedItem && matchedItem.amount !== undefined) {
+                const standardAmount = parseFloat(matchedItem.amount || 0);
+                amountInput.value = standardAmount.toFixed(2);
+            } else {
+                amountInput.value = "0.00";
+            }
+        }
+
+        // UPDATED: Accepts a 6th parameter 'lookupId' to capture the true foreign key reference for existing records
+        function createDynamicRowHtml(type, itemId, nameOrTitle, amountVal, isNew = false, lookupId = null) {
+            // FIXED: Force new items to use the exact same array parameter group name as existing elements
+            const groupKey = type;
+
+            const lookupField = type === 'adjustments' ? 'adjustment_id' : (type === 'gov_deductions' ? 'gov_deduction_id' : 'other_deduction_id');
+            const focusClass = type === 'adjustments' ? 'focus:ring-amber-500' : (type === 'gov_deductions' ? 'focus:ring-emerald-500' : 'focus:ring-purple-500');
+
+            let descriptiveColumn = '';
+
+            if (isNew) {
+                const lookupDataset = systemLookups[type] || [];
+                let options = lookupDataset.map(opt => {
+                    const label = opt.name || opt.title;
+                    return `<option value="${opt.id}">${label}</option>`;
+                }).join('');
+
+                if (options === '') {
+                    options = `<option value="">-- No Options Configured --</option>`;
+                }
+
+                descriptiveColumn = `
+                <select name="${groupKey}[${itemId}][${lookupField}]" 
+                        onchange="handleLookupAmountChange(this, '${type}')" 
+                        class="w-full p-1 border border-gray-300 rounded text-[11px] bg-white text-gray-800" required>
+                    <option value="">-- Select --</option>
+                    ${options}
+                </select>
+            `;
+            } else {
+                // FIXED: Uses the actual relational dictionary ID (lookupId) instead of fallback layout ID
+                const finalLookupVal = lookupId ? lookupId : itemId;
+
+                descriptiveColumn = `
+                <span class="text-gray-700 font-medium">${nameOrTitle}</span>
+                <input type="hidden" name="${groupKey}[${itemId}][id]" value="${itemId}">
+                <input type="hidden" name="${groupKey}[${itemId}][${lookupField}]" value="${finalLookupVal}">
+            `;
+            }
+
+            return `
+            <tr class="group/row d-row transition-all border-b border-gray-100 last:border-none">
+                <td class="py-2 pr-2 align-middle">${descriptiveColumn}</td>
+                <td class="py-2 text-right w-24">
+                    <input type="number" step="0.01" min="0" name="${groupKey}[${itemId}][amount]" value="${parseFloat(amountVal || 0).toFixed(2)}"
+                        class="w-20 p-1 text-right font-bold border border-gray-300 bg-white rounded text-[11px] text-gray-900 focus:outline-none focus:ring-1 ${focusClass}">
+                </td>
+                <td class="py-2 pl-2 text-center w-6">
+                    <button type="button" onclick="removeDynamicRow(this)" class="text-red-500 hover:text-red-700 font-bold text-sm" title="Drop entry line">&times;</button>
+                </td>
+            </tr>
+        `;
+        }
+
+        function addDynamicRow(type) {
+            let normalizedType = type;
+            if (type === 'gov_ded_types' || type === 'gov_deduction' || type === 'gov_deductions') {
+                normalizedType = 'gov_deductions';
+            }
+
+            const containerMapping = {
+                'adjustments': 'm_list_adjustments',
+                'gov_deductions': 'm_list_govdeductions',
+                'other_deductions': 'm_list_otherdeductions'
+            };
+
+            const containerId = containerMapping[normalizedType];
+            const targetTable = document.getElementById(containerId);
+
+            if (!targetTable) return;
+
+            if (targetTable.querySelector('td.italic') || targetTable.innerText.includes('No') || targetTable.innerText.includes('empty')) {
+                targetTable.innerHTML = '';
+            }
+
+            const temporaryId = 'new_' + Date.now() + Math.floor(Math.random() * 100);
+            const rowHtml = createDynamicRowHtml(normalizedType, temporaryId, '', 0.00, true);
+
+            targetTable.insertAdjacentHTML('beforeend', rowHtml);
+        }
+
+        function removeDynamicRow(button) {
+            const row = button.closest('tr');
+            const tbody = row.parentNode;
+            row.remove();
+
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-2 text-gray-400 italic text-center">Entry list empty</td></tr>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const modalEl = document.getElementById('payrollDetailModal');
+            if (modalEl) {
+                systemLookups.adjustments = JSON.parse(modalEl.getAttribute('data-lookup-adjustments') || '[]');
+                systemLookups.gov_deductions = JSON.parse(modalEl.getAttribute('data-lookup-gov') || '[]');
+                systemLookups.other_deductions = JSON.parse(modalEl.getAttribute('data-lookup-other') || '[]');
+            }
+
+            document.addEventListener('click', function(event) {
+                const trigger = event.target.closest('.payroll-modal-trigger');
+                if (!trigger) return;
+
+                const empId = trigger.getAttribute('data-id');
+                const empSkill = trigger.getAttribute('data-skill');
+                const empName = trigger.getAttribute('data-name');
+                const project = trigger.getAttribute('data-project');
+
+                const timesheets = JSON.parse(trigger.getAttribute('data-timesheets') || '{}');
+                const adjustments = JSON.parse(trigger.getAttribute('data-adjustments') || '[]');
+                const govDeductions = JSON.parse(trigger.getAttribute('data-govdeductions') || '[]');
+                const otherDeductions = JSON.parse(trigger.getAttribute('data-otherdeductions') || '[]');
+
+                if (!modalEl) return;
+
+                document.getElementById('modal_form_employee_id').value = empId;
+                document.getElementById('m_box_empid').innerText = empId;
+
+                const skillBox = document.getElementById('m_box_empskill');
+                if (skillBox) {
+                    skillBox.tagName === 'INPUT' ? skillBox.value = empSkill : skillBox.innerText = empSkill;
+                }
+
+                document.getElementById('m_box_empname').innerText = empName;
+                document.getElementById('m_box_empproject').innerText = project;
+
+                // Extract reference holiday setup properties from background wrappers
+                const tsWrapper = document.getElementById('timesheet_table_wrapper');
+                const holidayMaster = tsWrapper ? JSON.parse(tsWrapper.getAttribute('data-lookup-holidays') || '[]') : [];
+
+                // Bind and Load Cutoff Timesheet Logs Matrix
+                const tsBody = document.getElementById('m_table_timesheet');
+                tsBody.innerHTML = '';
+
+                Object.entries(timesheets).forEach(([dateKey, log]) => {
+                    let holidayOptions = '';
+                    holidayMaster.forEach(holiday => {
+                        const isSelected = (log.holiday_id == holiday.id || (!log.holiday_id && parseFloat(holiday.percentage) === 0));
+                        holidayOptions += `
+                        <option value="${holiday.id}" data-rate="${holiday.percentage}" ${isSelected ? 'selected' : ''}>
+                            ${holiday.type} (${parseInt(holiday.percentage)}%)
+                        </option>`;
+                    });
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 text-gray-700 timesheet-row border-b border-gray-100";
+                    tr.dataset.date = dateKey;
+                    tr.innerHTML = `
+                    <td class="p-2 text-left font-semibold text-gray-900 bg-gray-50 whitespace-nowrap">${dateKey}</td>
+                    
+                    <td class="p-1">
+                        <select name="timesheet[${dateKey}][holiday_id]" 
+                                class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-28 font-sans focus:ring-1 focus:ring-blue-500">
+                            ${holidayOptions}
+                        </select>
+                    </td>
+
+                    <td class="p-1">
+                        <select name="timesheet[${dateKey}][pay_cat]" 
+                                class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-24 font-sans focus:ring-1 focus:ring-blue-500 font-medium">
+                            <option value="R" ${log.pay_cat === 'R' || !log.pay_cat ? 'selected' : ''}>R - Regular</option>
+                            <option value="A" ${log.pay_cat === 'A' ? 'selected' : ''}>A - Absent</option>
+                            <option value="N" ${log.pay_cat === 'N' ? 'selected' : ''}>N - Not Included</option>
+                        </select>
+                    </td>
+
+                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][time_in]" value="${convertTo24HourTime(log.time_in)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
+                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][break_out]" value="${convertTo24HourTime(log.break_out)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
+                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][break_in]" value="${convertTo24HourTime(log.break_in)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
+                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][time_out]" value="${convertTo24HourTime(log.time_out)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
+                    
+                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][regular_hours]" value="${parseFloat(log.acquired_hours || 0).toFixed(2)}" class="w-16 p-1 text-right border border-gray-300 rounded text-[11px]"></td>
+                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][overtime_hours]" value="${parseFloat(log.overtime || 0) > 0 ? parseFloat(log.overtime).toFixed(2) : '0.00'}" class="w-16 p-1 text-right border border-blue-200 rounded text-blue-600 text-[11px]"></td>
+                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][late_undertime_hours]" value="${parseFloat(log.late_undertime || 0) > 0 ? parseFloat(log.late_undertime).toFixed(2) : '0.00'}" class="w-16 p-1 text-right border border-red-200 rounded text-red-600 text-[11px]"></td>
+                `;
+                    tsBody.appendChild(tr);
+                });
+
+                // FIXED: Loops for mapping existing records extract and forward their true master table relational foreign keys 
+
+                // 1. Bind Adjustment Fields
+                const adjBody = document.getElementById('m_list_adjustments');
+                adjBody.innerHTML = adjustments.length === 0 ? '<tr><td class="py-2 text-gray-400 italic text-center">No adjustments recorded</td></tr>' : '';
+                adjustments.forEach(item => {
+                    const name = item.adjustment_name ? item.adjustment_name.name : 'Adjustment Entry';
+                    const lookupId = item.adjustment_id;
+                    adjBody.insertAdjacentHTML('beforeend', createDynamicRowHtml('adjustments', item.id, name, item.amount, false, lookupId));
+                });
+
+                // 2. Bind Statutory Contribution logs
+                const govBody = document.getElementById('m_list_govdeductions');
+                govBody.innerHTML = govDeductions.length === 0 ? '<tr><td class="py-2 text-gray-400 italic text-center">No collections itemized</td></tr>' : '';
+                govDeductions.forEach(item => {
+                    const title = item.gov_deduction ? item.gov_deduction.title : 'Statutory Deduction';
+                    let masterAmount = item.gov_deduction ? parseFloat(item.gov_deduction.amount || 0) : 0;
+                    let fineTunedAmount = (masterAmount > 0) ? masterAmount : parseFloat(item.amount || 0);
+                    const lookupId = item.gov_deduction_id;
+                    govBody.insertAdjacentHTML('beforeend', createDynamicRowHtml('gov_deductions', item.id, title, fineTunedAmount, false, lookupId));
+                });
+
+                // 3. Bind Custom Miscellaneous Loans fields
+                const othBody = document.getElementById('m_list_otherdeductions');
+                othBody.innerHTML = otherDeductions.length === 0 ? '<tr><td class="py-2 text-gray-400 italic text-center">No loans recorded</td></tr>' : '';
+                otherDeductions.forEach(item => {
+                    const title = item.other_deduction ? item.other_deduction.title : 'Company Deduction';
+                    const lookupId = item.other_deduction_id;
+                    othBody.insertAdjacentHTML('beforeend', createDynamicRowHtml('other_deductions', item.id, title, item.amount, false, lookupId));
+                });
+
+                modalEl.classList.remove('hidden');
+                modalEl.classList.add('flex');
+            });
+        });
     </script>
 </body>
 
