@@ -86,19 +86,17 @@ class PayrollSummaryController extends Controller
             // Initialize total overtime for the current employee
             $totalPeriodOvertime = 0.00;
             foreach ($periodDates as $date) {
+                // 🚀 Checks if this employee already has records under this specific period
                 $dayLogs = $empLogs->get($date, collect());
                 $timeIn = null;
                 $timeOut = null;
                 if ($dayLogs->isNotEmpty()) {
                     // 1. Sort logs chronologically to accurately target the outer boundaries
                     $sortedLogs = $dayLogs->sortBy('recorded_at');
-
                     $firstLog = $sortedLogs->first();
                     $lastLog = $sortedLogs->last();
-
                     $firstTime = Carbon::parse($firstLog->recorded_at);
                     $lastTime = Carbon::parse($lastLog->recorded_at);
-
                     // 2. If they have only 1 punch, or first/last are the exact same database entry, skip timeout
                     if ($sortedLogs->count() === 1 || $firstLog->id === $lastLog->id) {
                         $timeIn = $firstTime->format('h:i A');
@@ -109,13 +107,11 @@ class PayrollSummaryController extends Controller
                         $timeOut = $lastTime->format('h:i A');
                     }
                 }
-
                 // Variable initialization for database recording
                 $overtime = 0.00;
                 $acquiredHours = 0.00;
                 $lateUndertime = 0.00;
                 $payType = 'REGULAR';
-
                 // Scenario Evaluation
                 if ($dayLogs->isEmpty()) {
                     $display = 'A'; // Scenario A: No logs at all
@@ -129,13 +125,10 @@ class PayrollSummaryController extends Controller
                     // Scenario C: Completed punches
                     $carbonIn = Carbon::parse("$date $timeIn");
                     $carbonOut = Carbon::parse("$date $timeOut");
-
                     $grossHours = $carbonIn->diffInMinutes($carbonOut) / 60;
                     if ($grossHours > 5) $grossHours -= 1; // standard lunch break deduction
-
                     $totalComputedHours = round($grossHours, 2);
                     $standardShiftHours = 8.00;
-
                     if ($totalComputedHours >= $standardShiftHours) {
                         $acquiredHours = $standardShiftHours;
                         $overtime = $totalComputedHours - $standardShiftHours;
@@ -162,20 +155,26 @@ class PayrollSummaryController extends Controller
                     'break_out' => null,
                     'break_in'  => null,
                 ];
-
-                PayrollReport::updateOrCreate(
-                    [
-                        'dateperiod_id' => $period->id,
-                        'employee_id'   => $employee->employeeid,
-                        'date_entry'    => $date,
-                    ],
-                    [
-                        'paytype'        => $payType,
-                        'acquired_hours' => $acquiredHours,
-                        'overtime'       => $overtime,
-                        'late_undertime' => $lateUndertime,
-                    ]
-                );
+                // Check if a report already exists for this employee, date, and period
+                $payrollReportExists = PayrollReport::where('employee_id', $employee->employeeid)
+                    ->where('dateperiod_id', $period->id)
+                    ->where('date_entry', $date)
+                    ->exists();
+                // If it already exists, skip processing the rest of this loop cycle
+                if ($payrollReportExists) {
+                    continue;
+                }
+                // Otherwise, it's safe to create it!
+                PayrollReport::create([
+                    'dateperiod_id'  => $period->id,
+                    'employee_id'    => $employee->employeeid,
+                    'date_entry'     => $date,
+                    'cat_id'         => 0,
+                    'paytype'        => $payType,
+                    'acquired_hours' => $acquiredHours,
+                    'overtime'       => $overtime,
+                    'late_undertime' => $lateUndertime,
+                ]);
             }
         }
         // Fetch flat modifications mapping
@@ -333,6 +332,9 @@ class PayrollSummaryController extends Controller
 
     public function updateBatch(Request $request)
     {
+
+        // dd($request->input('timesheet'));
+        $validationErrors = [];
         // 1. Validate incoming data framework context requirements
         $request->validate([
             'employee_id' => 'required',
@@ -340,6 +342,19 @@ class PayrollSummaryController extends Controller
         ]);
         $employeeId = $request->input('employee_id');
         $periodCode = $request->input('period_code');
+        $datePeriod = DatePeriod::where('code', $periodCode)->first();
+        if (!$datePeriod) {
+            $validationErrors[] = "The selected payroll cutoff period code ({$periodCode}) is invalid or does not exist.";
+        }
+        $employeeData = Employee::where('employeeid', $employeeId)
+            ->where('status', true)
+            ->first();
+        if (!$employeeData) {
+            $validationErrors[] = "Select Employee has an ID: ({$employeeId}) , currently is in inactive status";
+        }
+        if (!empty($validationErrors)) {
+            return redirect()->back()->withErrors($validationErrors);
+        }
         // 2. Wrap operations inside a single transaction isolation database block
         DB::beginTransaction();
         try {
@@ -426,10 +441,132 @@ class PayrollSummaryController extends Controller
                     ]);
                 }
             }
-
             // ==========================================
             // SUB-SECTION 4: PROCESS DAILY TIMESHEETS
             // ==========================================
+            $startRange = Carbon::parse($datePeriod->datefrom)->startOfDay();
+            $endRange = Carbon::parse($datePeriod->dateto)->endOfDay();
+            DB::table('attendance_logs')
+                ->where('user_id', $employeeId)
+                ->whereBetween('recorded_at', [$startRange, $endRange])
+                ->delete();
+            DB::table('payroll_reports')
+                ->where('employee_id', $employeeId)
+                ->where('dateperiod_id', $datePeriod->id)
+                ->delete();
+            DB::table('payroll_summary_reports')
+                ->where('employee_id', $employeeId)
+                ->where('dateperiod_id', $datePeriod->id)
+                ->delete();
+            // =========================================================================
+            // PROCESS 2: Insert fresh rows based on the requested matrix payload
+            // =========================================================================
+            $EmpBasicPay = 0.0;
+            $Finaltotalhours = 0.0;
+            $Finaltotalovertime = 0.0;
+            $Finaltotalabsent = 0.0;
+            $Finallateundertime = 0.0;
+            $Finaltotaldeductionn = 0.0;
+            $Finaltotalearnings = 0.0;
+            $Finaltotaladjustment = 0.0;
+            $Finaltotalnetpay = 0.0;
+            foreach ($employeeData->earningsData as $datass) {
+                $earningsCat = Category::where('id', $datass->title)->first();
+                if (strtoupper($earningsCat->name) === 'BASIC') {
+                    $EmpBasicPay += (float)($datass->amount ?? 0.0);
+                }
+            }
+            if ($request->has('timesheet')) {
+                foreach ($request->input('timesheet') as $dateKey => $data) {
+                    $payCat = $data['pay_cat'] ?? 'R';
+                    // RULE B: If category is Regular (R), enforce validation requirements
+                    if ($payCat === 'R') {
+                        if (empty($data['time_in']) || empty($data['time_out'])) {
+                            $validationErrors[] = "Time In and Time Out fields are required for date: {$dateKey}.";
+                        }
+                    }
+                    // Gather all prospective time logs into a tracking map array
+                    $timeLogsMap = [
+                        'time_in'   => $data['time_in']   ?? null,
+                        'break_out' => $data['break_out'] ?? null,
+                        'break_in'  => $data['break_in']  ?? null,
+                        'time_out'  => $data['time_out']  ?? null,
+                    ];
+                    // Loop through all 4 slots and insert them dynamically if they contain a valid value
+                    foreach ($timeLogsMap as $slotKey => $timeValue) {
+                        // Skip if the slot is completely empty (handles your break-out/break-in null rule)
+                        if (empty($timeValue)) {
+                            continue;
+                        }
+
+                        // Define the map matching your verification mode specifications
+                        $verificationModeMap = [
+                            'time_in'   => 0,
+                            'time_out'  => 1,
+                            'break_out' => 2,
+                            'break_in'  => 3,
+                        ];
+                        // Fallback to 0 if a key is somehow completely unmatched
+                        $verificationMode = $verificationModeMap[$slotKey] ?? 0;
+                        $dateTimeString = Carbon::parse("{$dateKey} {$timeValue}")->toDateTimeString();
+                        $isSavedA = DB::table('attendance_logs')->insert([
+                            'user_id'           => $employeeId,
+                            'recorded_at'       => $dateTimeString,
+                            'status'            => 1, // default(1)
+                            'verification_mode' => $verificationMode, // Dynamic assignment based on current slot context
+                            'work_code'         => 1, // default(1)
+                            'reserved'          => 0, // default(0)
+                            'project_code'      => $employeeData->project_id,
+                            'created_at'        => now(),
+                            'updated_at'        => now()
+                        ]);
+                        if (!$isSavedA) {
+                            $validationErrors[] = "Data not created successfully to attendance logs for date: {$dateKey}.";
+                        }
+                    }
+                    // dd($data['regular_hours']);
+                    $isSavedB = DB::table('payroll_reports')->insert([
+                        'dateperiod_id' => $datePeriod->id,
+                        'employee_id'   => $employeeId,
+                        'date_entry'    => $dateKey, //this one is date only,   $dateKey
+                        'paytype'       => $data['pay_cat'],
+                        'overtime'      => $data['overtime_hours'],
+                        'acquired_hours' => $data['regular_hours'],
+                        'late_undertime' => $data['late_undertime_hours'],
+                        'cat_id'        => $data['holiday_id'],
+                        'created_at'      => now(),
+                        'updated_at'      => now()
+                    ]);
+                    if (!$isSavedB) {
+                        $validationErrors[] = "Data not created successfully to payroll reports for date: {$dateKey}.";
+                    }
+                }
+
+
+                // $isSavedC = DB::table('payroll_summary_reports')->insert([
+                //     'dateperiod_id' => $datePeriod->id,
+                //     'employee_id'   => $employeeId,
+                //     'totalhours'    => '', //this one is date only,
+                //     'totalovertime'       => $data['regular_hours'],
+                //     'totalabsent'      => $data['regular_hours'],
+                //     'lateundertime' => $data['regular_hours'],
+                //     'totaldeductionn' => $data['late_undertime_hours'],
+                //     'totalearnings'        => $data['holiday_id'],
+                //     'totaladjustment'        => $data['holiday_id'],
+                //     'totalnetpay'        => $data['holiday_id']
+                // ]);
+                // if (!$isSavedC) {
+                //     $validationErrors[] = "Data not created successfully for payroll summary";
+                // }
+            }
+
+
+            // =========================================================================
+            // PROCESS 3: Return Universal Success Response
+            // =========================================================================
+            // This works perfectly for both standard page redirects and AJAX fetch requests
+
+
             // if ($request->has('timesheet')) {
             //     foreach ($request->input('timesheet') as $dateKey => $hoursData) {
             //         // Normalize standard nullable baseline structures or treat as zero string floats
@@ -451,8 +588,13 @@ class PayrollSummaryController extends Controller
             // }
 
             // Everything executed perfectly, commit work safely
+            if (!empty($validationErrors)) {
+                DB::rollBack();
+                $validationErrors[] = "Payroll details for ({$employeeData->lastname} , {$employeeData->firstname} {$employeeData->middlename}), has and error";
+                return redirect()->back()->withErrors($validationErrors);
+            }
             DB::commit();
-            return redirect()->back()->with('success', 'Payroll ledger data matrix successfully synchronized.');
+            return redirect()->back()->with('success', 'Attendance matrix logs processed and saved cleanly.');
         } catch (Exception $e) {
             // Something broke down under load, discard changes instantly
             DB::rollBack();
@@ -461,7 +603,8 @@ class PayrollSummaryController extends Controller
                 'period_code' => $periodCode
             ]);
 
-            return redirect()->back()->withInput()->with('error', 'Critical accounting processing mismatch error: ' . $e->getMessage());
+            $validationErrors[] = 'Critical database error Sql Exception';
+            return redirect()->back()->withErrors($validationErrors);
         }
     }
 }

@@ -61,6 +61,18 @@ class Employee extends Model
         return $this->hasMany(Earnings::class, 'employee_id', 'employeeid')->where('status', true);
     }
 
+    // Inside Employee Model
+    public function earningCategories()
+    {
+        return $this->hasManyThrough(
+            Category::class,     // The ultimate model you want to access
+            Earnings::class,     // The intermediate model
+            'employee_id',       // Foreign key on the Earnings table
+            'id',                // Foreign key on the Category table
+            'employeeid',        // Local key on the Employee table
+            'title'              // Local key on the Earnings table that points to Category ID
+        )->where('earnings.status', true); // Keeps your condition for active earnings
+    }
 
 
     public function empStat()

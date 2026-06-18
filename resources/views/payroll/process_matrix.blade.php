@@ -28,8 +28,9 @@
 </head>
 
 <body class="bg-gray-100 p-6">
-
+    <!-- SUCCESS AND ERROR MESSAGE -->
     <div class="max-w-full mx-auto bg-white shadow-md rounded-lg overflow-hidden flex flex-col">
+
         <div class="p-4 bg-amber-50 border-l-4 border-amber-500 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div>
                 <h2 class="text-sm font-bold text-gray-800 tracking-wide uppercase">Payroll Processing Interface</h2>
@@ -42,6 +43,38 @@
                 Close Tab
             </button>
         </div>
+        <br>
+        <!-- SESSION ALERTS (For Traditional Form Submissions) -->
+        <div class="mb-4 px-4">
+            @if(session('success'))
+            <div class="bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded shadow-sm text-emerald-800 text-xs font-medium flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {{ session('success') }}
+                </span>
+                <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 font-bold">&times;</button>
+            </div>
+            @endif
+            @if($errors->any())
+            <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded shadow-sm text-red-800 text-xs">
+                <div class="font-bold mb-1 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    Please correct the following validation errors:
+                </div>
+                <ul class="list-disc pl-5 space-y-0.5 font-medium">
+                    @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+        </div>
+        <div id="modal_js_alerts" class="mb-4 px-4 hidden"></div>
+        <!--END SUCCESS AND ERROR MESSAGE -->
 
         <div class="overflow-x-auto custom-scrollbar w-full relative">
             <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
@@ -93,6 +126,8 @@
                     $dayData = $empTimesheetRecords[$dKey] ?? [];
 
                     $reportMetrics[$dKey] = [
+                    'paytype' => $report['paytype'] ?? null,
+                    'cat_id' => $report['cat_id'] ?? null,
                     'time_in' => $dayData['time_in'] ?? null,
                     'break_out' => $dayData['break_out'] ?? null,
                     'break_in' => $dayData['break_in'] ?? null,
@@ -216,10 +251,8 @@
                                 <thead class="bg-gray-100 sticky top-0 border-b border-gray-200 text-gray-600 font-semibold z-10">
                                     <tr>
                                         <th class="p-2">Date Frame</th>
-
                                         <th class="p-1">Pay Type</th>
                                         <th class="p-1">Pay Cat</th>
-
                                         <th class="p-1">Time In</th>
                                         <th class="p-1">Break Out</th>
                                         <th class="p-1">Break In</th>
@@ -477,49 +510,106 @@
                 tsBody.innerHTML = '';
 
                 Object.entries(timesheets).forEach(([dateKey, log]) => {
+                    console.log(log.cat_id);
                     let holidayOptions = '';
+
+                    // Find the default/regular holiday ID (usually the one with 0% percentage or no cat_id)
+                    let defaultHolidayId = '';
                     holidayMaster.forEach(holiday => {
-                        const isSelected = (log.holiday_id == holiday.id || (!log.holiday_id && parseFloat(holiday.percentage) === 0));
+                        if (parseFloat(holiday.percentage) === 0) {
+                            defaultHolidayId = holiday.id;
+                        }
+                        const isSelected = (log.cat_id == holiday.id || (!log.cat_id && parseFloat(holiday.percentage) === 0));
                         holidayOptions += `
-                        <option value="${holiday.id}" data-rate="${holiday.percentage}" ${isSelected ? 'selected' : ''}>
-                            ${holiday.type} (${parseInt(holiday.percentage)}%)
-                        </option>`;
+                            <option value="${holiday.id}" data-rate="${holiday.percentage}" ${isSelected ? 'selected' : ''}>
+                                ${holiday.type} (${parseInt(holiday.percentage)}%)
+                            </option>`;
                     });
+
+                    // Pre-calculate clean strings for your backup values
+                    const originalHolidayId = log.cat_id || defaultHolidayId;
+                    const originalTimeIn = convertTo24HourTime(log.time_in);
+                    const originalBreakOut = convertTo24HourTime(log.break_out);
+                    const originalBreakIn = convertTo24HourTime(log.break_in);
+                    const originalTimeOut = convertTo24HourTime(log.time_out);
+                    const originalRegHours = parseFloat(log.acquired_hours || 0).toFixed(2);
+                    const originalOtHours = parseFloat(log.overtime || 0) > 0 ? parseFloat(log.overtime).toFixed(2) : '0.00';
+                    const originalLateHours = parseFloat(log.late_undertime || 0) > 0 ? parseFloat(log.late_undertime).toFixed(2) : '0.00';
 
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50 text-gray-700 timesheet-row border-b border-gray-100";
                     tr.dataset.date = dateKey;
                     tr.innerHTML = `
-                    <td class="p-2 text-left font-semibold text-gray-900 bg-gray-50 whitespace-nowrap">${dateKey}</td>
-                    
-                    <td class="p-1">
-                        <select name="timesheet[${dateKey}][holiday_id]" 
-                                class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-28 font-sans focus:ring-1 focus:ring-blue-500">
-                            ${holidayOptions}
-                        </select>
-                    </td>
-
-                    <td class="p-1">
-                        <select name="timesheet[${dateKey}][pay_cat]" 
-                                class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-24 font-sans focus:ring-1 focus:ring-blue-500 font-medium">
-                            <option value="R" ${log.pay_cat === 'R' || !log.pay_cat ? 'selected' : ''}>R - Regular</option>
-                            <option value="A" ${log.pay_cat === 'A' ? 'selected' : ''}>A - Absent</option>
-                            <option value="N" ${log.pay_cat === 'N' ? 'selected' : ''}>N - Not Included</option>
-                        </select>
-                    </td>
-
-                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][time_in]" value="${convertTo24HourTime(log.time_in)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
-                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][break_out]" value="${convertTo24HourTime(log.break_out)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
-                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][break_in]" value="${convertTo24HourTime(log.break_in)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
-                    <td class="p-1"><input type="time" name="timesheet[${dateKey}][time_out]" value="${convertTo24HourTime(log.time_out)}" class="w-full p-1 border border-gray-300 rounded text-[11px]"></td>
-                    
-                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][regular_hours]" value="${parseFloat(log.acquired_hours || 0).toFixed(2)}" class="w-16 p-1 text-right border border-gray-300 rounded text-[11px]"></td>
-                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][overtime_hours]" value="${parseFloat(log.overtime || 0) > 0 ? parseFloat(log.overtime).toFixed(2) : '0.00'}" class="w-16 p-1 text-right border border-blue-200 rounded text-blue-600 text-[11px]"></td>
-                    <td class="p-1"><input type="number" step="0.01" name="timesheet[${dateKey}][late_undertime_hours]" value="${parseFloat(log.late_undertime || 0) > 0 ? parseFloat(log.late_undertime).toFixed(2) : '0.00'}" class="w-16 p-1 text-right border border-red-200 rounded text-red-600 text-[11px]"></td>
-                `;
+                        <td class="p-2 text-left font-semibold text-gray-900 bg-gray-50 whitespace-nowrap">${dateKey}</td>
+                        <td class="p-1">
+                            <select name="timesheet[${dateKey}][holiday_id]" 
+                                    data-backup="${originalHolidayId}"
+                                    ${log.paytype === 'A' ? 'disabled' : ''}
+                                    class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-28 font-sans focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100">
+                                ${holidayOptions}
+                            </select>
+                        </td>
+                        <td class="p-1">
+                            <select name="timesheet[${dateKey}][pay_cat]" 
+                                    onchange="handlePayCatChange(this)"
+                                    class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-24 font-sans focus:ring-1 focus:ring-blue-500 font-medium">
+                                <option value="R" ${log.paytype === 'R' || !log.paytype ? 'selected' : ''}>REGULAR</option>
+                                <option value="A" ${log.paytype === 'A' ? 'selected' : ''}>ABSENT</option>
+                                <option value="N" ${log.paytype === 'N' ? 'selected' : ''}>NOT-INCLUDED</option>
+                            </select>
+                        </td>
+                        <td class="p-1">
+                            <input type="time" name="timesheet[${dateKey}][time_in]" 
+                                data-backup="${originalTimeIn}"
+                                value="${log.paytype === 'A' ? '' : originalTimeIn}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="time" name="timesheet[${dateKey}][break_out]" 
+                                data-backup="${originalBreakOut}"
+                                value="${log.paytype === 'A' ? '' : originalBreakOut}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="time" name="timesheet[${dateKey}][break_in]" 
+                                data-backup="${originalBreakIn}"
+                                value="${log.paytype === 'A' ? '' : originalBreakIn}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="time" name="timesheet[${dateKey}][time_out]" 
+                                data-backup="${originalTimeOut}"
+                                value="${log.paytype === 'A' ? '' : originalTimeOut}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="number" step="0.01" name="timesheet[${dateKey}][regular_hours]" 
+                                data-backup="${originalRegHours}"
+                                value="${log.paytype === 'A' ? '0.00' : originalRegHours}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-16 p-1 text-right border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="number" step="0.01" name="timesheet[${dateKey}][overtime_hours]" 
+                                data-backup="${originalOtHours}"
+                                value="${log.paytype === 'A' ? '0.00' : originalOtHours}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-16 p-1 text-right border border-blue-200 rounded text-blue-600 text-[11px] disabled:bg-gray-100">
+                        </td>
+                        <td class="p-1">
+                            <input type="number" step="0.01" name="timesheet[${dateKey}][late_undertime_hours]" 
+                                data-backup="${originalLateHours}"
+                                value="${log.paytype === 'A' ? '0.00' : originalLateHours}" 
+                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                class="w-16 p-1 text-right border border-red-200 rounded text-red-600 text-[11px] disabled:bg-gray-100">
+                        </td>
+                        `;
                     tsBody.appendChild(tr);
                 });
-
                 // FIXED: Loops for mapping existing records extract and forward their true master table relational foreign keys 
 
                 // 1. Bind Adjustment Fields
@@ -555,6 +645,100 @@
                 modalEl.classList.add('flex');
             });
         });
+
+        // Call this function inside your JavaScript form submission catch/then blocks:
+        function showModalAlert(type, messageOrArray) {
+            const alertBox = document.getElementById('modal_js_alerts');
+            if (!alertBox) return;
+
+            alertBox.innerHTML = ''; // Reset
+            alertBox.classList.remove('hidden');
+
+            if (type === 'success') {
+                alertBox.className = "mb-4 px-4";
+                alertBox.innerHTML = `
+            <div class="bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded text-emerald-800 text-xs font-medium flex items-center justify-between">
+                <span>${messageOrArray}</span>
+                <button type="button" onclick="this.parentElement.parentElement.classList.add('hidden')" class="font-bold">&times;</button>
+            </div>`;
+            } else if (type === 'error') {
+                alertBox.className = "mb-4 px-4";
+
+                let errorsList = '';
+                if (Array.isArray(messageOrArray)) {
+                    errorsList = `<ul class="list-disc pl-5 mt-1 space-y-0.5 font-medium">${messageOrArray.map(e => `<li>${e}</li>`).join('')}</ul>`;
+                } else {
+                    errorsList = `<p class="font-medium mt-0.5">${messageOrArray}</p>`;
+                }
+
+                alertBox.innerHTML = `
+            <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded text-red-800 text-xs">
+                <span class="font-bold">Execution Error Encountered:</span>
+                ${errorsList}
+            </div>`;
+            }
+        }
+
+        function handlePayCatChange(selectElement) {
+            const row = selectElement.closest('tr');
+            if (!row) return;
+            // Targets both inputs and dropdowns inside the row
+            const elements = row.querySelectorAll('input, select');
+            if (selectElement.value === 'A') {
+                // Turning to ABSENT: Disable and clear
+                elements.forEach(el => {
+                    // Skip the current active dropdown so the user can change it back later
+                    if (el === selectElement) return;
+
+                    if (el.tagName === 'SELECT') {
+                        // For holiday select, you can default it to your basic selection or just leave it empty
+                        el.value = el.dataset.backup || el.options[0].value;
+                    } else {
+                        el.value = el.type === 'number' ? '0.00' : '';
+                    }
+                    el.disabled = true;
+                });
+            } else {
+                // Turning back to REGULAR/Other: Re-enable and restore backup data
+                elements.forEach(el => {
+                    el.disabled = false;
+
+                    // Extract and restore data from the data-backup attribute
+                    if (el.dataset.backup !== undefined) {
+                        el.value = el.dataset.backup;
+                    }
+                });
+            }
+        }
+
+        function validateInput(inputElement) {
+            const row = inputElement.closest('tr');
+            if (!row) return;
+
+            // Check the current status of the Pay Category dropdown in this row
+            const payCatSelect = row.querySelector('select[name*="[pay_cat]"]');
+            const isAbsent = payCatSelect && payCatSelect.value === 'A';
+
+            // If it's not Absent and the user left the input completely blank
+            if (!isAbsent && !inputElement.value) {
+                // Add visual indicator (Red border)
+                inputElement.classList.add('border-red-500', 'bg-red-50');
+                inputElement.classList.remove('border-gray-300');
+
+                // Human-readable field name from the name attribute (e.g., "break_out")
+                const fieldName = inputElement.name.split('[').pop().replace(']', '').replace('_', ' ').toUpperCase();
+                const dateKey = row.dataset.date || '';
+
+                alert(`The field "${fieldName}" for ${dateKey} is required when status is REGULAR.`);
+
+                // Optional: Put focus back onto the empty field
+                setTimeout(() => inputElement.focus(), 10);
+            } else {
+                // Clean up red highlights if they fix it or if row is absent
+                inputElement.classList.remove('border-red-500', 'bg-red-50');
+                inputElement.classList.add('border-gray-300');
+            }
+        }
     </script>
 </body>
 

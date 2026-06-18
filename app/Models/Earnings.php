@@ -28,8 +28,12 @@ class Earnings extends Model
         return $this->belongsTo(Employee::class, 'employee_id', 'employeeid');
     }
 
+    // public function category()
+    // {
+    //     return $this->belongsTo(Category::class, 'title', 'id');
+    // }
     public function category()
     {
-        return $this->belongsTo(Category::class, 'title', 'id');
+        return $this->belongsTo(Category::class);
     }
 }

@@ -23,6 +23,7 @@ class PayrollReport extends Model
         'overtime',
         'acquired_hours',
         'late_undertime',
+        'cat_id'
     ];
 
     protected function casts(): array
