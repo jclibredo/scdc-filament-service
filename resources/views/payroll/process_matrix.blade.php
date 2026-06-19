@@ -154,7 +154,7 @@
                                         data-adjustments="{{ json_encode($empAdjustments) }}"
                                         data-govdeductions="{{ json_encode($empGovDeductions) }}"
                                         data-otherdeductions="{{ json_encode($empOtherDeductions) }}">
-                                        📝 Open Modal
+                                        📝 Update Details
                                     </button>
                                 </div>
                             </div>
@@ -178,12 +178,16 @@
                         $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
                         $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
                         @endphp
-                        <td class="border border-gray-300 p-1 text-center">{{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}</td>
+                        <td class="border border-gray-300 p-1 text-center">
+                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}</td>
                         @endforeach
-
-                        <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">{{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}</td>
-                        <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">{{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}</td>
-                        <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">0.00</td>
+                        <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
+                            {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}</td>
+                        <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                            {{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}</td>
+                        <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
+                        </td>
 
                         @forelse($deductions as $deduction)
                         @php
@@ -206,9 +210,15 @@
                         <td class="border border-gray-300 p-1 text-right">
                             {{ number_format($employee->adjustmentData->sum('amount'), 2) }}
                         </td>
-                        <td class="border border-gray-300 p-1 text-right">0.00</td>
-                        <td class="border border-gray-300 p-1 text-right">0.00</td>
-                        <td class="border border-gray-300 p-2 bg-green-100 font-bold text-green-900 text-right">0.00</td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totaldeductionn'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('grosspay'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-100 font-bold text-green-900 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totalnetpay'), 2) }}
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -544,7 +554,7 @@
                         <td class="p-1">
                             <select name="timesheet[${dateKey}][holiday_id]" 
                                     data-backup="${originalHolidayId}"
-                                    ${log.paytype === 'A' ? 'disabled' : ''}
+                                    ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''}
                                     class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-28 font-sans focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100">
                                 ${holidayOptions}
                             </select>
@@ -561,50 +571,53 @@
                         <td class="p-1">
                             <input type="time" name="timesheet[${dateKey}][time_in]" 
                                 data-backup="${originalTimeIn}"
-                                value="${log.paytype === 'A' ? '' : originalTimeIn}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype === 'N') ? '' : originalTimeIn}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
                             <input type="time" name="timesheet[${dateKey}][break_out]" 
                                 data-backup="${originalBreakOut}"
-                                value="${log.paytype === 'A' ? '' : originalBreakOut}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '' : originalBreakOut}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
                             <input type="time" name="timesheet[${dateKey}][break_in]" 
                                 data-backup="${originalBreakIn}"
-                                value="${log.paytype === 'A' ? '' : originalBreakIn}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '' : originalBreakIn}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
                             <input type="time" name="timesheet[${dateKey}][time_out]" 
                                 data-backup="${originalTimeOut}"
-                                value="${log.paytype === 'A' ? '' : originalTimeOut}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '' : originalTimeOut}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
-                            <input type="number" step="0.01" name="timesheet[${dateKey}][regular_hours]" 
+                            <input type="number" step="0.01" min="0" name="timesheet[${dateKey}][regular_hours]" 
                                 data-backup="${originalRegHours}"
-                                value="${log.paytype === 'A' ? '0.00' : originalRegHours}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '0.00' : originalRegHours}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
+                                oninput="if(this.value < 0) this.value = '0.00'"
                                 class="w-16 p-1 text-right border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
-                            <input type="number" step="0.01" name="timesheet[${dateKey}][overtime_hours]" 
+                            <input type="number" step="0.01" min="0" name="timesheet[${dateKey}][overtime_hours]" 
                                 data-backup="${originalOtHours}"
-                                value="${log.paytype === 'A' ? '0.00' : originalOtHours}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '0.00' : originalOtHours}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
+                                oninput="if(this.value < 0) this.value = '0.00'"
                                 class="w-16 p-1 text-right border border-blue-200 rounded text-blue-600 text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
-                            <input type="number" step="0.01" name="timesheet[${dateKey}][late_undertime_hours]" 
+                            <input type="number" step="0.01" min="0" name="timesheet[${dateKey}][late_undertime_hours]" 
                                 data-backup="${originalLateHours}"
-                                value="${log.paytype === 'A' ? '0.00' : originalLateHours}" 
-                                ${log.paytype === 'A' ? 'disabled' : ''} 
+                                value="${(log.paytype === 'A' || log.paytype ==='N') ? '0.00' : originalLateHours}" 
+                                ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
+                                oninput="if(this.value < 0) this.value = '0.00'"
                                 class="w-16 p-1 text-right border border-red-200 rounded text-red-600 text-[11px] disabled:bg-gray-100">
                         </td>
                         `;
@@ -684,7 +697,7 @@
             if (!row) return;
             // Targets both inputs and dropdowns inside the row
             const elements = row.querySelectorAll('input, select');
-            if (selectElement.value === 'A') {
+            if (selectElement.value === 'A' || selectElement.value === 'N') {
                 // Turning to ABSENT: Disable and clear
                 elements.forEach(el => {
                     // Skip the current active dropdown so the user can change it back later

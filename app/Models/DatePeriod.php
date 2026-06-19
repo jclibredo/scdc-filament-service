@@ -17,6 +17,7 @@ class DatePeriod extends Model
         'dateto',
         'status',
         'overtime_rate',
+        'partners',
     ];
     protected $casts = [
         'datefrom' => 'date',
@@ -24,6 +25,12 @@ class DatePeriod extends Model
         'status' => 'boolean',
         'overtime_rate' => 'float',
     ];
+
+    public function exrternalPartner()
+    {
+        return $this->belongsTo(Category::class, 'partners');
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

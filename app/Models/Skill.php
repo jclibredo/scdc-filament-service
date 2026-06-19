@@ -12,5 +12,9 @@ class Skill extends Model
     protected $fillable = [
         'title',
         'details',
+        'status',
+    ];
+    protected $casts = [
+        'status' => 'boolean',
     ];
 }

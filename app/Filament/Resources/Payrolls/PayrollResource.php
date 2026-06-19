@@ -72,11 +72,26 @@ class PayrollResource extends Resource
             ? Carbon::parse($datePerioDetails->datefrom)->format('M d, Y') : 'N/A';
         $enddate = $datePerioDetails->dateto
             ? Carbon::parse($datePerioDetails->dateto)->format('M d, Y') : 'N/A';
+
+        $partnerSession = session('session_partners');
         $details = [
             "DATE START: {$startdate}",
             "DATE END: {$enddate}",
             "EMP TYPE: {$emtype}",
             "EMP STATUS: {$emstat}",
+        ];
+        if ($partnerSession === 'ALL') {
+            $details[] = "SUBCON NAME : ALL";
+        } elseif ($partnerSession !== '0' && !empty($partnerSession)) {
+            $subconName = Category::where('id', $partnerSession)->value('name');
+            $details[] = "SUBCON NAME : " . ($subconName ? strtoupper($subconName) : 'N/A');
+        }
+        $details = [
+            "DATE START: {$startdate}",
+            "DATE END: {$enddate}",
+            "EMP TYPE: {$emtype}",
+            "EMP STATUS: {$emstat}",
+            "SUBCON NAME :"
         ];
         $formattedBadges = collect($details)
             ->map(fn($detail) => "
@@ -144,15 +159,40 @@ class PayrollResource extends Resource
                 if (! $user || ! $user->id) {
                     return Employee::whereRaw('1 = 0');
                 }
-                if (
-                    session('session_employeestatus')
-                    || session('session_employeetype')
-                ) {
-                    return Employee::query()->where('status', true);
+                // $datePeriodData = DatePeriod::where('code', session('session_periodcode'))
+                //     ->where('status', true)
+                //     ->first();
+                // if (
+                //     !session('session_employeestatus')
+                //     || !session('session_employeetype')
+                // ) {
+                //     return Employee::query()->where('status', true)
+                //         ->where('datehired', '<=', $datePeriodData->datefrom);
+                // }
+                // return Employee::where('empstatus', session('session_employeestatus'))
+                //     ->where('employeetype', session('session_employeetype'))
+                //     ->where('datehired', '<=', $datePeriodData->datefrom)
+                //     ->where('status', true);
+                // 1. Fetch the active date period
+                $datePeriodData = DatePeriod::where('code', session('session_periodcode'))
+                    ->where('status', true)
+                    ->first();
+                if (! $datePeriodData) {
+                    return Employee::query()->whereRaw('1 = 0');
                 }
-                return Employee::where('empstatus', session('session_employeestatus'))
-                    ->where('employeetype', session('session_employeetype'))
-                    ->where('status', true);
+                $query = Employee::query()
+                    ->where('status', true)
+                    ->where('datehired', '<=', $datePeriodData->datefrom);
+                if (! session('session_employeestatus') || ! session('session_employeetype')) {
+                    return $query;
+                }
+                $query->where('empstatus', session('session_employeestatus'))
+                    ->where('employeetype', session('session_employeetype'));
+                $partnerSession = session('session_partners');
+                if ($partnerSession && $partnerSession !== 'ALL') {
+                    $query->where('partners', $partnerSession);
+                }
+                return $query;
             })
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
@@ -190,15 +230,27 @@ class PayrollResource extends Resource
                         ->color('success')
                         ->form(function (Collection $records) {
                             $periodcode = session('session_periodcode');
+                            $partners = session('session_partners');
                             $employeeIds = $records->pluck('employeeid')->toArray();
-                            if (empty($employeeIds) || !$periodcode) {
+                            $existingInEarnings = [];
+                            if (!empty($employeeIds)) {
+                                $existingInEarnings = DB::table('earnings')
+                                    ->where('status', true)
+                                    ->whereIn('employee_id', $employeeIds) // Ensure this matches your earnings table column name
+                                    ->pluck('employee_id')
+                                    ->toArray();
+                            }
+                            // 2. Find if any of the selected employees are missing from that list
+                            $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
+                            if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
                                 $errorMessage = match (true) {
                                     empty($employeeIds) && !$periodcode => 'Both active session configurations and selected employees are missing.',
                                     empty($employeeIds) => 'No employees were selected. Please select at least one employee to process.',
                                     !$periodcode => 'Active session period code configuration is missing.',
+                                    // 🌟 Triggers if any selected employee ID was not found in the earnings table
+                                    !empty($existingInEarnings) => 'Processing failed. Some employee has no earnings record found for Employee IDs: ' . implode(', ', $missingInEarnings),
                                     default => 'An unexpected processing error occurred.'
                                 };
-
                                 return [
                                     Placeholder::make('warning_message')
                                         ->label(false)
@@ -232,9 +284,15 @@ class PayrollResource extends Resource
                         ->modalSubmitAction(function (Action $action, Collection $records) {
                             $periodcode = session('session_periodcode');
                             $employeeIds = $records->pluck('employeeid')->toArray();
-                            if (empty($employeeIds) || !$periodcode) {
-                                return $action->hidden();
-                            }
+                            $existingInEarnings = DB::table('earnings')
+                                ->where('status', true)
+                                ->whereIn('employee_id', $employeeIds) // Ensure this matches your earnings table column name
+                                ->pluck('employee_id')
+                                ->toArray();
+                            $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
+                            // if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
+                            //     return $action->hidden();
+                            // }
                             return $action
                                 ->label('Proceed')
                                 ->icon('heroicon-m-arrow-right-end-on-rectangle');
@@ -246,10 +304,11 @@ class PayrollResource extends Resource
                         ->action(function (BulkAction $action, Collection $records) {
                             $periodcode = session('session_periodcode');
                             $employeeIds = $records->pluck('employeeid')->toArray();
-
+                            $partnerss = session('session_partners') ?? 0;
                             $url = route('payroll.process-sheet', [
                                 'periodcode' => $periodcode,
                                 'employees' => $employeeIds,
+                                'expartners' => $partnerss,
                             ]);
 
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");

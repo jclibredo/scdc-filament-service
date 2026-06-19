@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -67,7 +68,30 @@ class DatePeriodResource extends Resource
                             })
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->required(),
+                        // 2. Dependent Sub. Contractor Field
+                        Select::make('partners')
+                            ->label('Sub. Contractor')
+                            ->options(function () {
+                                return Category::query()
+                                    ->where('cat', 'SUBCON')
+                                    ->pluck('name', 'id')
+                                    ->prepend('ALL', 'ALL');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->visible(function (Get $get) {
+                                $selectedId = $get('employeetype');
+                                if (! $selectedId) {
+                                    return false;
+                                }
+                                $category = Category::find($selectedId);
+                                return $category && strtoupper($category->name) === 'SUB-CON';
+                            })
+                            ->required(
+                                fn(Get $get) => ($cat = Category::find($get('employeetype'))) && strtoupper($cat->name) === 'SUB-CON'
+                            ),
                         Select::make('category_id')
                             ->label('Category')
                             ->options(function () {
@@ -247,6 +271,7 @@ class DatePeriodResource extends Resource
                         ->icon('heroicon-m-calculator')
                         ->action(function (DatePeriod $record) {
                             session(['session_periodcode' => $record->code]);
+                            session(['session_partners' => $record->partners]);
                             session(['session_employeetype' => $record->employeetype]);
                             session(['session_employeestatus' => $record->category_id]);
                             return redirect(PayrollResource::getUrl('index'));

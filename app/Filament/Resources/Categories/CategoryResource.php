@@ -55,6 +55,7 @@ class CategoryResource extends Resource
                                 'DEDUCTION' => 'Deduction',
                                 'EMPLOYEE_STATUS' => 'Employee Status',
                                 'EMPLOYEE_TYPE' => 'Employee Type',
+                                'SUBCON' => 'Sub-Contractor Details'
                             ])
                             // 💡 Optional: Makes it searchable if your options list grows later
                             ->searchable()

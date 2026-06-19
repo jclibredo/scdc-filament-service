@@ -1,0 +1,192 @@
+/* public/css/custom-filament.css */
+
+/* ========================================
+   GLOBAL THEME
+======================================== */
+
+:root {
+    /* Logo Colors */
+    --primary-color: #041f52;
+    --primary-light: #4f8df7;
+    --accent-color: #d89a2b;
+    /* Typography */
+    --app-font: "Poppins", sans-serif;
+    --app-font-size: 14px;
+    --sidebar-font-size: 14px;
+    --heading-font-size: 18px;
+}
+/* Active sidebar item icon */
+.fi-sidebar-item-active .fi-sidebar-item-icon,
+.fi-sidebar-item-active .fi-sidebar-item-label,
+.fi-sidebar-item-active svg {
+    color: #041f52 !important;
+}
+/* Global Font */
+body,
+.fi-body {
+    font-family: var(--app-font) !important;
+    font-size: var(--app-font-size) !important;
+}
+
+/* ========================================
+   SIDEBAR
+======================================== */
+
+.fi-sidebar {
+    background-color: var(--sidebar-bg);
+    font-size: var(--sidebar-font-size);
+}
+
+/* Navigation Labels */
+.fi-sidebar-item-label {
+    order: 2 !important;
+    padding-left: 0.5rem !important;
+    font-weight: 500;
+}
+
+/* Navigation Icons */
+.fi-sidebar-item-icon {
+    order: 1 !important;
+}
+
+/* Navigation Item Layout */
+.fi-sidebar-item-button {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+}
+
+/* Active Menu Item */
+.fi-sidebar-item-active {
+    background-color: var(--sidebar-active) !important;
+}
+
+/* Hover Effect */
+.fi-sidebar-item-button:hover {
+    background-color: var(--sidebar-hover) !important;
+}
+
+/* ========================================
+   SIDEBAR GROUPS
+======================================== */
+
+/* Group collapse icon appears after text */
+.fi-sidebar-group-collapse-button {
+    flex-direction: row-reverse !important;
+    justify-content: space-between !important;
+}
+
+/* ========================================
+   SIDEBAR HEADER
+======================================== */
+
+.fi-sidebar-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem;
+}
+
+/* Logo first */
+.fi-logo {
+    order: 1 !important;
+}
+
+/* Collapse button after logo */
+.fi-sidebar-header button {
+    order: 2 !important;
+}
+
+/* Smooth icon animation */
+.fi-sidebar-header button svg {
+    transition: transform 0.2s ease;
+}
+
+/* ========================================
+   TOPBAR
+======================================== */
+
+.fi-topbar {
+    font-family: var(--app-font) !important;
+}
+
+/* ========================================
+   PAGE CONTENT
+======================================== */
+
+.fi-main {
+    font-family: var(--app-font) !important;
+}
+
+/* Page Titles */
+.fi-header-heading,
+.fi-section-header-heading {
+    font-size: var(--heading-font-size) !important;
+    font-weight: 700 !important;
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+.fi-btn {
+    font-family: var(--app-font) !important;
+    font-weight: 600 !important;
+}
+
+/* ========================================
+   TABLES
+======================================== */
+
+.fi-ta {
+    font-size: 14px;
+}
+
+/* ========================================
+   FORMS
+======================================== */
+
+.fi-fo-field-wrp-label {
+    font-weight: 600 !important;
+}
+
+.fi-input,
+.fi-select-input {
+    font-size: 14px !important;
+}
+/* Active sidebar item */
+.fi-sidebar-item-active {
+    background-color: var(--primary-color) !important;
+}
+
+/* Hover state */
+.fi-sidebar-item-button:hover {
+    background-color: rgba(11, 126, 179, 0.12) !important;
+}
+
+/* Links */
+a {
+    color: var(--primary-color);
+}
+
+/* Page titles */
+.fi-header-heading,
+.fi-section-header-heading {
+    color: var(--primary-color) !important;
+    font-weight: 700 !important;
+}
+
+/* Primary buttons */
+.fi-btn-color-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+/* Primary button hover */
+.fi-btn-color-primary:hover {
+    background-color: var(--primary-light) !important;
+}
+
+/* Badge accents */
+.fi-badge {
+    color: var(--accent-color);
+}

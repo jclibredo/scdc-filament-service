@@ -18,6 +18,7 @@ class Holiday extends Model
         'type',
         'percentage',
         'details',
+        'status',
     ];
 
     /**
@@ -27,5 +28,6 @@ class Holiday extends Model
      */
     protected $casts = [
         'percentage' => 'decimal:2',
+        'status' => 'boolean',
     ];
 }

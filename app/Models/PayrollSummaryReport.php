@@ -25,6 +25,8 @@ class PayrollSummaryReport extends Model
         'totalearnings',
         'totaladjustment',
         'totalnetpay',
+        'grosspay',
+        'status'
     ];
 
 
@@ -39,6 +41,8 @@ class PayrollSummaryReport extends Model
             'totalearnings' => 'float',
             'totaladjustment' => 'float',
             'totalnetpay' => 'float',
+            'grosspay' => 'float',
+            'status' => 'boolean'
         ];
     }
 

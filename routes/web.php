@@ -59,7 +59,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('attendance-logs.store-double');
     Route::delete('/attendance-logs/destroy-day', [AttendanceLogController::class, 'destroyDayRaw'])
         ->name('attendance-logs.destroy-day');
-    Route::get('/payroll/process-sheet/{periodcode}', [PayrollSummaryController::class, 'showSheet'])
+    Route::get('/payroll/process-sheet/{periodcode}/{expartners}', [PayrollSummaryController::class, 'showSheet'])
         ->name('payroll.process-sheet');
     Route::put('/attendance-logs/update-batch', [AttendanceLogController::class, 'updateBatch'])
         ->name('attendance-logs.update-batch');

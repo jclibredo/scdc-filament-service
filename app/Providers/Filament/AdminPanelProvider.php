@@ -10,6 +10,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -31,10 +32,10 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Green,
             ])
-            ->brandLogo(asset('images/scdc_full.png'))
-            ->brandLogoHeight('7rem')
+            ->brandLogo(asset('images/scdc.jpg'))
+            ->brandLogoHeight('3.5rem')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
@@ -60,13 +61,13 @@ class AdminPanelProvider extends PanelProvider
             ->darkmode(false)
             ->spa()
             ->sidebarCollapsibleOnDesktop()
+            // ->assets([
+            //     Css::make('custom-sidebar-styles', asset('css/custom-filament.css')),
+            // ])
             ->maxContentWidth('full')
             ->authMiddleware([
                 Authenticate::class,
                 ClearSessionOutsideResources::class,
-                // fn($request, $next) => auth()->user()?->role === 'admin'
-                //     ? $next($request)
-                //     : redirect('/staff'),
             ]);
         // ->canAccess(function () {
         //     $user = auth()->user();

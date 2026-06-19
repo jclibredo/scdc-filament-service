@@ -8,7 +8,6 @@ use App\Filament\Resources\Employees\Pages\ListEmployees;
 // use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
-// use App\Models\Project;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -23,6 +22,7 @@ use Filament\Forms\Components\Toggle;
 // use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -85,6 +85,8 @@ class EmployeeResource extends Resource
                         Textarea::make('address')->rows(3),
                         DatePicker::make('datehired')->required(),
                         DatePicker::make('dateseperated'),
+
+
                         Select::make('employeetype')
                             ->label('Employee Type')
                             ->options(function () {
@@ -95,7 +97,30 @@ class EmployeeResource extends Resource
                             })
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->live(),
+
+                        // 2. Dependent Sub. Contractor Field
+                        Select::make('partners')
+                            ->label('Sub. Contractor')
+                            ->options(function () {
+                                return Category::query()
+                                    ->where('cat', 'SUBCON')
+                                    ->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->visible(function (Get $get) {
+                                $selectedId = $get('employeetype');
+                                if (! $selectedId) {
+                                    return false;
+                                }
+                                $category = Category::find($selectedId);
+                                return $category && strtoupper($category->name) === 'SUB-CON';
+                            })
+                            ->required(
+                                fn(Get $get) => ($cat = Category::find($get('employeetype'))) && strtoupper($cat->name) === 'SUB-CON'
+                            ),
 
 
                         Select::make('skill_id')
@@ -179,13 +204,6 @@ class EmployeeResource extends Resource
                     ->relationship('project', 'name')
                     ->preload()
                     ->placeholder('All Projects'),
-                // // FILTER: Project
-                // SelectFilter::make('project_id')
-                //     ->label('Project')
-                //     ->options(
-                //         Project::orderBy('name', 'asc')->pluck('name', 'id')
-                //     )
-                //     ->placeholder('Select Project'),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormWidth('2xl')
             ->actions([

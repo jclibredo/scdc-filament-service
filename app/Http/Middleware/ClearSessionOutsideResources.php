@@ -46,6 +46,7 @@ class ClearSessionOutsideResources
                 'session_employeestatus',
                 'session_employeetype',
                 'session_employee_id',
+                'session_partners',
                 'session_periodcode', // Just in case you have this one floating around too
             ]);
         }

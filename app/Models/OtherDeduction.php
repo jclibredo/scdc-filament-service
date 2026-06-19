@@ -15,5 +15,10 @@ class OtherDeduction extends Model
     protected $fillable = [
         'title',
         'description',
+        'status'
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
     ];
 }

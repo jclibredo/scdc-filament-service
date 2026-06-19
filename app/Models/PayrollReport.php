@@ -23,7 +23,8 @@ class PayrollReport extends Model
         'overtime',
         'acquired_hours',
         'late_undertime',
-        'cat_id'
+        'cat_id',
+        'status',
     ];
 
     protected function casts(): array
@@ -33,6 +34,7 @@ class PayrollReport extends Model
             'overtime' => 'float',
             'acquired_hours' => 'float',
             'late_undertime' => 'float',
+            'status' => 'boolean'
         ];
     }
 

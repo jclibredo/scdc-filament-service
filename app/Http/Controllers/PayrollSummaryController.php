@@ -23,8 +23,19 @@ use Illuminate\Support\Facades\Log;
 class PayrollSummaryController extends Controller
 {
 
-    public function showSheet(Request $request, String $periodcode)
+    public function showSheet(Request $request, String $periodcode, String $expartners)
     {
+        $subcon_query = Category::where('status', true)
+            ->get();
+        if (!$expartners === 'ALL' || $expartners === '0') {
+            $subcon_query->where('id', $expartners)
+                ->where('cat', 'SUBCON');
+        }
+        if ($expartners === 'ALL') {
+            $subcon_query->where('cat', 'SUBCON');
+        }
+
+
         $employeeids = $request->query('employees', []);
         $period = DatePeriod::where('code', $periodcode)->firstOrFail();
         $dateFrom = Carbon::parse($period->datefrom)->startOfDay();
@@ -48,7 +59,7 @@ class PayrollSummaryController extends Controller
             ->pluck('govDeduction.name') // Or your identifier column
             ->unique();
         // Inside your controller, update this section:   payrollReportsData
-        $employees = Employee::whereIn('employeeid', $employeeids)
+        $employee_query = Employee::whereIn('employeeid', $employeeids)
             ->with([
                 'project',
                 'empType',
@@ -68,6 +79,9 @@ class PayrollSummaryController extends Controller
                 },
                 'govdeductionData' => function ($query) use ($period) {
                     $query->where('date_period_id', $period->code)->with('govDeduction');
+                },
+                'payrollSummaryData' => function ($query) use ($period) {
+                    $query->where('dateperiod_id', $period->id);
                 }
             ])
             ->get();
@@ -79,10 +93,12 @@ class PayrollSummaryController extends Controller
             ->groupBy('user_id'); // Grouping by employee is CRITICAL
         $employeeTimesheets = [];
         // 6. Compute attendance per employee, per day
-        foreach ($employees as $employee) {
-            $empLogs = $rawLogs->get($employee->employeeid, collect())->groupBy(function ($log) {
-                return Carbon::parse($log->recorded_at)->toDateString();
-            });
+        foreach ($employee_query as $employee) {
+            $empLogs = $rawLogs
+                ->get($employee->employeeid, collect())
+                ->groupBy(function ($log) {
+                    return Carbon::parse($log->recorded_at)->toDateString();
+                });
             // Initialize total overtime for the current employee
             $totalPeriodOvertime = 0.00;
             foreach ($periodDates as $date) {
@@ -111,16 +127,16 @@ class PayrollSummaryController extends Controller
                 $overtime = 0.00;
                 $acquiredHours = 0.00;
                 $lateUndertime = 0.00;
-                $payType = 'REGULAR';
+                $payType = 'R';
                 // Scenario Evaluation
                 if ($dayLogs->isEmpty()) {
                     $display = 'A'; // Scenario A: No logs at all
                     $class = 'bg-yellow-50 font-bold text-amber-700 text-center';
-                    $payType = 'ABSENT';
+                    $payType = 'A';
                 } elseif (!$timeIn || !$timeOut) {
                     $display = 'N/A'; // Scenario B: Missed punch / Single punch entry
                     $class = 'bg-red-100 font-bold text-red-600 text-center';
-                    $payType = 'INCOMPLETE_LOGS';
+                    $payType = 'A';
                 } else {
                     // Scenario C: Completed punches
                     $carbonIn = Carbon::parse("$date $timeIn");
@@ -138,10 +154,8 @@ class PayrollSummaryController extends Controller
                         $overtime = 0.00;
                         $lateUndertime = $standardShiftHours - $totalComputedHours;
                     }
-
                     $display = number_format(min($acquiredHours, 8), 1); // Cap regular hours display at 8
                     $class = 'text-center';
-
                     // Accumulate overtime only on valid, completed punch days
                     $totalPeriodOvertime += $overtime;
                 }
@@ -217,38 +231,31 @@ class PayrollSummaryController extends Controller
             ->where('employee_id', $employee_id)
             ->where('date_period_id', $period_code)
             ->get();
-
         $govDeductions = GovDeductionLog::with('govDeduction')
             ->where('employee_id', $employee_id)
             ->where('date_period_id', $period_code)
             ->get();
-
         $otherDeductions = OtherDeductionLog::with('otherDeduction') // 💡 Eager load relationship here
             ->where('employee_id', $employee_id)
             ->where('date_period_id', $period_code)
             ->get();
-
         $earnings = Earnings::where('employee_id', $employee_id)
             ->where('status', true)
             ->get();
-
         // Extract raw basic pay number (or fallback to 0 if not found)
         $basicPayAmount = $earnings->firstWhere('category.name', 'BASIC')?->amount
             ?? $earnings->firstWhere('category_id', 1)?->amount
             ?? 0.00;
         $companyName = "SCDC Construction & Development Corp.";
-
         // 1. Fetch raw logs as before
         $rawLogs = Atlog::where('user_id', $employee_id)
             ->whereBetween('recorded_at', [$dateFrom, $dateTo])
             ->orderBy('recorded_at', 'asc')
             ->get();
-
         // 2. Group logs by calendar date string (e.g., "2026-06-11")
         $groupedLogs = $rawLogs->groupBy(function ($log) {
             return Carbon::parse($log->recorded_at)->toDateString();
         });
-
         $timesheets = [];
         // 3. Process each day's collection manually to apply your rules
         foreach ($groupedLogs as $date => $dayLogs) {
@@ -462,23 +469,32 @@ class PayrollSummaryController extends Controller
             // PROCESS 2: Insert fresh rows based on the requested matrix payload
             // =========================================================================
             $EmpBasicPay = 0.0;
+            $otherearnings = 0.0;
+            // First calculate basic pay out of your database data loops
+            foreach ($employeeData->earningsData as $datass) {
+                $earningsCat = Category::where('id', $datass->title)->first();
+                if ($earningsCat && strtoupper($earningsCat->name) === 'BASIC') {
+                    $EmpBasicPay += (float)($datass->amount ?? 0.0);
+                } else {
+                    $otherearnings += (float)($datass->amount ?? 0.0);
+                }
+            }
+            $percentage = (float) ($datePeriod->overtime_rate / 100);
+            // Move rate definitions below the final basic pay sum value to avoid 0 division errors
+            $HourRate = (float) ($EmpBasicPay / 8);
+            $overTimerate = (float) (($HourRate * $percentage) + $HourRate);
             $Finaltotalhours = 0.0;
             $Finaltotalovertime = 0.0;
-            $Finaltotalabsent = 0.0;
+            $Finaltotalabsent = 0; // Integer count
             $Finallateundertime = 0.0;
             $Finaltotaldeductionn = 0.0;
             $Finaltotalearnings = 0.0;
             $Finaltotaladjustment = 0.0;
             $Finaltotalnetpay = 0.0;
-            foreach ($employeeData->earningsData as $datass) {
-                $earningsCat = Category::where('id', $datass->title)->first();
-                if (strtoupper($earningsCat->name) === 'BASIC') {
-                    $EmpBasicPay += (float)($datass->amount ?? 0.0);
-                }
-            }
+            $computedamountPerDay = 0.0;
             if ($request->has('timesheet')) {
                 foreach ($request->input('timesheet') as $dateKey => $data) {
-                    $payCat = $data['pay_cat'] ?? 'R';
+                    $payCat = strtoupper($data['pay_cat']);
                     // RULE B: If category is Regular (R), enforce validation requirements
                     if ($payCat === 'R') {
                         if (empty($data['time_in']) || empty($data['time_out'])) {
@@ -498,7 +514,6 @@ class PayrollSummaryController extends Controller
                         if (empty($timeValue)) {
                             continue;
                         }
-
                         // Define the map matching your verification mode specifications
                         $verificationModeMap = [
                             'time_in'   => 0,
@@ -524,70 +539,124 @@ class PayrollSummaryController extends Controller
                             $validationErrors[] = "Data not created successfully to attendance logs for date: {$dateKey}.";
                         }
                     }
-                    // dd($data['regular_hours']);
+                    $isWipedOut = ($payCat === 'A' || $payCat === 'N');
+                    // =========================================================================
+                    // DYNAMIC REGULAR HOURS CALCULATION
+                    // =========================================================================
+                    $passedRegHours = (float)($data['regular_hours'] ?? 0);
+                    $rowRegHours = $isWipedOut ? 0.0 : $passedRegHours;
+
+                    // Trigger only if category is Regular, it's not wiped out, and the hours are explicitly 0
+                    if ($payCat === 'R' && !$isWipedOut && $rowRegHours === 0.0) {
+                        if (!empty($data['time_in']) && !empty($data['time_out'])) {
+                            $inTime  = Carbon::parse("{$dateKey} {$data['time_in']}");
+                            $outTime = Carbon::parse("{$dateKey} {$data['time_out']}");
+
+                            if ($outTime->greaterThan($inTime)) {
+                                $totalMinutes = $inTime->diffInMinutes($outTime);
+                                $computedRegHours = $totalMinutes / 60;
+                                // Deduct 1 hour if a valid lunch break window sequence is present
+                                if (!empty($data['break_out']) && !empty($data['break_in'])) {
+                                    $computedRegHours = max(0, $computedRegHours - 1.0);
+                                }
+                                // Cap regular standard work hours to an 8-hour shift maximum
+                                if ($computedRegHours > 8.0) {
+                                    $computedRegHours = 8.0;
+                                }
+                                // Assign the dynamically calculated value
+                                $rowRegHours = (float)$computedRegHours;
+                            }
+                        }
+                    }
+                    // Read and sanitize single row entries
+                    $rowOvertime  = $isWipedOut ? 0.0 : (float)max(0, $data['overtime_hours'] ?? 0);
+                    // $rowRegHours  = $isWipedOut ? 0.0 : (float)max(0, $data['regular_hours'] ?? 0);
+                    $rowLateHours = $isWipedOut ? 0.0 : (float)max(0, $data['late_undertime_hours'] ?? 0);
+                    // --- COMPUTE ACCUMULATORS FOR SUMMARY MATRIX ---
+                    $Finaltotalhours    += $rowRegHours;
+                    $Finaltotalovertime += $rowOvertime;
+                    $Finallateundertime += $rowLateHours;
+                    // --- IDENTIFY PER DAY RATE
+                    if (!$isWipedOut) {
+                        $dailyPayType = Holiday::where('id', $data['holiday_id'])->first();
+                        $PercentVal = $dailyPayType ? (float)$dailyPayType->percentage : 0.0;
+                        $Ratepercentage = (float) ($PercentVal / 100);
+                        $RatePerHourWithPercentage = (float) (($HourRate * $Ratepercentage) + $HourRate);
+                        $computedamountPerDay += $rowRegHours * $RatePerHourWithPercentage;
+                    } else {
+                        $computedamountPerDay += $rowRegHours * $HourRate;
+                    }
+                    if ($payCat === 'A') {
+                        $Finaltotalabsent++;
+                    }
                     $isSavedB = DB::table('payroll_reports')->insert([
-                        'dateperiod_id' => $datePeriod->id,
-                        'employee_id'   => $employeeId,
-                        'date_entry'    => $dateKey, //this one is date only,   $dateKey
-                        'paytype'       => $data['pay_cat'],
-                        'overtime'      => $data['overtime_hours'],
-                        'acquired_hours' => $data['regular_hours'],
-                        'late_undertime' => $data['late_undertime_hours'],
-                        'cat_id'        => $data['holiday_id'],
-                        'created_at'      => now(),
-                        'updated_at'      => now()
+                        'dateperiod_id'  => $datePeriod->id,
+                        'employee_id'    => $employeeId,
+                        'date_entry'     => $dateKey,
+                        'paytype'        => $payCat,
+                        'overtime'       => $rowOvertime,
+                        'acquired_hours' => $rowRegHours,
+                        'late_undertime' => $rowLateHours,
+                        'cat_id'         => $isWipedOut ? 0 : ($data['holiday_id'] ?? 0),
+                        'created_at'     => now(),
+                        'updated_at'     => now()
                     ]);
                     if (!$isSavedB) {
                         $validationErrors[] = "Data not created successfully to payroll reports for date: {$dateKey}.";
                     }
                 }
-
-
-                // $isSavedC = DB::table('payroll_summary_reports')->insert([
-                //     'dateperiod_id' => $datePeriod->id,
-                //     'employee_id'   => $employeeId,
-                //     'totalhours'    => '', //this one is date only,
-                //     'totalovertime'       => $data['regular_hours'],
-                //     'totalabsent'      => $data['regular_hours'],
-                //     'lateundertime' => $data['regular_hours'],
-                //     'totaldeductionn' => $data['late_undertime_hours'],
-                //     'totalearnings'        => $data['holiday_id'],
-                //     'totaladjustment'        => $data['holiday_id'],
-                //     'totalnetpay'        => $data['holiday_id']
-                // ]);
-                // if (!$isSavedC) {
-                //     $validationErrors[] = "Data not created successfully for payroll summary";
-                // }
             }
 
+            // ==========================================
+            // EXTRACT EXTERNAL PAYLOAD ACCUMULATORS
+            // ==========================================
+            // 1. Calculate All Adjustments 
+            if ($request->has('adjustments')) {
+                foreach ($request->input('adjustments') as $adj) {
+                    $Finaltotaladjustment += (float)($adj['amount'] ?? 0.0);
+                }
+            }
+            // 2. Calculate All Deductions (Gov + Other logs)
+            if ($request->has('gov_deductions')) {
+                foreach ($request->input('gov_deductions') as $gov) {
+                    $Finaltotaldeductionn += (float)($gov['amount'] ?? 0.0);
+                }
+            }
+            if ($request->has('other_deductions')) {
+                foreach ($request->input('other_deductions') as $oth) {
+                    $Finaltotaldeductionn += (float)($oth['amount'] ?? 0.0);
+                }
+            }
+            // 3. Compute Gross Earnings & Final Net Pays
+            $calculatedOtValue = $Finaltotalovertime * $overTimerate;
+            $Finaltotalearnings = $computedamountPerDay + $otherearnings;
+            $Finalgrosspay = $computedamountPerDay + $otherearnings + $Finaltotaladjustment + $calculatedOtValue;
+            $Finaltotalnetpay   = $Finalgrosspay - $Finaltotaldeductionn;
+            // ==========================================
+            // SUB-SECTION 5: RECORD SUMMARY DATASET
+            // ==========================================
+            $isSavedC = DB::table('payroll_summary_reports')->insert([
+                'dateperiod_id'   => $datePeriod->id,
+                'employee_id'     => $employeeId,
+                'totalhours'      => number_format($Finaltotalhours, 2, '.', ''),
+                'totalovertime'   => number_format($Finaltotalovertime, 2, '.', ''),
+                'totalabsent'     => $Finaltotalabsent,
+                'lateundertime'   => number_format($Finallateundertime, 2, '.', ''),
+                'totaldeductionn' => number_format($Finaltotaldeductionn, 2, '.', ''),
+                'totalearnings'   => number_format($Finaltotalearnings, 2, '.', ''),
+                'totaladjustment' => number_format($Finaltotaladjustment, 2, '.', ''),
+                'totalnetpay'     => number_format($Finaltotalnetpay, 2, '.', ''),
+                'grosspay'        => number_format($Finalgrosspay, 2, '.', ''),
+                'created_at'      => now(),
+                'updated_at'      => now()
+            ]);
 
+            if (!$isSavedC) {
+                $validationErrors[] = "Data not created successfully for payroll summary";
+            }
             // =========================================================================
             // PROCESS 3: Return Universal Success Response
             // =========================================================================
-            // This works perfectly for both standard page redirects and AJAX fetch requests
-
-
-            // if ($request->has('timesheet')) {
-            //     foreach ($request->input('timesheet') as $dateKey => $hoursData) {
-            //         // Normalize standard nullable baseline structures or treat as zero string floats
-            //         $regHours = !empty($hoursData['regular_hours']) ? parseFloat($hoursData['regular_hours']) : 0.00;
-            //         $otHours  = !empty($hoursData['overtime_hours']) ? parseFloat($hoursData['overtime_hours']) : 0.00;
-            //         $lateUt   = !empty($hoursData['late_undertime_hours']) ? parseFloat($hoursData['late_undertime_hours']) : 0.00;
-            //         // Depending on how your timesheets/reports architecture is set up, update here:
-            //         // Example mapping to standard daily tracking architecture components:
-            //         DB::table('payroll_reports_data') // Or change to your production timesheet matrix key table name
-            //             ->where('employee_id', $employeeId)
-            //             ->where('date_entry', $dateKey)
-            //             ->update([
-            //                 'acquired_hours' => $regHours,
-            //                 'overtime'       => $otHours,
-            //                 'late_undertime' => $lateUt,
-            //                 'updated_at'     => now()
-            //             ]);
-            //     }
-            // }
-
-            // Everything executed perfectly, commit work safely
             if (!empty($validationErrors)) {
                 DB::rollBack();
                 $validationErrors[] = "Payroll details for ({$employeeData->lastname} , {$employeeData->firstname} {$employeeData->middlename}), has and error";
@@ -603,7 +672,7 @@ class PayrollSummaryController extends Controller
                 'period_code' => $periodCode
             ]);
 
-            $validationErrors[] = 'Critical database error Sql Exception';
+            $validationErrors[] = 'Critical database error Sql Exception' . $e->getMessage() . "  ({ $periodCode})";
             return redirect()->back()->withErrors($validationErrors);
         }
     }
