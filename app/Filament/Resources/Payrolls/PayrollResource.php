@@ -86,13 +86,6 @@ class PayrollResource extends Resource
             $subconName = Category::where('id', $partnerSession)->value('name');
             $details[] = "SUBCON NAME : " . ($subconName ? strtoupper($subconName) : 'N/A');
         }
-        $details = [
-            "DATE START: {$startdate}",
-            "DATE END: {$enddate}",
-            "EMP TYPE: {$emtype}",
-            "EMP STATUS: {$emstat}",
-            "SUBCON NAME :"
-        ];
         $formattedBadges = collect($details)
             ->map(fn($detail) => "
                     <span style='
@@ -159,20 +152,6 @@ class PayrollResource extends Resource
                 if (! $user || ! $user->id) {
                     return Employee::whereRaw('1 = 0');
                 }
-                // $datePeriodData = DatePeriod::where('code', session('session_periodcode'))
-                //     ->where('status', true)
-                //     ->first();
-                // if (
-                //     !session('session_employeestatus')
-                //     || !session('session_employeetype')
-                // ) {
-                //     return Employee::query()->where('status', true)
-                //         ->where('datehired', '<=', $datePeriodData->datefrom);
-                // }
-                // return Employee::where('empstatus', session('session_employeestatus'))
-                //     ->where('employeetype', session('session_employeetype'))
-                //     ->where('datehired', '<=', $datePeriodData->datefrom)
-                //     ->where('status', true);
                 // 1. Fetch the active date period
                 $datePeriodData = DatePeriod::where('code', session('session_periodcode'))
                     ->where('status', true)
@@ -224,13 +203,39 @@ class PayrollResource extends Resource
             ->filters([])
             ->bulkActions([
                 BulkActionGroup::make([
+
+                    BulkAction::make('payslip')
+                        ->color('success')
+                        ->icon('heroicon-m-arrows-right-left')
+                        ->label('Payslip')
+                        // Remove ->openUrlInNewTab() from here, we will trigger it via JavaScript below
+                        ->action(function (Action $action, Collection $records) {
+                            // Collect the primary keys of the rows you just checked
+                            // $ids = $records->pluck('id')->toArray();
+                            // dd($ids);
+                            // Generate your target bulk print URL
+                            $periodcode = session('session_periodcode');
+                            $ids = $records->pluck('id')->toArray();
+                            $partnerss = session('session_partners') ?? 0;
+                            // dd($ids);
+                            $url = route('payroll.bulk-payslip', [
+                                'ids' => $ids,
+                                'periodcode' => $periodcode,
+                                'expartners' => $partnerss,
+                            ]);
+                            // $url = route('payroll.bulk-payslip', ['ids' => $ids]);
+                            $action->getLivewire()->js("window.open('{$url}', '_blank')");
+                        }),
+
+
+
                     BulkAction::make('payment')
                         ->label('Process Cut-off')
                         ->icon('heroicon-m-arrows-right-left')
                         ->color('success')
                         ->form(function (Collection $records) {
                             $periodcode = session('session_periodcode');
-                            $partners = session('session_partners');
+                            // $partners = session('session_partners');
                             $employeeIds = $records->pluck('employeeid')->toArray();
                             $existingInEarnings = [];
                             if (!empty($employeeIds)) {
@@ -290,9 +295,9 @@ class PayrollResource extends Resource
                                 ->pluck('employee_id')
                                 ->toArray();
                             $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
-                            // if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
-                            //     return $action->hidden();
-                            // }
+                            if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
+                                return $action->hidden();
+                            }
                             return $action
                                 ->label('Proceed')
                                 ->icon('heroicon-m-arrow-right-end-on-rectangle');
@@ -313,6 +318,10 @@ class PayrollResource extends Resource
 
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
+
+
+
+
                 ])
                     ->button()
                     ->outlined()
@@ -456,14 +465,12 @@ class PayrollResource extends Resource
                             $repeaterItems = data_get($data, 'deductions', []);
                             $periodCode = session('session_periodcode');
                             DB::transaction(function () use ($repeaterItems, $record, $periodCode) {
-                                // 2. Clean Sync Pattern: Purge existing entries for this period + employee first.
-                                // This ensures any row deleted by the user via the repeater 'x' button gets deleted from the database.
                                 OtherDeductionLog::where('date_period_id', $periodCode)
                                     ->where('employee_id', $record->employeeid)
                                     ->delete();
 
                                 if (empty($repeaterItems)) {
-                                    return; // Gracefully exit if they removed all rows
+                                    return;
                                 }
                                 $timestamp = now();
                                 $insertData = [];
@@ -481,29 +488,15 @@ class PayrollResource extends Resource
                                         'updated_at'         => $timestamp,
                                     ];
                                 }
-
-                                // 4. Batch write entries safely into the database
                                 foreach (array_chunk($insertData, 250) as $chunk) {
                                     OtherDeductionLog::insert($chunk);
                                 }
                             });
-
                             Notification::make()
                                 ->title('Other Deductions Updated Successfully')
                                 ->success()
                                 ->send();
                         }),
-
-
-
-
-
-
-
-
-
-
-
                     Action::make('payroll_adjustment')
                         ->label('Adjustment')
                         ->icon('heroicon-m-plus-circle')
@@ -512,7 +505,6 @@ class PayrollResource extends Resource
                         ->modalWidth('lg')
                         ->form(function ($record) {
                             return [
-                                // 💡 FIXED: Unified the state key name to match statePath
                                 Repeater::make('adjustments')
                                     ->label('Adjustment Entries')
                                     ->schema([
@@ -531,7 +523,6 @@ class PayrollResource extends Resource
                                             ->native(false)
                                             ->distinct()
                                             ->columnSpan(2),
-
                                         TextInput::make('amount')
                                             ->label('Amount')
                                             ->numeric()
@@ -542,7 +533,6 @@ class PayrollResource extends Resource
                                             ->columnSpan(1),
                                     ])
                                     ->columns(3)
-                                    // 💡 FIXED: Keeping this explicitly matched with the model structures
                                     ->statePath('adjustments')
                                     ->formatStateUsing(function () use ($record) {
                                         return Adjustment::where('date_period_id', session('session_periodcode'))
@@ -554,7 +544,6 @@ class PayrollResource extends Resource
                             ];
                         })
                         ->action(function (array $data, $record) {
-                            // 💡 FIXED: Changed from 'deductions' to 'adjustments' to match the state map above
                             $repeaterItems = data_get($data, 'adjustments', []);
                             $periodCode = session('session_periodcode');
                             DB::transaction(function () use ($repeaterItems, $record, $periodCode) {
@@ -580,21 +569,15 @@ class PayrollResource extends Resource
                                         'updated_at'     => $timestamp,
                                     ];
                                 }
-                                // Batch Sync Loop
                                 foreach (array_chunk($insertData, 250) as $chunk) {
                                     Adjustment::insert($chunk);
                                 }
                             });
-
                             Notification::make()
                                 ->title('Adjustment Updated Successfully')
                                 ->success()
                                 ->send();
                         }),
-
-
-
-
                     Action::make('payroll_summary')
                         ->label('View Summary')
                         ->icon('heroicon-m-printer') // Fixed printer icon
@@ -604,8 +587,6 @@ class PayrollResource extends Resource
                             'period_code' => session('session_periodcode')
                         ]))
                         ->openUrlInNewTab(),
-
-
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar

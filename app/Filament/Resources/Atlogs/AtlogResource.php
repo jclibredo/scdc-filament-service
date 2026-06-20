@@ -229,12 +229,6 @@ class AtlogResource extends Resource
             } else {
                 $empFullname = 'NO ACTIVE EMPLOYEE SELECTED';
             }
-            // $nameParts = array_filter([
-            //     strtoupper($patientDetails->lastname) ?? null,
-            //     strtoupper($patientDetails->firstname) ?? null,
-            //     strtoupper($patientDetails->middlename) ?? null
-            // ]);
-            // $empFullname = implode(' ', $nameParts);
             $emtype = $datePerioDetails?->employeeTypeCategory?->name ?? 'N/A';
             $emstat = $datePerioDetails?->category?->name ?? 'N/A';
             $startdate = $datePerioDetails->datefrom

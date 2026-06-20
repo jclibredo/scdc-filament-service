@@ -29,21 +29,45 @@
 
 <body class="bg-gray-100 p-6">
     <!-- SUCCESS AND ERROR MESSAGE -->
-    <div class="max-w-full mx-auto bg-white shadow-md rounded-lg overflow-hidden flex flex-col">
-
-        <div class="p-4 bg-amber-50 border-l-4 border-amber-500 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <div>
-                <h2 class="text-sm font-bold text-gray-800 tracking-wide uppercase">Payroll Processing Interface</h2>
-                <p class="text-gray-600 mt-0.5">
+    <div class="sticky top-0 z-50 max-w-full mx-auto bg-white shadow-md rounded-lg overflow-hidden flex flex-col no-print">
+        <div class="p-4 bg-amber-50 border-l-4 border-amber-500 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div class="flex flex-col items-center md:items-start justify-center text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start">
+                    <img src="{{ asset('images/scdc_full.png') }}" alt="SCDC Logo" class="h-14 w-auto object-contain">
+                </div>
+                <p class="text-gray-600 mt-2 text-xs">
                     Period: <span class="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 text-[11px]">{{ $period->code }}</span>
-                    <span class="block sm:inline sm:ml-2 text-gray-500">({{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }} - {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }})</span>
+                    <span class="block sm:inline sm:ml-2 text-gray-500">({{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }} - {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }})
+                        || <strong> Overtime Rate : {{ $period->overtime_rate ? number_format($period->overtime_rate, 0) : '00' }}%</strong>
+                    </span>
                 </p>
             </div>
-            <button type="button" onclick="handleCustomClose()" class="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 px-4 py-2 sm:py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded shadow-sm transition-colors duration-150">
-                Close Tab
-            </button>
+            <ul class="flex border-b border-gray-300 text-xs font-medium">
+                <li class="mr-1">
+                    <button type="button" id="tab-sheets" onclick="switchTab('sheets')"
+                        class="tab-btn bg-white inline-block border-l border-t border-r rounded-t py-2 px-4 text-blue-700 font-bold border-gray-300 -mb-px">
+                        Payroll Sheets
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button type="button" id="tab-summary" onclick="switchTab('summary')"
+                        class="tab-btn bg-transparent inline-block py-2 px-4 text-gray-500 hover:text-blue-700 font-semibold">
+                        View Summary
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button type="button" onclick="handleCustomCloseA()"
+                        class="bg-transparent inline-block py-2 px-4 text-gray-500 hover:text-red-600 font-semibold">
+                        Close Tab
+                    </button>
+                </li>
+            </ul>
         </div>
-        <br>
+    </div>
+    <!-- ========================================================= -->
+    <!-- DISPLAY PANEL 1: PAYROLL SHEETS TABLE                     -->
+    <!-- ========================================================= -->
+    <div id="content-sheets" class="tab-content block">
         <!-- SESSION ALERTS (For Traditional Form Submissions) -->
         <div class="mb-4 px-4">
             @if(session('success'))
@@ -75,7 +99,263 @@
         </div>
         <div id="modal_js_alerts" class="mb-4 px-4 hidden"></div>
         <!--END SUCCESS AND ERROR MESSAGE -->
+        @if(!$subcon_query->isEmpty())
+        @foreach($subcon_query as $subcons)
+        <span class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">Sub-Contractor : <strong>{{ $subcons->name }} </strong> / {{ $subcons->description }} </span>
+        @php
+        $loopData = $subcons->SubConEmployee;
+        @endphp
+        <div class="overflow-x-auto custom-scrollbar w-full relative">
+            <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-700 font-bold text-[10px]">
+                        <th rowspan="2" class="sticky left-0 z-30 bg-gray-50 border border-gray-300 p-2 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[240px]">Employee Name</th>
+                        <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Designation</th>
+                        <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Project</th>
+                        <th colspan="{{ $earningsCategories->count() }}" class="border border-gray-300 p-1 bg-emerald-50 text-emerald-900 tracking-wider">EARNINGS CATEGORIES</th>
+                        <th colspan="{{ count($periodDates) }}" class="border border-gray-300 p-1 bg-amber-100 text-amber-900 tracking-wider">Attendance Logs (Daily View Hours)</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 text-blue-600 bg-gray-50">OT</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">Late/Under.</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 text-green-900">Total Earnings</th>
+                        <th colspan="{{ max($deductions->count(), 1) }}" class="border border-gray-300 p-1 bg-red-50 text-red-900 tracking-wider">DEDUCTIONS</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">OTHR. DEDUCTIONS</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">ADJUSTMENT</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">Total Deduction</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">Gross Pay</th>
+                        <th rowspan="2" class="border border-gray-300 p-2 bg-green-100 font-extrabold text-green-800">Net Pay</th>
+                    </tr>
+                    <tr class="bg-gray-50 text-gray-600 font-semibold text-[10px]">
+                        @foreach($earningsCategories as $category)
+                        <th class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">{{ $category->name }}</th>
+                        @endforeach
+                        @foreach($periodDates as $date)
+                        <th class="border border-gray-300 w-10 uppercase tracking-tighter bg-gray-50 text-[9px]">
+                            {{ \Carbon\Carbon::parse($date)->shortDayName }}<br><span class="text-gray-400">[{{ \Carbon\Carbon::parse($date)->format('d') }}]</span>
+                        </th>
+                        @endforeach
+                        @forelse($deductions as $deduction)
+                        <th class="border border-gray-300 p-1 font-sans bg-gray-50">{{ $deduction->title }}</th>
+                        @empty
+                        <th class="border border-gray-300 p-1 text-gray-400 font-sans italic bg-gray-50">None found</th>
+                        @endforelse
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 font-mono">
+                    @foreach($subcons->SubConEmployee as $employee)
+                    @php
+                    $empAdjustments = collect($employee->adjustmentData ?? []);
+                    $empOtherDeductions = collect($employee->otherdeductionData ?? []);
+                    $empGovDeductions = collect($employee->govdeductionData ?? []);
+                    $empTimesheetRecords = $employeeTimesheets[$employee->employeeid] ?? [];
 
+                    $reportMetrics = [];
+                    foreach ($periodDates as $pDate) {
+                    $dKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                    $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dKey);
+                    $dayData = $empTimesheetRecords[$dKey] ?? [];
+
+                    $reportMetrics[$dKey] = [
+                    'paytype' => $report['paytype'] ?? null,
+                    'cat_id' => $report['cat_id'] ?? null,
+                    'time_in' => $dayData['time_in'] ?? null,
+                    'break_out' => $dayData['break_out'] ?? null,
+                    'break_in' => $dayData['break_in'] ?? null,
+                    'time_out' => $dayData['time_out'] ?? null,
+                    'class' => $dayData['class'] ?? '',
+                    'acquired_hours' => $report ? number_format($report->acquired_hours, 2, '.', '') : '0.00',
+                    'overtime' => $report ? number_format($report->overtime, 2, '.', '') : '0.00',
+                    'late_undertime' => $report ? number_format($report->late_undertime, 2, '.', '') : '0.00',
+                    ];
+                    }
+                    @endphp
+                    <tr class="hover:bg-gray-50 text-gray-800 text-[10px] group transition-colors">
+                        <td class="sticky left-0 z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 text-left font-sans font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="truncate">{{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }} {{ strtoupper($employee->middlename) }}</span>
+                                <div class="flex items-center gap-1 shrink-0 no-print">
+                                    <button type="button"
+                                        class="payroll-modal-trigger cursor-pointer px-1.5 py-0.5 border border-blue-200 hover:border-blue-400 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold transition-all text-[10px]"
+                                        data-id="{{ $employee->employeeid }}"
+                                        data-skill="{{ $employee->skill->title ?? '--' }}"
+                                        data-name="{{ strtoupper($employee->lastname) }}, {{ strtoupper($employee->firstname) }} {{ strtoupper($employee->middlename) }}"
+                                        data-project="{{ $employee->project->name ?? '--' }}"
+                                        data-timesheets="{{ json_encode($reportMetrics) }}"
+                                        data-adjustments="{{ json_encode($empAdjustments) }}"
+                                        data-govdeductions="{{ json_encode($empGovDeductions) }}"
+                                        data-otherdeductions="{{ json_encode($empOtherDeductions) }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="2.5" stroke="currentColor" class="w-3 h-3 animate-spin-slow">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4.5 12a7.5 7.5 0 0 1 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 
+                                               0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m11.095-4.028 
+                                               1.41-.513M5.106 17.785l1.15-.827m9.982-7.171 1.149-.827M8.14 
+                                               21.27l.707-1.03m7.748-11.276.707-1.031M12 21v-1.5m0-13.5V3m0 
+                                               16.5V12m4.457 3.077-1.41-.513m-11.095-4.028-1.41-.513m14.051 
+                                               2.221-1.15-.827m-9.982-7.171-1.149-.827m12.353 3.997-.707-1.03m-7.748-11.276-.707-1.031" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                            {{ $employee->skill->title ?? '--' }}
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                            {{ $employee->project->name ?? '--' }}
+                        </td>
+
+                        @foreach($earningsCategories as $category)
+                        @php
+                        $matchedEarning = collect($employee->earningsData)->first(fn($earning) => $earning->title == $category->id && $earning->employee_id == $employee->employeeid);
+                        @endphp
+                        <td class="border border-gray-300 p-2 text-right">{{ $matchedEarning ? number_format($matchedEarning->amount, 2) : '0.00' }}</td>
+                        @endforeach
+
+                        @foreach($periodDates as $pDate)
+                        @php
+                        $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-center">
+                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}
+                        </td>
+                        @endforeach
+                        <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
+                            {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                            {{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
+                        </td>
+
+                        @forelse($deductions as $deduction)
+                        @php
+                        $matchedGovLog = $empGovDeductions->first(fn($log) => $log->gov_deduction_id == $deduction->id);
+                        $resolvedGovAmount = 0.00;
+                        if ($matchedGovLog) {
+                        $masterAmount = $matchedGovLog->govDeduction ? (float) $matchedGovLog->govDeduction->amount : 0;
+                        $resolvedGovAmount = ($masterAmount > 0) ? $masterAmount : (float) $matchedGovLog->amount;
+                        }
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-right font-mono text-red-700 bg-red-50/10">
+                            {{ number_format($resolvedGovAmount, 2) }}
+                        </td>
+                        @empty
+                        <td class="border border-gray-300 p-1 bg-gray-50 text-gray-400 italic text-center">No deductions set</td>
+                        @endforelse
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format($employee->otherdeductionData->sum('amount'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format($employee->adjustmentData->sum('amount'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totaldeductionn'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('grosspay'), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-100 font-bold text-green-900 text-right">
+                            {{number_format($employee->payrollSummaryData->sum('totalnetpay'), 2) }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-100 font-mono text-[10px] text-gray-900 font-bold border-t-2 border-gray-400">
+                    <tr>
+                        <td class="sticky left-0 z-20 bg-gray-100 border border-gray-300 p-2 text-left font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            TOTALS
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            --
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            --
+                        </td>
+
+                        @foreach($earningsCategories as $category)
+                        @php
+                        $totalCategoryEarning = collect($loopData)->sum(function($emp) use ($category) {
+                        return collect($emp->earningsData)
+                        ->where('title', $category->id)
+                        ->where('employee_id', $emp->employeeid)
+                        ->sum('amount');
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-2 text-right">
+                            {{ number_format($totalCategoryEarning, 2) }}
+                        </td>
+                        @endforeach
+
+                        @foreach($periodDates as $pDate)
+                        @php
+                        $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $totalHoursForDate = collect($loopData)->sum(function($emp) use ($dateKey) {
+                        $report = collect($emp->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
+                        return $report ? (float) $report->acquired_hours : 0;
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-center bg-amber-50/50">
+                            {{ number_format($totalHoursForDate, 2) }}
+                        </td>
+                        @endforeach
+
+                        <td class="border border-gray-300 p-2 text-blue-600 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollReportsData)->sum('overtime')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 text-red-600 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollReportsData)->sum('late_undertime')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalearnings')), 2) }}
+                        </td>
+
+                        @forelse($deductions as $deduction)
+                        @php
+                        $totalDeductionAmount = collect($loopData)->sum(function($emp) use ($deduction) {
+                        $matchedGovLog = collect($emp->govdeductionData)->first(fn($log) => $log->gov_deduction_id == $deduction->id);
+                        if ($matchedGovLog) {
+                        $masterAmount = $matchedGovLog->govDeduction ? (float) $matchedGovLog->govDeduction->amount : 0;
+                        return ($masterAmount > 0) ? $masterAmount : (float) $matchedGovLog->amount;
+                        }
+                        return 0;
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-right text-red-700 bg-red-50/10">
+                            {{ number_format($totalDeductionAmount, 2) }}
+                        </td>
+                        @empty
+                        <td class="border border-gray-300 p-1 bg-gray-50 text-gray-400 italic text-center">--</td>
+                        @endforelse
+
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->otherdeductionData)->sum('amount')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->adjustmentData)->sum('amount')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaldeductionn')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('grosspay')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-200 font-extrabold text-green-950 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalnetpay')), 2) }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        @endforeach
+        @else
+        @php
+        // Direct link to resolve the undefined variable for your footer totals
+        $loopData = $employees;
+        @endphp
         <div class="overflow-x-auto custom-scrollbar w-full relative">
             <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
                 <thead>
@@ -154,7 +434,16 @@
                                         data-adjustments="{{ json_encode($empAdjustments) }}"
                                         data-govdeductions="{{ json_encode($empGovDeductions) }}"
                                         data-otherdeductions="{{ json_encode($empOtherDeductions) }}">
-                                        📝 Update Details
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="2.5" stroke="currentColor" class="w-3 h-3 animate-spin-slow">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4.5 12a7.5 7.5 0 0 1 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 
+                                               0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m11.095-4.028 
+                                               1.41-.513M5.106 17.785l1.15-.827m9.982-7.171 1.149-.827M8.14 
+                                               21.27l.707-1.03m7.748-11.276.707-1.031M12 21v-1.5m0-13.5V3m0 
+                                               16.5V12m4.457 3.077-1.41-.513m-11.095-4.028-1.41-.513m14.051 
+                                               2.221-1.15-.827m-9.982-7.171-1.149-.827m12.353 3.997-.707-1.03m-7.748-11.276-.707-1.031" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
@@ -179,12 +468,15 @@
                         $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
                         @endphp
                         <td class="border border-gray-300 p-1 text-center">
-                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}</td>
+                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}
+                        </td>
                         @endforeach
                         <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
-                            {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}</td>
+                            {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}
+                        </td>
                         <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
-                            {{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}</td>
+                            {{ number_format($employee->payrollReportsData->sum('late_undertime'), 2) }}
+                        </td>
                         <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
                             {{number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
                         </td>
@@ -222,8 +514,94 @@
                     </tr>
                     @endforeach
                 </tbody>
+
+
+                <tfoot class="bg-gray-100 font-mono text-[10px] text-gray-900 font-bold border-t-2 border-gray-400">
+                    <tr>
+                        <td class="sticky left-0 z-20 bg-gray-100 border border-gray-300 p-2 text-left font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            TOTALS
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            --
+                        </td>
+                        <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            --
+                        </td>
+                        @foreach($earningsCategories as $category)
+                        @php
+                        $totalCategoryEarning = collect($loopData)->sum(function($emp) use ($category) {
+                        return collect($emp->earningsData)
+                        ->where('title', $category->id)
+                        ->where('employee_id', $emp->employeeid)
+                        ->sum('amount');
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-2 text-right">
+                            {{ number_format($totalCategoryEarning, 2) }}
+                        </td>
+                        @endforeach
+
+                        @foreach($periodDates as $pDate)
+                        @php
+                        $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $totalHoursForDate = collect($loopData)->sum(function($emp) use ($dateKey) {
+                        $report = collect($emp->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
+                        return $report ? (float) $report->acquired_hours : 0;
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-center bg-amber-50/50">
+                            {{ number_format($totalHoursForDate, 2) }}
+                        </td>
+                        @endforeach
+
+                        <td class="border border-gray-300 p-2 text-blue-600 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollReportsData)->sum('overtime')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 text-red-600 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollReportsData)->sum('late_undertime')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalearnings')), 2) }}
+                        </td>
+
+                        @forelse($deductions as $deduction)
+                        @php
+                        $totalDeductionAmount = collect($loopData)->sum(function($emp) use ($deduction) {
+                        $matchedGovLog = collect($emp->govdeductionData)->first(fn($log) => $log->gov_deduction_id == $deduction->id);
+                        if ($matchedGovLog) {
+                        $masterAmount = $matchedGovLog->govDeduction ? (float) $matchedGovLog->govDeduction->amount : 0;
+                        return ($masterAmount > 0) ? $masterAmount : (float) $matchedGovLog->amount;
+                        }
+                        return 0;
+                        });
+                        @endphp
+                        <td class="border border-gray-300 p-1 text-right text-red-700 bg-red-50/10">
+                            {{ number_format($totalDeductionAmount, 2) }}
+                        </td>
+                        @empty
+                        <td class="border border-gray-300 p-1 bg-gray-50 text-gray-400 italic text-center">--</td>
+                        @endforelse
+
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->otherdeductionData)->sum('amount')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->adjustmentData)->sum('amount')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaldeductionn')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-1 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('grosspay')), 2) }}
+                        </td>
+                        <td class="border border-gray-300 p-2 bg-green-200 font-extrabold text-green-950 text-right">
+                            {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalnetpay')), 2) }}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
+        @endif
     </div>
 
     <div id="payrollDetailModal" class="hidden fixed inset-0 z-50 bg-black/60 items-center justify-center p-4 transition-all"
@@ -249,7 +627,6 @@
                 <input type="hidden" name="period_code" value="{{ $period->code }}">
 
                 <div class="p-5 overflow-y-auto flex-1 space-y-6 bg-gray-50/50">
-
                     <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                         <h4 class="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 border-b pb-1">Adjust Cutoff Daily Work Sheets</h4>
 
@@ -277,7 +654,6 @@
                             </table>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                         <div class="bg-white border border-gray-200 rounded-lg p-3 flex flex-col shadow-sm">
@@ -326,7 +702,405 @@
             </form>
         </div>
     </div>
+    <!-- ========================================================= -->
+    <!-- DISPLAY PANEL 2: SUMMARY VIEW                             -->
+    <!-- ========================================================= -->
+    <div id="content-summary" class="tab-content hidden p-4">
+        <div class="border border-gray-200 rounded p-4 bg-gray-50 text-xs">
+            <h3 class="text-sm font-bold text-gray-700 mb-4">Payroll Period Summary</h3>
+            @if(!$subcon_query->isEmpty())
+            @foreach($subcon_query as $subcons)
+            <span class="border border-gray-300 p-1 font-sans font-bold bg-amber-100 px-2 py-0.5 rounded text-amber-900 text-[11px]">Sub-Contractor : <strong>{{ $subcons->name }} </strong>
+                / {{ $subcons->description }} ||
+                Date Covered <strong> {{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }}
+                    - {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }}</strong>
+            </span>
+            @php
+            $loopData = $subcons->SubConEmployee;
+            @endphp
+            <div class="overflow-x-auto custom-scrollbar w-full relative">
+                <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700 font-bold text-[10px]">
+                            <th rowspan="2" class="sticky left-0 z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[240px]">Employee Name</th>
+                            <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Designation</th>
+                            <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Project</th>
+                            <th colspan="{{ $earningsCategories->where('name', 'BASIC')->count()+1}}" class="border border-gray-300 p-1 bg-emerald-50 text-emerald-900 tracking-wider">EARNINGS CATEGORIES</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 bg-gray-50">T.HOURS</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 bg-gray-50">OT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">T.ABSENT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">LATE/UNDER.</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 text-green-900">T.EARNINGS</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-50">ADJUSTMENT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">DEDUCTION</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-100 font-extrabold text-green-800">Net Pay</th>
+                        </tr>
+                        <tr class="bg-gray-50 text-gray-600 font-semibold text-[10px]">
+                            @foreach($earningsCategories as $category)
+                            @if($category->name === 'BASIC')
+                            <th class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">Daily Rate</th>
+                            <th class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">Per/Hr.</th>
+                            @endif
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 font-mono">
+                        @foreach($subcons->SubConEmployee as $employee)
+                        <tr class="hover:bg-gray-50 text-gray-800 text-[10px] group transition-colors">
+                            <td class="sticky left-0 z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 text-left font-sans font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                <span class="truncate">{{ strtoupper($employee->lastname) }},
+                                    {{ strtoupper($employee->firstname) }}
+                                    {{ strtoupper($employee->middlename) }}</span>
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                {{ $employee->skill->title ?? '--' }}
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                {{ $employee->project->name ?? '--' }}
+                            </td>
+                            @foreach($earningsCategories->where('name', 'BASIC') as $category)
+                            @php
+                            $matchedEarning = collect($employee->earningsData)->first(fn($earning) => $earning->title == $category->id && $earning->employee_id == $employee->employeeid);
+                            @endphp
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $matchedEarning ? number_format($matchedEarning->amount, 2) : '--' }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $matchedEarning ? number_format(($matchedEarning->amount/8), 2) : '--' }}
+                            </td>
+                            @endforeach
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalhours') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalhours'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-right">
+                                @if($employee->payrollSummaryData->sum('totalovertime') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalovertime'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                                @php
+                                $totalAbsent = $employee->payrollSummaryData->sum('totalabsent');
+                                @endphp
+                                @if($totalAbsent == 0)
+                                --
+                                @else
+                                {{ number_format($totalAbsent, 2) }} {{ $totalAbsent == 1 ? 'DAY' : 'DAYS' }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                                @php
+                                $totalLateMinutes = 0;
+                                foreach($employee->payrollSummaryData as $data) {
+                                $val = (float)$data->lateundertime;
+                                if ($val > 0) {
+                                $parts = explode('.', number_format($val, 2));
+                                $totalLateMinutes += ((int)$parts[0] * 60) + (int)$parts[1];
+                                }
+                                }
+                                @endphp
+                                @if($totalLateMinutes == 0)
+                                --
+                                @else
+                                @php
+                                $hours = floor($totalLateMinutes / 60);
+                                $minutes = $totalLateMinutes % 60;
+                                @endphp
+                                @if($hours == 0)
+                                {{ $minutes }} MIN{{ $minutes != 1 ? 'S' : '' }}
+                                @else
+                                {{ $hours }} HR{{ $hours != 1 ? 'S' : '' }}. & {{ $minutes }} MIN{{ $minutes != 1 ? 'S' : '' }}
+                                @endif
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalearnings') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totaladjustment') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totaladjustment'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totaldeductionn') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totaldeductionn'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalnetpay') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalnetpay'), 2) }}
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="bg-gray-100 font-mono text-[10px] text-gray-900 font-bold border-t-2 border-gray-400">
+                        <tr>
+                            <td class="sticky left-0 z-20 bg-gray-100 border border-gray-300 p-2 text-left font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                TOTALS
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                --
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                --
+                            </td>
+                            @foreach($earningsCategories->where('name', 'BASIC') as $category)
+                            @php
+                            $totalCategoryEarning = collect($loopData)->sum(function($emp) use ($category) {
+                            return collect($emp->earningsData)
+                            ->where('title', $category->id)
+                            ->where('employee_id', $emp->employeeid)
+                            ->sum('amount');
+                            });
+                            @endphp
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $totalCategoryEarning > 0 ? number_format($totalCategoryEarning, 2) : '--' }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $totalCategoryEarning > 0 ? number_format(($totalCategoryEarning/8), 2) : '--' }}
+                            </td>
+                            @endforeach
+                            <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalhours')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalovertime')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalabsent')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('lateundertime')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalearnings')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaladjustment')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaldeductionn')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-200 font-extrabold text-green-950 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalnetpay')), 2) }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
 
+            </div>
+            <br>
+            @endforeach
+            @else
+            @php
+            // Direct link to resolve the undefined variable for your footer totals
+            $loopData = $employees;
+            @endphp
+            <div class="overflow-x-auto custom-scrollbar w-full relative">
+                <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700 font-bold text-[10px]">
+                            <th rowspan="2" class="sticky left-0 z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[240px]">Employee Name</th>
+                            <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Designation</th>
+                            <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Project</th>
+                            <th colspan="{{ $earningsCategories->where('name', 'BASIC')->count()+1}}" class="border border-gray-300 p-1 bg-emerald-50 text-emerald-900 tracking-wider">EARNINGS CATEGORIES</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-blue-600 bg-gray-50">T.HOURS</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-blue-600 bg-gray-50">OT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">T.ABSENT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">LATE/UNDER.</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 text-green-900">T.EARNINGS</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">ADJUSTMENT</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-gray-50">DEDUCTION</th>
+                            <th rowspan="2" class="border border-gray-300 p-2 bg-green-100 font-extrabold text-green-800">Net Pay</th>
+                        </tr>
+                        <tr class="bg-gray-50 text-gray-600 font-semibold text-[10px]">
+                            @foreach($earningsCategories as $category)
+                            @if($category->name === 'BASIC')
+                            <th class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">{{ $category->name }}</th>
+                            <th class="border border-gray-300 p-1 px-2 font-sans bg-gray-50">Rate/Hr.</th>
+                            @endif
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 font-mono">
+                        @foreach($employees as $employee)
+                        <tr class="hover:bg-gray-50 text-gray-800 text-[10px] group transition-colors">
+                            <td class="sticky left-0 z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 text-left font-sans font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                <span class="truncate">{{ strtoupper($employee->lastname) }},
+                                    {{ strtoupper($employee->firstname) }}
+                                    {{ strtoupper($employee->middlename) }}</span>
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                {{ $employee->skill->title ?? '--' }}
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 font-sans text-gray-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                                {{ $employee->project->name ?? '--' }}
+                            </td>
+                            @foreach($earningsCategories->where('name', 'BASIC') as $category)
+                            @php
+                            $matchedEarning = collect($employee->earningsData)->first(fn($earning) => $earning->title == $category->id && $earning->employee_id == $employee->employeeid);
+                            @endphp
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $matchedEarning ? number_format($matchedEarning->amount, 2) : '--' }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $matchedEarning ? number_format(($matchedEarning->amount/8), 2) : '--' }}
+                            </td>
+                            @endforeach
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalhours') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalhours'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
+                                @if($employee->payrollSummaryData->sum('totalovertime') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalovertime'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                                @php
+                                $totalAbsent = $employee->payrollSummaryData->sum('totalabsent');
+                                @endphp
+                                @if($totalAbsent == 0)
+                                --
+                                @else
+                                {{ number_format($totalAbsent, 2) }} {{ $totalAbsent == 1 ? 'DAY' : 'DAYS' }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 font-bold text-right">
+                                @php
+                                $totalLateMinutes = 0;
+                                foreach($employee->payrollSummaryData as $data) {
+                                $val = (float)$data->lateundertime;
+                                if ($val > 0) {
+                                $parts = explode('.', number_format($val, 2));
+                                $totalLateMinutes += ((int)$parts[0] * 60) + (int)$parts[1];
+                                }
+                                }
+                                @endphp
+                                @if($totalLateMinutes == 0)
+                                --
+                                @else
+                                @php
+                                $hours = floor($totalLateMinutes / 60);
+                                $minutes = $totalLateMinutes % 60;
+                                @endphp
+                                @if($hours == 0)
+                                {{ $minutes }} MIN{{ $minutes != 1 ? 'S' : '' }}
+                                @else
+                                {{ $hours }} HR{{ $hours != 1 ? 'S' : '' }}. & {{ $minutes }} MIN{{ $minutes != 1 ? 'S' : '' }}
+                                @endif
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalearnings') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totaladjustment') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totaladjustment'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totaldeductionn') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totaldeductionn'), 2) }}
+                                @endif
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
+                                @if($employee->payrollSummaryData->sum('totalnetpay') == 0)
+                                --
+                                @else
+                                {{ number_format($employee->payrollSummaryData->sum('totalnetpay'), 2) }}
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="bg-gray-100 font-mono text-[10px] text-gray-900 font-bold border-t-2 border-gray-400">
+                        <tr>
+                            <td class="sticky left-0 z-20 bg-gray-100 border border-gray-300 p-2 text-left font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                TOTALS
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                --
+                            </td>
+                            <td class="sticky left-[240px] z-20 bg-gray-100 border border-gray-300 p-2 font-sans shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                --
+                            </td>
+                            @foreach($earningsCategories->where('name', 'BASIC') as $category)
+                            @php
+                            $totalCategoryEarning = collect($loopData)->sum(function($emp) use ($category) {
+                            return collect($emp->earningsData)
+                            ->where('title', $category->id)
+                            ->where('employee_id', $emp->employeeid)
+                            ->sum('amount');
+                            });
+                            @endphp
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $totalCategoryEarning > 0 ? number_format($totalCategoryEarning, 2) : '--' }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-right">
+                                {{ $totalCategoryEarning > 0 ? number_format(($totalCategoryEarning/8), 2) : '--' }}
+                            </td>
+                            @endforeach
+                            <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalhours')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalovertime')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalabsent')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('lateundertime')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalearnings')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 bg-green-50 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaladjustment')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-1 text-red-600 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totaldeductionn')), 2) }}
+                            </td>
+                            <td class="border border-gray-300 p-2 bg-green-200 font-extrabold text-green-950 text-right">
+                                {{ number_format(collect($loopData)->sum(fn($emp) => collect($emp->payrollSummaryData)->sum('totalnetpay')), 2) }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            @endif
+        </div>
+    </div>
     <script>
         let systemLookups = {
             adjustments: [],
@@ -334,6 +1108,41 @@
             other_deductions: []
         };
 
+        function handleCustomCloseA() {
+            // Attempt to close the window natively
+            window.close();
+
+            // Fallback: If window.close() is blocked by browser security rules,
+            // redirect them back to your main index/dashboard or go back in history.
+            if (!window.closed) {
+                // Option A: Go back to the previous page in history
+                if (document.referrer) {
+                    window.location.href = document.referrer;
+                } else {
+                    // Option B: Hardcoded fallback path if no referrer exists
+                    window.location.href = '/payroll';
+                }
+            }
+        }
+
+        function switchTab(tabId) {
+            // 1. Hide all tab view panels
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.replace('block', 'hidden');
+            });
+
+            // 2. Show the targeted view panel
+            document.getElementById('content-' + tabId).classList.replace('hidden', 'block');
+
+            // 3. Reset styling rule on all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn bg-transparent inline-block py-2 px-4 text-gray-500 hover:text-blue-700 font-semibold";
+            });
+
+            // 4. Highlight the active tab button with border borders
+            const activeBtn = document.getElementById('tab-' + tabId);
+            activeBtn.className = "tab-btn bg-white inline-block border-l border-t border-r rounded-t py-2 px-4 text-blue-700 font-bold border-gray-300 -mb-px";
+        }
         // Safely closes the modal view space instead of closing down the browser tab execution layer
         function handleCustomClose() {
             window.closePayrollDetailModal();

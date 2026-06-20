@@ -38,6 +38,12 @@ class PayrollReport extends Model
         ];
     }
 
+
+    public function holidayData()
+    {
+        return $this->belongsTo(Holiday::class, 'cat_id');
+    }
+
     public function employeeData()
     {
         return $this->belongsTo(Employee::class, 'employee_id');

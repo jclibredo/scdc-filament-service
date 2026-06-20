@@ -25,17 +25,6 @@ class PayrollSummaryController extends Controller
 
     public function showSheet(Request $request, String $periodcode, String $expartners)
     {
-        $subcon_query = Category::where('status', true)
-            ->get();
-        if (!$expartners === 'ALL' || $expartners === '0') {
-            $subcon_query->where('id', $expartners)
-                ->where('cat', 'SUBCON');
-        }
-        if ($expartners === 'ALL') {
-            $subcon_query->where('cat', 'SUBCON');
-        }
-
-
         $employeeids = $request->query('employees', []);
         $period = DatePeriod::where('code', $periodcode)->firstOrFail();
         $dateFrom = Carbon::parse($period->datefrom)->startOfDay();
@@ -47,45 +36,67 @@ class PayrollSummaryController extends Controller
             $periodDates[] = $currentDate->toDateString(); // ['2026-06-08', '2026-06-09', ...]
             $currentDate->addDay();
         }
-        // 2. Fetch active dynamic earnings headers
         $earningsCategories = Category::where('status', true)
+            ->orderBy('name', 'asc')
             ->where('cat', 'EARNINGS')
             ->get();
-        // 3. Fetch active deductions to use as headers
         $deductionHeaders = GovDeductionLog::with('govDeduction')
             ->whereIn('employee_id', $employeeids)
             ->where('date_period_id', $period->id) // Use ->id here safely
             ->get()
             ->pluck('govDeduction.name') // Or your identifier column
             ->unique();
-        // Inside your controller, update this section:   payrollReportsData
-        $employee_query = Employee::whereIn('employeeid', $employeeids)
-            ->with([
-                'project',
-                'empType',
-                'empStat',
-                'earningsData' => function ($query) {
-                    $query->where('status', true);
-                },
-                'payrollReportsData' => function ($query) use ($period) {
-                    $query->where('dateperiod_id', $period->id);
-                },
-                // Eager-load log records AND their parent titles/names contextually
-                'adjustmentData' => function ($query) use ($period) {
-                    $query->where('date_period_id', $period->code)->with('adjustmentName');
-                },
-                'otherdeductionData' => function ($query) use ($period) {
-                    $query->where('date_period_id', $period->code)->with('otherDeduction');
-                },
-                'govdeductionData' => function ($query) use ($period) {
-                    $query->where('date_period_id', $period->code)->with('govDeduction');
-                },
-                'payrollSummaryData' => function ($query) use ($period) {
-                    $query->where('dateperiod_id', $period->id);
-                }
-            ])
+        $employeeRelations = [
+            'project',
+            'empType',
+            'empStat',
+            'earningsData' => fn($q) => $q->where('status', true),
+            'payrollReportsData' => fn($q) => $q->where('dateperiod_id', $period->id),
+            'payrollSummaryData' => fn($q) => $q->where('dateperiod_id', $period->id),
+            'adjustmentData' => fn($q) => $q->where('date_period_id', $period->code),
+            'adjustmentData.adjustmentName',
+            'otherdeductionData' => fn($q) => $q->where('date_period_id', $period->code),
+            'otherdeductionData.otherDeduction',
+            'govdeductionData' => fn($q) => $q->where('date_period_id', $period->code),
+            'govdeductionData.govDeduction'
+        ];
+        // 2. Fetch primary employees, ordered by project name, then by employee lastname
+        $employees = Employee::whereIn('employees.employeeid', $employeeids)
+            ->leftJoin('projects', 'employees.project_id', '=', 'projects.project_code')
+            ->select('employees.*')
+            ->orderBy('projects.name', 'asc')
+            ->orderBy('employees.lastname', 'asc')
+            ->with($employeeRelations)
             ->get();
-        // 5. Fetch raw attendance logs for mapping
+        $subcon_query = collect();
+        if (!empty($expartners) && $expartners !== '0') {
+            // Re-map relation keys using dot notation for eager loading nested models cleanly
+            $subconRelations = [];
+            foreach ($employeeRelations as $key => $value) {
+                if (is_callable($value)) {
+                    $subconRelations["SubConEmployee." . $key] = $value;
+                } else {
+                    $subconRelations["SubConEmployee." . $value] = fn($q) => $q;
+                }
+            }
+            $subconRelations['SubConEmployee'] = fn($q) => $q->where('status', true);
+            $subcon_query = Category::where('status', true)
+                ->where('cat', 'SUBCON')
+                ->when($expartners === 'ALL', fn($q) => $q->orderBy('name', 'asc'))
+                ->when($expartners !== 'ALL', fn($q) => $q->where('id', $expartners))
+                ->with($subconRelations)
+                ->get();
+            foreach ($subcon_query as $category) {
+                if ($category->SubConEmployee) {
+                    $category->SubConEmployee = $category->SubConEmployee->sortBy([
+                        fn($a, $b) => ($a->project->name ?? '') <=> ($b->project->name ?? ''),
+                        fn($a, $b) => ($a->lastname ?? '') <=> ($b->lastname ?? '')
+                    ])->values(); // Reset array indexes
+                }
+            }
+        }
+
+
         $rawLogs = Atlog::whereIn('user_id', $employeeids)
             ->whereBetween('recorded_at', [$dateFrom, $dateTo])
             ->orderBy('recorded_at', 'asc')
@@ -93,7 +104,7 @@ class PayrollSummaryController extends Controller
             ->groupBy('user_id'); // Grouping by employee is CRITICAL
         $employeeTimesheets = [];
         // 6. Compute attendance per employee, per day
-        foreach ($employee_query as $employee) {
+        foreach ($employees as $employee) {
             $empLogs = $rawLogs
                 ->get($employee->employeeid, collect())
                 ->groupBy(function ($log) {
@@ -210,6 +221,7 @@ class PayrollSummaryController extends Controller
             'govDeductions',
             'deductions',
             'holidays',
+            'subcon_query',
         ));
     }
     public function show(String $employee_id, String $period_code)
@@ -675,5 +687,89 @@ class PayrollSummaryController extends Controller
             $validationErrors[] = 'Critical database error Sql Exception' . $e->getMessage() . "  ({ $periodCode})";
             return redirect()->back()->withErrors($validationErrors);
         }
+    }
+
+
+
+    public function printBulkPayslips(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $periodcode = $request->input('periodcode');
+        $expartners = $request->input('expartners', 0);
+        $period = DatePeriod::where('code', $periodcode)->firstOrFail();
+        $employeeRelations = [
+            'project',
+            'empType',
+            'empStat',
+            // Eager load the category relationship attached to your earnings data
+            'earningsData' => fn($q) => $q->where('status', true)->with('category'),
+            'payrollReportsData' => fn($q) => $q->where('dateperiod_id', $period->id),
+            'payrollSummaryData' => fn($q) => $q->where('dateperiod_id', $period->id),
+            'adjustmentData' => fn($q) => $q->where('date_period_id', $period->code),
+            'adjustmentData.adjustmentName',
+            'otherdeductionData' => fn($q) => $q->where('date_period_id', $period->code),
+            'otherdeductionData.otherDeduction',
+            'govdeductionData' => fn($q) => $q->where('date_period_id', $period->code),
+            'govdeductionData.govDeduction'
+        ];
+
+        // 2. Fetch primary employees, ordered by project name, then by employee lastname
+        $loopData = Employee::whereIn('employees.id', $ids)
+            ->leftJoin('projects', 'employees.project_id', '=', 'projects.project_code')
+            ->select('employees.*')
+            ->orderBy('projects.name', 'asc')
+            ->orderBy('employees.lastname', 'asc')
+            ->with($employeeRelations)
+            ->get();
+
+        // 3. Loop through each employee to compute and append their individual rates
+        foreach ($loopData as $employee) {
+            $EmpBasicPay = 0.0;
+
+            foreach ($employee->earningsData as $datass) {
+                // Use the eager-loaded relation instead of hitting the database inside the loop
+                if ($datass->category && strtoupper($datass->category->name) === 'BASIC') {
+                    $EmpBasicPay += (float)($datass->amount ?? 0.0);
+                }
+            }
+            // Attach the calculated properties dynamically to the employee instance
+
+
+
+            $employee->basic_rate = $EmpBasicPay;
+            $basichrrate = $EmpBasicPay / 8;
+            $employee->rate_per_hour =  $basichrrate;
+
+            $overtime_rates = (float)($period->overtime_rate ?? 0.0);
+            $employee->otratehour =  ($basichrrate  *  ($overtime_rates / 100)) + $basichrrate;
+        }
+        $subcon_query = collect();
+        if (!empty($expartners) && $expartners !== '0') {
+            // Re-map relation keys using dot notation for eager loading nested models cleanly
+            $subconRelations = [];
+            foreach ($employeeRelations as $key => $value) {
+                if (is_callable($value)) {
+                    $subconRelations["SubConEmployee." . $key] = $value;
+                } else {
+                    $subconRelations["SubConEmployee." . $value] = fn($q) => $q;
+                }
+            }
+            $subconRelations['SubConEmployee'] = fn($q) => $q->where('status', true);
+            $subcon_query = Category::where('status', true)
+                ->where('cat', 'SUBCON')
+                ->when($expartners === 'ALL', fn($q) => $q->orderBy('name', 'asc'))
+                ->when($expartners !== 'ALL', fn($q) => $q->where('id', $expartners))
+                ->with($subconRelations)
+                ->get();
+            foreach ($subcon_query as $category) {
+                if ($category->SubConEmployee) {
+                    $category->SubConEmployee = $category->SubConEmployee->sortBy([
+                        fn($a, $b) => ($a->project->name ?? '') <=> ($b->project->name ?? ''),
+                        fn($a, $b) => ($a->lastname ?? '') <=> ($b->lastname ?? '')
+                    ])->values(); // Reset array indexes
+                }
+            }
+        }
+        return view('payroll.payslip', compact('loopData', 'period'));
     }
 }

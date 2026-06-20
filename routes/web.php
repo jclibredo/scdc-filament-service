@@ -64,4 +64,6 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/attendance-logs/update-batch', [AttendanceLogController::class, 'updateBatch'])
         ->name('attendance-logs.update-batch');
     Route::post('/payroll/update-batch', [PayrollSummaryController::class, 'updateBatch'])->name('payroll.update-batch');
+    // Add this line inside your routes/web.php file
+    Route::get('/payroll/bulk-payslip', [PayrollSummaryController::class, 'printBulkPayslips'])->name('payroll.bulk-payslip');
 });

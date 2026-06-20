@@ -19,4 +19,9 @@ class Category extends Model
     protected $casts = [
         'status' => 'boolean', // 🟢 Forces 1/0 from DB to be true/false in PHP
     ];
+
+    public function SubConEmployee()
+    {
+        return $this->hasMany(Employee::class, 'partners', 'id');
+    }
 }
