@@ -26,7 +26,8 @@ class PayrollSummaryReport extends Model
         'totaladjustment',
         'totalnetpay',
         'grosspay',
-        'status'
+        'status',
+        'required_hours'
     ];
 
 
@@ -42,7 +43,8 @@ class PayrollSummaryReport extends Model
             'totaladjustment' => 'float',
             'totalnetpay' => 'float',
             'grosspay' => 'float',
-            'status' => 'boolean'
+            'status' => 'boolean',
+            'required_hours' => 'float',
         ];
     }
 

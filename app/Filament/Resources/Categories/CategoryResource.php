@@ -14,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -60,13 +61,21 @@ class CategoryResource extends Resource
                             // 💡 Optional: Makes it searchable if your options list grows later
                             ->searchable()
                             ->placeholder('Select category type')
-                            ->required(),
-
+                            ->required()
+                            ->live(),
+                        Select::make('frequency')
+                            ->label('Frequency')
+                            ->options([
+                                'DAILY' => 'Daily',
+                                'CUT-OFF' => 'Cut-Off',
+                            ])
+                            ->placeholder('Select frequency')
+                            ->visible(fn(Get $get): bool => $get('cat') === 'EARNINGS')
+                            ->required(fn(Get $get): bool => $get('cat') === 'EARNINGS'),
                         Textarea::make('description')
                             ->label('Description')
                             ->rows(3)
                             ->columnSpanFull(), // Stretches out over full block width
-
                         // 💡 FIXED: Changed from ToggleColumn to Toggle
                         Toggle::make('status')
                             ->label('Active Status')
@@ -88,6 +97,12 @@ class CategoryResource extends Resource
 
                 TextColumn::make('cat')
                     ->label('Category Code')
+                    ->badge()
+                    ->color('info')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('frequency')
+                    ->label('Frequency')
                     ->badge()
                     ->color('info')
                     ->searchable()

@@ -109,7 +109,7 @@ class DatePeriodResource extends Resource
                             ->placeholder('e.g., 120.00')
                             ->numeric()
                             ->required()
-                            ->default(20.00) // Controls the default for NEW records
+                            ->default(25.00) // Controls the default for NEW records
                             ->formatStateUsing(fn($state) => $state ?? 20.00) // Controls fallback for EXISTING records
                             ->rules(['regex:/^\d{1,6}(\.\d{1,2})?$/'])
                             ->helperText('Specify the baseline percentage multiplier for overtime calculations (e.g., 120.00 for 120%).'),

@@ -295,7 +295,7 @@ class PayrollResource extends Resource
                                 ->pluck('employee_id')
                                 ->toArray();
                             $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
-                            if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
+                            if (empty($employeeIds) || !$periodcode || empty($missingInEarnings)) {
                                 return $action->hidden();
                             }
                             return $action

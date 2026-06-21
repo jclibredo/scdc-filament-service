@@ -14,6 +14,7 @@ class Category extends Model
         'description',
         'cat',    // 🟢 Added
         'status', // 🟢 Added
+        'frequency',
     ];
 
     protected $casts = [

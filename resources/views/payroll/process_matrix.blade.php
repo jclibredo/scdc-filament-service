@@ -214,11 +214,37 @@
                         @foreach($periodDates as $pDate)
                         @php
                         $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $isSunday = \Carbon\Carbon::parse($pDate)->isSunday();
                         $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
                         @endphp
+
+                        @if($report && strtoupper($report->paytype) === 'R')
                         <td class="border border-gray-300 p-1 text-center">
-                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}
+                            {{ number_format($report->acquired_hours, 2) }}
                         </td>
+
+                        @elseif($report && strtoupper($report->paytype) === 'N')
+                        {{-- When paytype is 'N', check if it is Sunday --}}
+                        @if($isSunday)
+                        <td class="border border-gray-300 p-1 text-center text-red-600 font-bold">
+                            @if($report->acquired_hours <= 0)
+                                S
+                                @else
+                                {{ number_format($report->acquired_hours, 2) }}
+                                @endif
+                                </td>
+                                @else
+                                {{-- If it's 'N' but NOT Sunday, display N/A in green --}}
+                        <td class="border border-gray-300 p-2 text-green-600 font-bold text-center">
+                            N/A
+                        </td>
+                        @endif
+
+                        @else
+                        <td class="border border-gray-300 p-2 text-red-600 font-bold text-center">
+                            {{ $report ? strtoupper($report->paytype) : '--' }}
+                        </td>
+                        @endif
                         @endforeach
                         <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
                             {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}
@@ -288,7 +314,6 @@
                             {{ number_format($totalCategoryEarning, 2) }}
                         </td>
                         @endforeach
-
                         @foreach($periodDates as $pDate)
                         @php
                         $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
@@ -465,11 +490,37 @@
                         @foreach($periodDates as $pDate)
                         @php
                         $dateKey = \Carbon\Carbon::parse($pDate)->toDateString();
+                        $isSunday = \Carbon\Carbon::parse($pDate)->isSunday();
                         $report = collect($employee->payrollReportsData)->first(fn($r) => \Carbon\Carbon::parse($r->date_entry)->toDateString() === $dateKey);
                         @endphp
+
+                        @if($report && strtoupper($report->paytype) === 'R')
                         <td class="border border-gray-300 p-1 text-center">
-                            {{ $report ? number_format($report->acquired_hours, 2) : '0.00' }}
+                            {{ number_format($report->acquired_hours, 2) }}
                         </td>
+
+                        @elseif($report && strtoupper($report->paytype) === 'N')
+                        {{-- When paytype is 'N', check if it is Sunday --}}
+                        @if($isSunday)
+                        <td class="border border-gray-300 p-1 text-center text-red-600 font-bold">
+                            @if($report->acquired_hours <= 0)
+                                S
+                                @else
+                                {{ number_format($report->acquired_hours, 2) }}
+                                @endif
+                                </td>
+                                @else
+                                {{-- If it's 'N' but NOT Sunday, display N/A in green --}}
+                        <td class="border border-gray-300 p-2 text-green-600 font-bold text-center">
+                            N/A
+                        </td>
+                        @endif
+
+                        @else
+                        <td class="border border-gray-300 p-2 text-red-600 font-bold text-center">
+                            {{ $report ? strtoupper($report->paytype) : '--' }}
+                        </td>
+                        @endif
                         @endforeach
                         <td class="border border-gray-300 p-2 text-blue-600 font-bold text-right">
                             {{ number_format($employee->payrollReportsData->sum('overtime'), 2) }}
@@ -480,7 +531,6 @@
                         <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
                             {{number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}
                         </td>
-
                         @forelse($deductions as $deduction)
                         @php
                         $matchedGovLog = $empGovDeductions->first(fn($log) => $log->gov_deduction_id == $deduction->id);
@@ -726,6 +776,7 @@
                             <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Designation</th>
                             <th rowspan="2" class="sticky left-[240px] z-30 bg-gray-50 border border-gray-300 p-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Project</th>
                             <th colspan="{{ $earningsCategories->where('name', 'BASIC')->count()+1}}" class="border border-gray-300 p-1 bg-emerald-50 text-emerald-900 tracking-wider">EARNINGS CATEGORIES</th>
+
                             <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 bg-gray-50">T.HOURS</th>
                             <th rowspan="2" class="border border-gray-300 p-2 bg-green-50 bg-gray-50">OT</th>
                             <th rowspan="2" class="border border-gray-300 p-2 text-red-600 bg-gray-50">T.ABSENT</th>
@@ -748,7 +799,8 @@
                         @foreach($subcons->SubConEmployee as $employee)
                         <tr class="hover:bg-gray-50 text-gray-800 text-[10px] group transition-colors">
                             <td class="sticky left-0 z-20 bg-white group-hover:bg-gray-50 border border-gray-300 p-2 text-left font-sans font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
-                                <span class="truncate">{{ strtoupper($employee->lastname) }},
+                                <span class="truncate">
+                                    {{ strtoupper($employee->lastname) }},
                                     {{ strtoupper($employee->firstname) }}
                                     {{ strtoupper($employee->middlename) }}</span>
                             </td>
@@ -963,6 +1015,7 @@
                                 {{ $matchedEarning ? number_format(($matchedEarning->amount/8), 2) : '--' }}
                             </td>
                             @endforeach
+
                             <td class="border border-gray-300 p-2 bg-green-50 font-bold text-gray-900 text-right">
                                 @if($employee->payrollSummaryData->sum('totalhours') == 0)
                                 --
@@ -1374,7 +1427,7 @@
                                     class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-24 font-sans focus:ring-1 focus:ring-blue-500 font-medium">
                                 <option value="R" ${log.paytype === 'R' || !log.paytype ? 'selected' : ''}>REGULAR</option>
                                 <option value="A" ${log.paytype === 'A' ? 'selected' : ''}>ABSENT</option>
-                                <option value="N" ${log.paytype === 'N' ? 'selected' : ''}>NOT-INCLUDED</option>
+                                <option value="N" ${log.paytype === 'N' ? 'selected' : ''}>NOT-APPLICABLE</option>
                             </select>
                         </td>
                         <td class="p-1">

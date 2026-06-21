@@ -79,7 +79,9 @@ class PayrollSummaryController extends Controller
                     $subconRelations["SubConEmployee." . $value] = fn($q) => $q;
                 }
             }
-            $subconRelations['SubConEmployee'] = fn($q) => $q->where('status', true);
+            // $subconRelations['SubConEmployee'] = fn($q) => $q->where('status', true);
+            $subconRelations['SubConEmployee'] = fn($q) => $q->where('status', true)
+                ->whereIn('employeeid', $employeeids);
             $subcon_query = Category::where('status', true)
                 ->where('cat', 'SUBCON')
                 ->when($expartners === 'ALL', fn($q) => $q->orderBy('name', 'asc'))
@@ -95,8 +97,6 @@ class PayrollSummaryController extends Controller
                 }
             }
         }
-
-
         $rawLogs = Atlog::whereIn('user_id', $employeeids)
             ->whereBetween('recorded_at', [$dateFrom, $dateTo])
             ->orderBy('recorded_at', 'asc')
@@ -134,41 +134,104 @@ class PayrollSummaryController extends Controller
                         $timeOut = $lastTime->format('h:i A');
                     }
                 }
+                // Check if the current processing date is a Sunday
+                $isSunday = Carbon::parse($date)->isSunday();
                 // Variable initialization for database recording
                 $overtime = 0.00;
                 $acquiredHours = 0.00;
                 $lateUndertime = 0.00;
                 $payType = 'R';
+                // Initialize break times as null
+                $breakOut = null;
+                $breakIn = null;
+                // Extract Break Out and Break In from raw logs if they exist
+                if (!$dayLogs->isEmpty()) {
+                    // Filter logs that fall strictly between 12:01 PM and 12:50 PM
+                    $breakWindowLogs = $dayLogs->filter(function ($log) use ($date) {
+                        // Adjust the property name (e.g., $log->log_time or $log->created_at) to match your data structure
+                        $logTime = Carbon::parse($log->log_time);
+                        $windowStart = Carbon::parse("$date 12:01:00");
+                        $windowEnd = Carbon::parse("$date 12:50:00");
+
+                        return $logTime->between($windowStart, $windowEnd);
+                    })->sortBy('log_time'); // Ensure they are chronological
+
+                    if ($breakWindowLogs->isNotEmpty()) {
+                        // Break Out = First punch within the window
+                        $breakOut = Carbon::parse($breakWindowLogs->first()->log_time)->format('H:i:s');
+
+                        // Break In = Last punch within the window
+                        $breakIn = Carbon::parse($breakWindowLogs->last()->log_time)->format('H:i:s');
+
+                        // If there's only 1 punch in that window, breakOut and breakIn will be identical.
+                        // Optional safety: clear breakIn if it's the exact same punch record as breakOut
+                        if ($breakWindowLogs->count() === 1) {
+                            $breakIn = null;
+                        }
+                    }
+                }
                 // Scenario Evaluation
                 if ($dayLogs->isEmpty()) {
-                    $display = 'A'; // Scenario A: No logs at all
+                    $display = 'A';
+                    $payType = $isSunday ? 'N' : 'A';
                     $class = 'bg-yellow-50 font-bold text-amber-700 text-center';
-                    $payType = 'A';
                 } elseif (!$timeIn || !$timeOut) {
-                    $display = 'N/A'; // Scenario B: Missed punch / Single punch entry
+                    $display = 'N/A';
+                    $payType = $isSunday ? 'N' : 'A';
                     $class = 'bg-red-100 font-bold text-red-600 text-center';
-                    $payType = 'A';
                 } else {
-                    // Scenario C: Completed punches
+                    $payType = 'R';
                     $carbonIn = Carbon::parse("$date $timeIn");
                     $carbonOut = Carbon::parse("$date $timeOut");
-                    $grossHours = $carbonIn->diffInMinutes($carbonOut) / 60;
-                    if ($grossHours > 5) $grossHours -= 1; // standard lunch break deduction
-                    $totalComputedHours = round($grossHours, 2);
-                    $standardShiftHours = 8.00;
-                    if ($totalComputedHours >= $standardShiftHours) {
-                        $acquiredHours = $standardShiftHours;
-                        $overtime = $totalComputedHours - $standardShiftHours;
-                        $lateUndertime = 0.00;
+                    // RECOMMENDATION: Check for accidental double-taps (e.g., matching logs spanning only seconds)
+                    // If they spent less than 1 minute clocked in, treat it as an invalid/incomplete entry.
+                    if ($carbonIn->diffInSeconds($carbonOut) < 60) {
+                        $display = 'N/A';
+                        $payType = $isSunday ? 'N' : 'A';
+                        $class = 'bg-red-100 font-bold text-red-600 text-center';
+                        // Treat full shift as missing hours (8.00)
+                        $lateUndertime = 8.00;
+                        $acquiredHours = 0.00;
                     } else {
-                        $acquiredHours = $totalComputedHours;
-                        $overtime = 0.00;
-                        $lateUndertime = $standardShiftHours - $totalComputedHours;
+                        // Calculate worked minutes
+                        $grossMinutes = $carbonIn->diffInMinutes($carbonOut);
+                        // Deduct 1-hour break if work exceeds 5 hours (300 minutes)
+                        if ($grossMinutes > 300) {
+                            $grossMinutes -= 60;
+                        }
+                        $standardShiftMinutes = 480; // 8 hours
+                        if ($grossMinutes >= $standardShiftMinutes) {
+                            $acquiredHours = 8.00;
+                            $lateUndertime = 0.00;
+
+                            // Overtime Calculation
+                            $rawOvertimeMinutes = $grossMinutes - $standardShiftMinutes;
+                            if ($rawOvertimeMinutes >= 60) {
+                                $overtime = floor($rawOvertimeMinutes / 30) * 0.5;
+                            } else {
+                                $overtime = 0.00;
+                            }
+                        } else {
+                            // Late / Undertime Calculation
+                            $missingMinutes = $standardShiftMinutes - $grossMinutes;
+
+                            // 1. Convert missing minutes to literal HH.MM format (e.g., 480 minutes -> 8.00)
+                            $missingHoursPart = floor($missingMinutes / 60);
+                            $missingMinutesPart = $missingMinutes % 60;
+                            $lateUndertime = (float) ($missingHoursPart . '.' . str_pad($missingMinutesPart, 2, '0', STR_PAD_LEFT));
+
+                            // 2. Convert gross minutes to literal HH.MM format (e.g., 467 minutes -> 7.47)
+                            $fullHours = floor($grossMinutes / 60);
+                            $remainingMinutes = $grossMinutes % 60;
+                            $acquiredHours = (float) ($fullHours . '.' . str_pad($remainingMinutes, 2, '0', STR_PAD_LEFT));
+
+                            $overtime = 0.00;
+                        }
+
+                        $display = number_format($acquiredHours, 2); // Set to 2 decimal places to capture full HH.MM formatting
+                        $class = 'text-center';
+                        $totalPeriodOvertime += $overtime;
                     }
-                    $display = number_format(min($acquiredHours, 8), 1); // Cap regular hours display at 8
-                    $class = 'text-center';
-                    // Accumulate overtime only on valid, completed punch days
-                    $totalPeriodOvertime += $overtime;
                 }
 
                 $employeeTimesheets[$employee->employeeid][$date] = [
@@ -177,8 +240,8 @@ class PayrollSummaryController extends Controller
                     'hours'     => $acquiredHours,
                     'time_in'   => $timeIn,
                     'time_out'  => $timeOut,
-                    'break_out' => null,
-                    'break_in'  => null,
+                    'break_out' => $breakOut,
+                    'break_in'  => $breakIn,
                 ];
                 // Check if a report already exists for this employee, date, and period
                 $payrollReportExists = PayrollReport::where('employee_id', $employee->employeeid)
@@ -497,13 +560,15 @@ class PayrollSummaryController extends Controller
             $overTimerate = (float) (($HourRate * $percentage) + $HourRate);
             $Finaltotalhours = 0.0;
             $Finaltotalovertime = 0.0;
-            $Finaltotalabsent = 0; // Integer count
+            $Finaltotalabsent = 0;
             $Finallateundertime = 0.0;
             $Finaltotaldeductionn = 0.0;
             $Finaltotalearnings = 0.0;
             $Finaltotaladjustment = 0.0;
             $Finaltotalnetpay = 0.0;
             $computedamountPerDay = 0.0;
+            $RequiredRegularHours = 0.0;
+            $otherearnigs = 0.0;
             if ($request->has('timesheet')) {
                 foreach ($request->input('timesheet') as $dateKey => $data) {
                     $payCat = strtoupper($data['pay_cat']);
@@ -520,13 +585,10 @@ class PayrollSummaryController extends Controller
                         'break_in'  => $data['break_in']  ?? null,
                         'time_out'  => $data['time_out']  ?? null,
                     ];
-                    // Loop through all 4 slots and insert them dynamically if they contain a valid value
                     foreach ($timeLogsMap as $slotKey => $timeValue) {
-                        // Skip if the slot is completely empty (handles your break-out/break-in null rule)
                         if (empty($timeValue)) {
                             continue;
                         }
-                        // Define the map matching your verification mode specifications
                         $verificationModeMap = [
                             'time_in'   => 0,
                             'time_out'  => 1,
@@ -563,7 +625,6 @@ class PayrollSummaryController extends Controller
                         if (!empty($data['time_in']) && !empty($data['time_out'])) {
                             $inTime  = Carbon::parse("{$dateKey} {$data['time_in']}");
                             $outTime = Carbon::parse("{$dateKey} {$data['time_out']}");
-
                             if ($outTime->greaterThan($inTime)) {
                                 $totalMinutes = $inTime->diffInMinutes($outTime);
                                 $computedRegHours = $totalMinutes / 60;
@@ -576,30 +637,35 @@ class PayrollSummaryController extends Controller
                                     $computedRegHours = 8.0;
                                 }
                                 // Assign the dynamically calculated value
-                                $rowRegHours = (float)$computedRegHours;
+                                // $rowRegHours = (float)$computedRegHours;
                             }
                         }
                     }
                     // Read and sanitize single row entries
                     $rowOvertime  = $isWipedOut ? 0.0 : (float)max(0, $data['overtime_hours'] ?? 0);
-                    // $rowRegHours  = $isWipedOut ? 0.0 : (float)max(0, $data['regular_hours'] ?? 0);
+                    $rowRegHours  = $isWipedOut ? 0.0 : (float)max(0, $data['regular_hours'] ?? 0);
                     $rowLateHours = $isWipedOut ? 0.0 : (float)max(0, $data['late_undertime_hours'] ?? 0);
                     // --- COMPUTE ACCUMULATORS FOR SUMMARY MATRIX ---
-                    $Finaltotalhours    += $rowRegHours;
+
                     $Finaltotalovertime += $rowOvertime;
                     $Finallateundertime += $rowLateHours;
                     // --- IDENTIFY PER DAY RATE
                     if (!$isWipedOut) {
                         $dailyPayType = Holiday::where('id', $data['holiday_id'])->first();
                         $PercentVal = $dailyPayType ? (float)$dailyPayType->percentage : 0.0;
+                        if ($PercentVal <= 0) {
+                            $Finaltotalhours += $rowRegHours;
+                            $RequiredRegularHours++;
+                        }
                         $Ratepercentage = (float) ($PercentVal / 100);
                         $RatePerHourWithPercentage = (float) (($HourRate * $Ratepercentage) + $HourRate);
-                        $computedamountPerDay += $rowRegHours * $RatePerHourWithPercentage;
+                        $computedamountPerDay += ($rowRegHours * $RatePerHourWithPercentage) + $otherearnings;
                     } else {
                         $computedamountPerDay += $rowRegHours * $HourRate;
                     }
                     if ($payCat === 'A') {
                         $Finaltotalabsent++;
+                        $RequiredRegularHours++;
                     }
                     $isSavedB = DB::table('payroll_reports')->insert([
                         'dateperiod_id'  => $datePeriod->id,
@@ -641,9 +707,10 @@ class PayrollSummaryController extends Controller
             }
             // 3. Compute Gross Earnings & Final Net Pays
             $calculatedOtValue = $Finaltotalovertime * $overTimerate;
-            $Finaltotalearnings = $computedamountPerDay + $otherearnings;
-            $Finalgrosspay = $computedamountPerDay + $otherearnings + $Finaltotaladjustment + $calculatedOtValue;
+            $Finaltotalearnings = $computedamountPerDay + $calculatedOtValue;
+            $Finalgrosspay = $computedamountPerDay + $Finaltotaladjustment + $calculatedOtValue;
             $Finaltotalnetpay   = $Finalgrosspay - $Finaltotaldeductionn;
+            $FinalRequiredRegularHours = $RequiredRegularHours * 8;
             // ==========================================
             // SUB-SECTION 5: RECORD SUMMARY DATASET
             // ==========================================
@@ -659,6 +726,7 @@ class PayrollSummaryController extends Controller
                 'totaladjustment' => number_format($Finaltotaladjustment, 2, '.', ''),
                 'totalnetpay'     => number_format($Finaltotalnetpay, 2, '.', ''),
                 'grosspay'        => number_format($Finalgrosspay, 2, '.', ''),
+                'required_hours'   => number_format($FinalRequiredRegularHours, 2, '.', ''),
                 'created_at'      => now(),
                 'updated_at'      => now()
             ]);
@@ -675,7 +743,7 @@ class PayrollSummaryController extends Controller
                 return redirect()->back()->withErrors($validationErrors);
             }
             DB::commit();
-            return redirect()->back()->with('success', 'Attendance matrix logs processed and saved cleanly.');
+            return redirect()->back()->with('success', "Attendance matrix logs processed and saved cleanly. for {$employeeData->lastname} , {$employeeData->firstname} {$employeeData->middlename}");
         } catch (Exception $e) {
             // Something broke down under load, discard changes instantly
             DB::rollBack();
@@ -683,7 +751,6 @@ class PayrollSummaryController extends Controller
                 'employee_id' => $employeeId,
                 'period_code' => $periodCode
             ]);
-
             $validationErrors[] = 'Critical database error Sql Exception' . $e->getMessage() . "  ({ $periodCode})";
             return redirect()->back()->withErrors($validationErrors);
         }
@@ -733,13 +800,9 @@ class PayrollSummaryController extends Controller
                 }
             }
             // Attach the calculated properties dynamically to the employee instance
-
-
-
             $employee->basic_rate = $EmpBasicPay;
             $basichrrate = $EmpBasicPay / 8;
             $employee->rate_per_hour =  $basichrrate;
-
             $overtime_rates = (float)($period->overtime_rate ?? 0.0);
             $employee->otratehour =  ($basichrrate  *  ($overtime_rates / 100)) + $basichrrate;
         }
