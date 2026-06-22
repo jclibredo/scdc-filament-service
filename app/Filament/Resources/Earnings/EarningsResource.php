@@ -42,31 +42,58 @@ class EarningsResource extends Resource
         return $schema
             ->schema([
                 Section::make('Earnings Information')
+                    ->description('Configure the employee earning details.')
+                    ->icon('heroicon-o-banknotes')
+                    ->columnSpanFull()
                     ->schema([
+                        
                         Select::make('employee_id')
                             ->label('Employee')
                             ->relationship('employee')
-                            ->getOptionLabelFromRecordUsing(fn($record) => $record->full_name)
+                            ->getOptionLabelFromRecordUsing(
+                                fn($record) => $record->full_name
+                            )
                             ->searchable(['firstname', 'middlename', 'lastname'])
                             ->preload()
                             ->required()
-                            ->disabled(true)
+                            ->disabled()
                             ->dehydrated()
-                            // Set the default value from the session
-                            ->default(session('session_employee_id')),
+                            ->default(session('session_employee_id'))
+                            ->columnSpanFull(),
+
                         Select::make('title')
                             ->label('Earnings Type')
-                            ->options(Category::where('cat','EARNINGS')->pluck('name', 'id'))
+                            ->options(
+                                Category::where('cat', 'EARNINGS')
+                                    ->pluck('name', 'id')
+                            )
                             ->searchable()
+                            ->preload()
                             ->native(false)
                             ->required(),
+
+                        Select::make('frequency')
+                            ->label('Frequency')
+                            ->options([
+                                'DAILY' => 'Daily',
+                                'CUT-OFF' => 'Cut-Off',
+                            ])
+                            ->placeholder('Select frequency')
+                            ->native(false)
+                            ->required(),
+
                         TextInput::make('amount')
+                            ->label('Amount')
                             ->numeric()
+                            ->prefix('₱')
+                            ->placeholder('0.00')
                             ->required(),
                     ])
-                    ->columns(1),
-            ])
-            ->columns(1);
+                    ->columns([
+                        'default' => 1,
+                        'md' => 3,
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -186,6 +213,7 @@ class EarningsResource extends Resource
                 // TextColumn::make('title')->label('Earnings Type')->sortable(),
                 TextColumn::make('category.name')->label('Earnings Type')->sortable(),
                 TextColumn::make('amount')->sortable(),
+                TextColumn::make('frequency')->sortable(),
                 IconColumn::make('status')->boolean()->label('Active'),
             ])
             ->actions([

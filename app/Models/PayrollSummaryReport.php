@@ -27,7 +27,8 @@ class PayrollSummaryReport extends Model
         'totalnetpay',
         'grosspay',
         'status',
-        'required_hours'
+        'required_hours',
+        'required_income'
     ];
 
 
@@ -45,6 +46,7 @@ class PayrollSummaryReport extends Model
             'grosspay' => 'float',
             'status' => 'boolean',
             'required_hours' => 'float',
+            'required_income' => 'float',
         ];
     }
 

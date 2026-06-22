@@ -163,7 +163,7 @@
                                         <td class="p-0.5 px-2 text-center font-sans text-[9px]">
                                             {{ number_format($payrollsummary->required_hours, 0) }} hrs.
                                         </td>
-                                        <td class="p-0.5 px-2 text-right">{{ number_format( ($payrollsummary->required_hours * $employee->rate_per_hour), 2) }}</td>
+                                        <td class="p-0.5 px-2 text-right">{{ number_format( $payrollsummary->required_income, 2) }}</td>
                                     </tr>
                                     @endif
                                     @empty
@@ -193,6 +193,7 @@
                                         <td class="p-0.5 px-2 text-center font-sans text-[9px]">
                                             {{ number_format($employee->payrollSummaryData->sum('totalhours'), 0) }} hrs.
                                         </td>
+                                        <!-- <td class="p-0.5 px-2 text-right">{{ number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}</td> -->
                                         <td class="p-0.5 px-2 text-right">{{ number_format( ($employee->payrollSummaryData->sum('totalhours') * $employee->rate_per_hour), 2) }}</td>
                                     </tr>
                                     @endif
@@ -262,17 +263,19 @@
                         <div>
                             Total Earnings : <span class="font-mono ml-1 font-medium">
 
-                                <!-- @php
+                                @php
                                 $dailyRate = $employee->basic_rate;
                                 $ratePerHour = $employee->rate_per_hour;
                                 $computedAbsent = ($employee->payrollSummaryData->sum('totalabsent') * $dailyRate);
                                 $computedLate = ($employee->payrollSummaryData->sum('lateundertime') * $ratePerHour);
-                                echo number_format($employee->payrollSummaryData->sum('totalearnings')
-                                + $employee->payrollSummaryData->sum('totaladjustment'), 2)
-                                @endphp -->
-                                {{
-                                number_format($employee->payrollSummaryData->sum('totalearnings') 
-                                + $employee->payrollSummaryData->sum('totaladjustment'), 2) }}
+                                // echo number_format($employee->payrollSummaryData->sum('grosspay') //totalearnings
+                                echo number_format($employee->payrollSummaryData->sum('grosspay')
+                                + $computedAbsent
+                                + $computedLate,2)
+                                // + $employee->payrollSummaryData->sum('totaladjustment'), 2)
+                                @endphp
+                                <!-- {{
+                                number_format($employee->payrollSummaryData->sum('grosspay'),2)  }} -->
                             </span>
                         </div>
                         <div>

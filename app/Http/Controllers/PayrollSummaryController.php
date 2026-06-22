@@ -414,8 +414,6 @@ class PayrollSummaryController extends Controller
 
     public function updateBatch(Request $request)
     {
-
-        // dd($request->input('timesheet'));
         $validationErrors = [];
         // 1. Validate incoming data framework context requirements
         $request->validate([
@@ -544,16 +542,23 @@ class PayrollSummaryController extends Controller
             // PROCESS 2: Insert fresh rows based on the requested matrix payload
             // =========================================================================
             $EmpBasicPay = 0.0;
-            $otherearnings = 0.0;
+            $dailyearnings = 0.0;
+            $cuttoffearnings = 0.0;
             // First calculate basic pay out of your database data loops
             foreach ($employeeData->earningsData as $datass) {
                 $earningsCat = Category::where('id', $datass->title)->first();
                 if ($earningsCat && strtoupper($earningsCat->name) === 'BASIC') {
                     $EmpBasicPay += (float)($datass->amount ?? 0.0);
                 } else {
-                    $otherearnings += (float)($datass->amount ?? 0.0);
+                    if (strtoupper($datass->frequency) === 'DAILY') {
+                        $dailyearnings += (float)($datass->amount ?? 0.0);
+                    } else {
+                        $cuttoffearnings += (float)($datass->amount ?? 0.0);
+                    }
                 }
             }
+
+            // dd('BASIC ' . $EmpBasicPay . ' DAILY EARNINGS ' . $dailyearnings . ' CUTT OF ' . $cuttoffearnings);
             $percentage = (float) ($datePeriod->overtime_rate / 100);
             // Move rate definitions below the final basic pay sum value to avoid 0 division errors
             $HourRate = (float) ($EmpBasicPay / 8);
@@ -568,7 +573,6 @@ class PayrollSummaryController extends Controller
             $Finaltotalnetpay = 0.0;
             $computedamountPerDay = 0.0;
             $RequiredRegularHours = 0.0;
-            $otherearnigs = 0.0;
             if ($request->has('timesheet')) {
                 foreach ($request->input('timesheet') as $dateKey => $data) {
                     $payCat = strtoupper($data['pay_cat']);
@@ -646,7 +650,6 @@ class PayrollSummaryController extends Controller
                     $rowRegHours  = $isWipedOut ? 0.0 : (float)max(0, $data['regular_hours'] ?? 0);
                     $rowLateHours = $isWipedOut ? 0.0 : (float)max(0, $data['late_undertime_hours'] ?? 0);
                     // --- COMPUTE ACCUMULATORS FOR SUMMARY MATRIX ---
-
                     $Finaltotalovertime += $rowOvertime;
                     $Finallateundertime += $rowLateHours;
                     // --- IDENTIFY PER DAY RATE
@@ -656,10 +659,12 @@ class PayrollSummaryController extends Controller
                         if ($PercentVal <= 0) {
                             $Finaltotalhours += $rowRegHours;
                             $RequiredRegularHours++;
+                            $computedamountPerDay += ($rowRegHours * $HourRate) + $dailyearnings;
+                        } else {
+                            $Ratepercentage = (float) ($PercentVal / 100);
+                            $RatePerHourWithPercentage = (float) (($HourRate * $Ratepercentage) + $HourRate);
+                            $computedamountPerDay += ($rowRegHours * $RatePerHourWithPercentage) + $dailyearnings;
                         }
-                        $Ratepercentage = (float) ($PercentVal / 100);
-                        $RatePerHourWithPercentage = (float) (($HourRate * $Ratepercentage) + $HourRate);
-                        $computedamountPerDay += ($rowRegHours * $RatePerHourWithPercentage) + $otherearnings;
                     } else {
                         $computedamountPerDay += $rowRegHours * $HourRate;
                     }
@@ -707,10 +712,16 @@ class PayrollSummaryController extends Controller
             }
             // 3. Compute Gross Earnings & Final Net Pays
             $calculatedOtValue = $Finaltotalovertime * $overTimerate;
-            $Finaltotalearnings = $computedamountPerDay + $calculatedOtValue;
-            $Finalgrosspay = $computedamountPerDay + $Finaltotaladjustment + $calculatedOtValue;
+            $Finaltotalearnings = $computedamountPerDay + $calculatedOtValue + $cuttoffearnings;
+            $Finalgrosspay = $Finaltotalearnings + $Finaltotaladjustment;
             $Finaltotalnetpay   = $Finalgrosspay - $Finaltotaldeductionn;
             $FinalRequiredRegularHours = $RequiredRegularHours * 8;
+
+            //required icome computation   
+            //   $dailyearnings = 0.0;
+            // $cuttoffearnings = 0.0;
+            $requireAmount =  $HourRate * $FinalRequiredRegularHours;
+            $finalrequiredincome = $requireAmount + $cuttoffearnings + ($RequiredRegularHours * $dailyearnings);
             // ==========================================
             // SUB-SECTION 5: RECORD SUMMARY DATASET
             // ==========================================
@@ -727,6 +738,7 @@ class PayrollSummaryController extends Controller
                 'totalnetpay'     => number_format($Finaltotalnetpay, 2, '.', ''),
                 'grosspay'        => number_format($Finalgrosspay, 2, '.', ''),
                 'required_hours'   => number_format($FinalRequiredRegularHours, 2, '.', ''),
+                'required_income'   => number_format($finalrequiredincome, 2, '.', ''),
                 'created_at'      => now(),
                 'updated_at'      => now()
             ]);

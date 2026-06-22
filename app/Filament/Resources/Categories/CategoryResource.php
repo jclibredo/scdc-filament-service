@@ -61,17 +61,7 @@ class CategoryResource extends Resource
                             // 💡 Optional: Makes it searchable if your options list grows later
                             ->searchable()
                             ->placeholder('Select category type')
-                            ->required()
-                            ->live(),
-                        Select::make('frequency')
-                            ->label('Frequency')
-                            ->options([
-                                'DAILY' => 'Daily',
-                                'CUT-OFF' => 'Cut-Off',
-                            ])
-                            ->placeholder('Select frequency')
-                            ->visible(fn(Get $get): bool => $get('cat') === 'EARNINGS')
-                            ->required(fn(Get $get): bool => $get('cat') === 'EARNINGS'),
+                            ->required(),
                         Textarea::make('description')
                             ->label('Description')
                             ->rows(3)
@@ -90,6 +80,7 @@ class CategoryResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
+
                 TextColumn::make('name')
                     ->label('Name')
                     ->searchable()
@@ -101,13 +92,6 @@ class CategoryResource extends Resource
                     ->color('info')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('frequency')
-                    ->label('Frequency')
-                    ->badge()
-                    ->color('info')
-                    ->searchable()
-                    ->sortable(),
-
                 IconColumn::make('status')
                     ->label('Status')
                     ->boolean() // Automatically turns true into a green check/circle and false into a red cross/circle
@@ -147,8 +131,6 @@ class CategoryResource extends Resource
     {
         return [
             'index' => ListCategories::route('/'),
-            // 'create' => CreateCategory::route('/create'),
-            // 'edit' => EditCategory::route('/{record}/edit'),
         ];
     }
 }
