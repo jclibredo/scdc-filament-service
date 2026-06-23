@@ -431,6 +431,7 @@
                     $dayData = $empTimesheetRecords[$dKey] ?? [];
 
                     $reportMetrics[$dKey] = [
+                    'sched_id' => $report['sched_id'] ?? null,
                     'paytype' => $report['paytype'] ?? null,
                     'cat_id' => $report['cat_id'] ?? null,
                     'time_in' => $dayData['time_in'] ?? null,
@@ -682,12 +683,14 @@
 
                         <div class="max-h-100 overflow-y-auto border border-gray-200 rounded"
                             id="timesheet_table_wrapper"
-                            data-lookup-holidays="{{ json_encode($holidays->toArray()) }}">
+                            data-lookup-holidays="{{ json_encode($holidays->toArray()) }}"
+                            data-lookup-schedules="{{ json_encode($availableSchedules->toArray()) }}">
 
                             <table class="w-full text-left text-[11px] border-collapse">
                                 <thead class="bg-gray-100 sticky top-0 border-b border-gray-200 text-gray-600 font-semibold z-10">
                                     <tr>
                                         <th class="p-2">Date Frame</th>
+                                        <th class="p-2">Time Sched</th>
                                         <th class="p-1">Pay Type</th>
                                         <th class="p-1">Pay Cat</th>
                                         <th class="p-1">Time In</th>
@@ -1376,13 +1379,15 @@
                 // Extract reference holiday setup properties from background wrappers
                 const tsWrapper = document.getElementById('timesheet_table_wrapper');
                 const holidayMaster = tsWrapper ? JSON.parse(tsWrapper.getAttribute('data-lookup-holidays') || '[]') : [];
+                const schedules = tsWrapper ? JSON.parse(tsWrapper.getAttribute('data-lookup-schedules') || '[]') : [];
 
                 // Bind and Load Cutoff Timesheet Logs Matrix
                 const tsBody = document.getElementById('m_table_timesheet');
                 tsBody.innerHTML = '';
 
                 Object.entries(timesheets).forEach(([dateKey, log]) => {
-                    console.log(log.cat_id);
+                    // console.log("Current row data:", log);
+                    // console.log(JSON.stringify(schedules, null, 2));
                     let holidayOptions = '';
 
                     // Find the default/regular holiday ID (usually the one with 0% percentage or no cat_id)
@@ -1398,8 +1403,61 @@
                             </option>`;
                     });
 
+
+
+                    let scheduleOptions = '';
+                    let defaultSchedId = '';
+
+                    const formatTime = (timeString) => {
+                        if (!timeString || typeof timeString !== 'string') return '--:--';
+                        const parts = timeString.split(':');
+                        if (parts.length < 2) return timeString;
+                        const [hours, minutes] = parts;
+                        const hourInt = parseInt(hours, 10);
+                        const ampm = hourInt >= 12 ? 'PM' : 'AM';
+                        const displayHour = hourInt % 12 || 12;
+                        return `${displayHour}:${minutes}${ampm}`;
+                    };
+                    // 1. Target the correct contextual variable 'empId' extracted from your element trigger
+                    const targetEmployeeId = empId;
+                    // 2. Filter schedules to find alternative choices belonging specifically to this employee
+                    const employeeSpecificSchedules = schedules.filter(sch => {
+                        if (!sch.employeeid || !targetEmployeeId) return false;
+                        return sch.employeeid.toString().trim() === targetEmployeeId.toString().trim();
+                    });
+                    // . Fallback: If log.sched_id exists but is missing from the filtered list, ensure we find it globally so the dropdown doesn't show up empty by default
+                    let activelySelectedSchedule = employeeSpecificSchedules.find(sch => log.sched_id && sch.id.toString() === log.sched_id.toString());
+                    if (!activelySelectedSchedule && log.sched_id) {
+                        // Search the master repository globally to prevent an empty display on load
+                        activelySelectedSchedule = schedules.find(sch => sch.id.toString() === log.sched_id.toString());
+                        if (activelySelectedSchedule) {
+                            // Append it to the top of our selection array dynamically
+                            employeeSpecificSchedules.unshift(activelySelectedSchedule);
+                        }
+                    }
+                    // 4. Generate the Option Tags
+                    if (employeeSpecificSchedules.length > 0) {
+                        // Remove duplicate IDs that might occur from unshifting
+                        const uniqueSchedules = Array.from(new Map(employeeSpecificSchedules.map(item => [item.id, item])).values());
+                        uniqueSchedules.forEach(sch => {
+                            const isSelected = (log.sched_id && sch.id.toString() === log.sched_id.toString());
+                            if (isSelected) {
+                                defaultSchedId = sch.id;
+                            }
+                            const displayTimeStr = `${formatTime(sch.timein)} - ${formatTime(sch.timeout)}`;
+                            // --- UPDATE THIS EXACT LINE BELOW ---
+                            scheduleOptions += `
+                            <option value="${sch.id}" data-timein="${sch.timein}" data-timeout="${sch.timeout}" ${isSelected ? 'selected' : ''}>
+                                ${displayTimeStr} ${isSelected ? '(Assigned)' : ''}
+                            </option>
+                        `;
+                        });
+                    } else {
+                        scheduleOptions = `<option value="">No Shift Configured</option>`;
+                    }
                     // Pre-calculate clean strings for your backup values
                     const originalHolidayId = log.cat_id || defaultHolidayId;
+                    const originalSchedId = log.sched_id || defaultSchedId;
                     const originalTimeIn = convertTo24HourTime(log.time_in);
                     const originalBreakOut = convertTo24HourTime(log.break_out);
                     const originalBreakIn = convertTo24HourTime(log.break_in);
@@ -1413,6 +1471,15 @@
                     tr.dataset.date = dateKey;
                     tr.innerHTML = `
                         <td class="p-2 text-left font-semibold text-gray-900 bg-gray-50 whitespace-nowrap">${dateKey}</td>
+                        <td class="p-1">
+                           <select name="timesheet[${dateKey}][sched_id]" 
+                                    data-backup="${originalSchedId}"
+                                    onchange="handleScheduleChange(this)"
+                                    ${(log.paytype === 'A' || log.paytype === 'N') ? 'disabled' : ''}
+                                    class="bg-gray-50 border border-gray-300 rounded text-[10px] p-0.5 w-28 font-sans focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100">
+                                    ${scheduleOptions}
+                                </select>
+                        </td>
                         <td class="p-1">
                             <select name="timesheet[${dateKey}][holiday_id]" 
                                     data-backup="${originalHolidayId}"
@@ -1431,8 +1498,9 @@
                             </select>
                         </td>
                         <td class="p-1">
-                            <input type="time" name="timesheet[${dateKey}][time_in]" 
+                           <input type="time" name="timesheet[${dateKey}][time_in]" 
                                 data-backup="${originalTimeIn}"
+                                onchange="calculateRowHours(this)"
                                 value="${(log.paytype === 'A' || log.paytype === 'N') ? '' : originalTimeIn}" 
                                 ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
@@ -1452,8 +1520,9 @@
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
                         </td>
                         <td class="p-1">
-                            <input type="time" name="timesheet[${dateKey}][time_out]" 
+                           <input type="time" name="timesheet[${dateKey}][time_out]" 
                                 data-backup="${originalTimeOut}"
+                                onchange="calculateRowHours(this)"
                                 value="${(log.paytype === 'A' || log.paytype ==='N') ? '' : originalTimeOut}" 
                                 ${(log.paytype === 'A' || log.paytype ==='N') ? 'disabled' : ''} 
                                 class="w-full p-1 border border-gray-300 rounded text-[11px] disabled:bg-gray-100">
@@ -1521,6 +1590,102 @@
             });
         });
 
+        function handleScheduleChange(selectEl) {
+
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                return;
+            }
+
+            // 1. Extract the schedule boundaries from the option data tags
+            const schedInStr = selectedOption.getAttribute('data-timein');
+            const schedOutStr = selectedOption.getAttribute('data-timeout');
+
+            if (!schedInStr || !schedOutStr) {
+                return;
+            }
+
+            // 2. Safely capture the table row container
+            const row = selectEl.closest('tr');
+            if (!row) {
+                return;
+            }
+
+            // 3. Locate inputs by searching explicitly within this row's input types
+            const timeInInput = row.querySelector('input[type="time"][name*="[time_in]"]');
+            const timeOutInput = row.querySelector('input[type="time"][name*="[time_out]"]');
+
+            const regHoursInput = row.querySelector('input[name*="[regular_hours]"]');
+            const otHoursInput = row.querySelector('input[name*="[overtime_hours]"]');
+            const lateHoursInput = row.querySelector('input[name*="[late_undertime_hours]"]');
+
+            // Debug tracking log check
+            if (!timeInInput || !timeOutInput || !regHoursInput || !otHoursInput || !lateHoursInput) {
+                return;
+            }
+            if (!timeInInput.value || !timeOutInput.value) {
+                return;
+            }
+
+            // 4. Time Converter Helper
+            const toMinutes = (tStr) => {
+                const parts = tStr.split(':');
+                return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+            };
+
+            const actualIn = toMinutes(timeInInput.value);
+            const actualOut = toMinutes(timeOutInput.value);
+            const schedIn = toMinutes(schedInStr);
+            const schedOut = toMinutes(schedOutStr);
+
+            // Balance midnight crossovers cleanly
+            const adjustedOut = (actualOut < actualIn) ? (actualOut + 1440) : actualOut;
+            const adjustedSchedOut = (schedOut < schedIn) ? (schedOut + 1440) : schedOut;
+
+            // 5. Compute Late & Undertime
+            let lateMinutes = 0;
+            let undertimeMinutes = 0;
+
+            if (actualIn > schedIn) {
+                lateMinutes = actualIn - schedIn;
+            }
+            if (adjustedOut < adjustedSchedOut) {
+                undertimeMinutes = adjustedSchedOut - adjustedOut;
+            }
+
+            const totalLateUndertimeHours = (lateMinutes + undertimeMinutes) / 60;
+
+            // 6. Compute Regular Hours (Capped at standard 8 hrs, less 1 hr break if shift > 5 hrs)
+            const effectiveIn = Math.max(actualIn, schedIn);
+            const effectiveOut = Math.min(adjustedOut, adjustedSchedOut);
+
+            let regularHours = 0;
+            if (effectiveOut > effectiveIn) {
+                let workedMinutesWithinShift = effectiveOut - effectiveIn;
+                if (workedMinutesWithinShift > 300) {
+                    workedMinutesWithinShift -= 60; // 1 hour lunch break deduction
+                }
+                regularHours = Math.max(0, workedMinutesWithinShift / 60);
+            }
+            if (regularHours > 8.0) regularHours = 8.0;
+
+            // 7. Compute Overtime
+            let overtimeHours = 0;
+            if (adjustedOut > adjustedSchedOut) {
+                overtimeHours = (adjustedOut - adjustedSchedOut) / 60;
+            }
+
+            // 8. Output calculations back to form values
+            regHoursInput.value = regularHours.toFixed(2);
+            otHoursInput.value = overtimeHours.toFixed(2);
+            lateHoursInput.value = totalLateUndertimeHours.toFixed(2);
+
+            // console.log("Calculations successfully pushed:", {
+            //     regular_hours: regHoursInput.value,
+            //     overtime_hours: otHoursInput.value,
+            //     late_undertime: lateHoursInput.value
+            // });
+        }
         // Call this function inside your JavaScript form submission catch/then blocks:
         function showModalAlert(type, messageOrArray) {
             const alertBox = document.getElementById('modal_js_alerts');

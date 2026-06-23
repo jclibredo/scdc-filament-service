@@ -29,7 +29,11 @@ class Employee extends Model
         'project_id',
         'partners'
     ];
-    
+
+    public function emplScheduleData()
+    {
+        return $this->hasMany(EmpSchedule::class, 'employeeid');
+    }
     public function externalPartners()
     {
         return $this->belongsTo(Category::class, 'partners');

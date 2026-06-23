@@ -25,6 +25,9 @@ class ClearSessionOutsideResources
             'filament.admin.resources.atlogs.index',
             'filament.admin.resources.atlogs.create',
             'filament.admin.resources.atlogs.edit',
+            'filament.admin.resources.emp-schedules.index',
+            'filament.admin.resources.emp-schedules.create',
+            'filament.admin.resources.emp-schedules.edit',
         ];
 
         $isAllowed = false;

@@ -25,6 +25,7 @@ class PayrollReport extends Model
         'late_undertime',
         'cat_id',
         'status',
+        'sched_id',
     ];
 
     protected function casts(): array

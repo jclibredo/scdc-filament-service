@@ -17,10 +17,7 @@ class ListEmployees extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('New Employee')
-                ->color('warning')
-                ->icon('heroicon-m-plus-circle'),
+
 
             Action::make('upload_employee')
                 ->label('Upload Employees')
@@ -44,6 +41,11 @@ class ListEmployees extends ListRecords
                         ->success()
                         ->send();
                 }),
+
+            CreateAction::make()
+                ->label('New Employee')
+                ->color('warning')
+                ->icon('heroicon-m-plus-circle'),
         ];
     }
 }

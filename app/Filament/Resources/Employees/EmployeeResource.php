@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Employees;
 use App\Filament\Resources\Earnings\EarningsResource;
 // use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
 // use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
+use App\Models\EmpSchedule;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -216,6 +218,16 @@ class EmployeeResource extends Resource
                             session(['session_employee_id' => $record->employeeid]);
                             // Redirect to the create page WITHOUT query parameters
                             return redirect(EarningsResource::getUrl('index'));
+                        }),
+                    Action::make('viewSched')
+                        ->label('View Sched')
+                        ->color('success')
+                        ->icon('heroicon-o-calendar-days')
+                        ->action(function (Employee $record) {
+                            // Store the values in the session temporarily
+                            session(['session_employee_id' => $record->employeeid]);
+                            // Redirect to the create page WITHOUT query parameters
+                            return redirect(EmpScheduleResource::getUrl('index'));
                         }),
                     EditAction::make()
                         ->label('Update'),

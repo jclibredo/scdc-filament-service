@@ -1,100 +1,129 @@
 <?php
 
-namespace App\Filament\Resources\Earnings;
+namespace App\Filament\Resources\EmpSchedules;
 
-use App\Filament\Resources\Earnings\Pages\ListEarnings;
-use App\Models\Category;
-use App\Models\Earnings;
+// use App\Filament\Resources\EmpSchedules\Pages\CreateEmpSchedule;
+// use App\Filament\Resources\EmpSchedules\Pages\EditEmpSchedule;
+use App\Filament\Resources\EmpSchedules\Pages\ListEmpSchedules;
+// use App\Filament\Resources\EmpSchedules\Schemas\EmpScheduleForm;
+// use App\Filament\Resources\EmpSchedules\Tables\EmpSchedulesTable;
 use App\Models\Employee;
+use App\Models\EmpSchedule;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+// use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-// use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-// use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
-// use Illuminate\View\View;
 
-class EarningsResource extends Resource
+class EmpScheduleResource extends Resource
 {
-    protected static ?string $model = Earnings::class;
+    protected static ?string $model = EmpSchedule::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Earnings';
-
+    protected static ?string $recordTitleAttribute = 'EmpSchedule';
     public static function shouldRegisterNavigation(): bool
     {
         return false;
     }
-
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->schema([
-                Section::make('Earnings Information')
-                    ->description('Configure the employee earning details.')
-                    ->icon('heroicon-o-banknotes')
-                    ->columnSpanFull()
-                    ->schema([
+        return $schema->schema([
+            Select::make('employeeid')
+                ->label('Employee')
+                ->relationship('employData')
+                ->getOptionLabelFromRecordUsing(
+                    fn($record) => $record->full_name
+                )
+                ->searchable(['firstname', 'middlename', 'lastname'])
+                ->preload()
+                ->required()
+                ->disabled()
+                ->dehydrated()
+                ->default(session('session_employee_id'))
+                ->columnSpanFull(),
 
-                        Select::make('employee_id')
-                            ->label('Employee')
-                            ->relationship('employee')
-                            ->getOptionLabelFromRecordUsing(
-                                fn($record) => $record->full_name
-                            )
-                            ->searchable(['firstname', 'middlename', 'lastname'])
-                            ->preload()
-                            ->required()
-                            ->disabled()
-                            ->dehydrated()
-                            ->default(session('session_employee_id'))
-                            ->columnSpanFull(),
+            TimePicker::make('timein')
+                ->label('Time-In')
+                ->seconds(false)
+                ->live()
+                ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                    if (blank($state)) {
+                        return;
+                    }
+                    $workingHours = (int) ($get('workingHours') ?? 8);
+                    $timeout = Carbon::parse($state)
+                        ->addHours($workingHours + 1) // +1 hour break
+                        ->format('H:i');
+                    $set('timeout', $timeout);
+                })
+                ->required(),
 
-                        Select::make('title')
-                            ->label('Earnings Type')
-                            ->options(
-                                Category::where('cat', 'EARNINGS')
-                                    ->pluck('name', 'id')
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->required(),
+            TimePicker::make('timeout')
+                ->label('Time-Out')
+                ->seconds(false)
+                ->disabled()
+                ->dehydrated()
+                ->required(),
 
-                        Select::make('frequency')
-                            ->label('Frequency')
-                            ->options([
-                                'DAILY' => 'Daily',
-                                'CUT-OFF' => 'Cut-Off',
-                            ])
-                            ->placeholder('Select frequency')
-                            ->native(false)
-                            ->required(),
+            // Select::make('workingHours')
+            //     ->options([
+            //         4 => '4 Hours',
+            //         6 => '6 Hours',
+            //         7 => '7 Hours',
+            //         8 => '8 Hours',
+            //         9 => '9 Hours',
+            //         10 => '10 Hours',
+            //         11 => '11 Hours',
+            //         12 => '12 Hours',
+            //         13 => '13 Hours',
+            //         14 => '14 Hours',
+            //         15 => '15 Hours',
+            //         16 => '16 Hours',
+            //     ])
+            //     ->default(8)
+            //     ->live()
+            //     ->required(),
 
-                        TextInput::make('amount')
-                            ->label('Amount')
-                            ->numeric()
-                            ->prefix('₱')
-                            ->placeholder('0.00')
-                            ->required(),
-                    ])
-                    ->columns([
-                        'default' => 1,
-                        'md' => 3,
-                    ]),
-            ]);
+            TextInput::make('workingHours')
+                ->label('Working Hours')
+                ->numeric()
+                ->default(8)
+                ->minValue(1)
+                ->live()
+                ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                    if (blank($get('timein'))) {
+                        return;
+                    }
+                    $timeout = Carbon::parse($get('timein'))
+                        ->addHours(((int) $state) + 1) // +1 hour break
+                        ->format('H:i');
+                    $set('timeout', $timeout);
+                })
+                ->required(),
+
+            Toggle::make('status')
+                ->default(true)
+                ->required(),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -165,7 +194,7 @@ class EarningsResource extends Resource
                                     margin: 0;
                                     font-family: system-ui, sans-serif;
                                 '>
-                                    Earnings for Employee ID: <span style='font-family: monospace; color: #b45309;'>{$empid}</span>
+                                    Schedule for Employee ID: <span style='font-family: monospace; color: #b45309;'>{$empid}</span>
                                 </h3>
                             </div>
                             <div style='
@@ -183,39 +212,29 @@ class EarningsResource extends Resource
             ->query(function () {
                 $user = Auth::user();
                 if (! $user || ! $user->id) {
-                    return Earnings::whereRaw('1 = 0');
+                    return EmpSchedule::whereRaw('1 = 0');
                 }
                 // Eager load the relationships
-                return Earnings::query()
+                return EmpSchedule::query()
                     ->where(
-                        'employee_id',
+                        'employeeid',
                         session('session_employee_id')
                     );
             })
             ->columns([
-                TextColumn::make('employee.full_name')
-                    ->label('Employee')
-                    // Using the accessor logic: Lastname, Firstname Middlename
-                    ->formatStateUsing(function ($record) {
-                        $employee = $record->employee;
-                        if (!$employee) return '-';
-
-                        return "{$employee->lastname}, {$employee->firstname} {$employee->middlename}";
-                    })
-                    ->sortable(['lastname', 'firstname']) // Tells Filament which columns to use for sorting
-                    ->searchable(query: function ($query, string $search) {
-                        $query->whereHas('employee', function ($q) use ($search) {
-                            $q->where('firstname', 'like', "%{$search}%")
-                                ->orWhere('lastname', 'like', "%{$search}%")
-                                ->orWhere('middlename', 'like', "%{$search}%")
-                                ->orWhere('employeeid', 'like', "%{$search}%");
-                        });
-                    }),
-                // TextColumn::make('title')->label('Earnings Type')->sortable(),
-                TextColumn::make('category.name')->label('Earnings Type')->sortable(),
-                TextColumn::make('amount')->sortable(),
-                TextColumn::make('frequency')->sortable(),
-                IconColumn::make('status')->boolean()->label('Active'),
+                TextColumn::make('timein')
+                    ->time('h:i A')
+                    ->sortable(),
+                TextColumn::make('timeout')
+                    ->time('h:i A')
+                    ->sortable(),
+                TextColumn::make('workingHours')
+                    ->label('Working Hours'),
+                IconColumn::make('status')
+                    ->boolean(),
+            ])
+            ->filters([
+                TernaryFilter::make('status'),
             ])
             ->actions([
                 ActionGroup::make([
@@ -223,13 +242,19 @@ class EarningsResource extends Resource
                         ->label('Update'),
                     DeleteAction::make()
                         ->label('Remove'),
-                ])->label('Action')
-                    ->icon('heroicon-m-chevron-down')
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar
                     ->button()
                     ->outlined()
                     ->color('warning'),
-            ])
-            ->filters([]);
+
+            ]);
+        // ->bulkActions([
+        //     BulkActionGroup::make([
+        //         DeleteBulkAction::make(),
+        //     ]),
+        // ]);
     }
 
     public static function getRelations(): array
@@ -242,7 +267,9 @@ class EarningsResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListEarnings::route('/'),
+            'index' => ListEmpSchedules::route('/'),
+            // 'create' => CreateEmpSchedule::route('/create'),
+            // 'edit' => EditEmpSchedule::route('/{record}/edit'),
         ];
     }
 }

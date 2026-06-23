@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Earnings;
 use App\Models\Employee;
+use App\Models\EmpSchedule;
 use App\Models\GovDeduction;
 use App\Models\GovDeductionLog;
 use App\Models\Holiday;
@@ -50,6 +51,7 @@ class PayrollSummaryController extends Controller
             'project',
             'empType',
             'empStat',
+            'emplScheduleData' => fn($q) => $q->where('status', true),
             'earningsData' => fn($q) => $q->where('status', true),
             'payrollReportsData' => fn($q) => $q->where('dateperiod_id', $period->id),
             'payrollSummaryData' => fn($q) => $q->where('dateperiod_id', $period->id),
@@ -110,6 +112,8 @@ class PayrollSummaryController extends Controller
                 ->groupBy(function ($log) {
                     return Carbon::parse($log->recorded_at)->toDateString();
                 });
+
+            $empSched = EmpSchedule::where('employeeid', $employee->employeeid)->first();
             // Initialize total overtime for the current employee
             $totalPeriodOvertime = 0.00;
             foreach ($periodDates as $date) {
@@ -214,17 +218,14 @@ class PayrollSummaryController extends Controller
                         } else {
                             // Late / Undertime Calculation
                             $missingMinutes = $standardShiftMinutes - $grossMinutes;
-
                             // 1. Convert missing minutes to literal HH.MM format (e.g., 480 minutes -> 8.00)
                             $missingHoursPart = floor($missingMinutes / 60);
                             $missingMinutesPart = $missingMinutes % 60;
                             $lateUndertime = (float) ($missingHoursPart . '.' . str_pad($missingMinutesPart, 2, '0', STR_PAD_LEFT));
-
                             // 2. Convert gross minutes to literal HH.MM format (e.g., 467 minutes -> 7.47)
                             $fullHours = floor($grossMinutes / 60);
                             $remainingMinutes = $grossMinutes % 60;
                             $acquiredHours = (float) ($fullHours . '.' . str_pad($remainingMinutes, 2, '0', STR_PAD_LEFT));
-
                             $overtime = 0.00;
                         }
 
@@ -233,10 +234,10 @@ class PayrollSummaryController extends Controller
                         $totalPeriodOvertime += $overtime;
                     }
                 }
-
                 $employeeTimesheets[$employee->employeeid][$date] = [
                     'display'   => $display,
                     'class'     => $class,
+                    'sched_id'  => $empSched->id,
                     'hours'     => $acquiredHours,
                     'time_in'   => $timeIn,
                     'time_out'  => $timeOut,
@@ -259,12 +260,15 @@ class PayrollSummaryController extends Controller
                     'date_entry'     => $date,
                     'cat_id'         => 0,
                     'paytype'        => $payType,
+                    'sched_id'       => $empSched->id,
                     'acquired_hours' => $acquiredHours,
                     'overtime'       => $overtime,
                     'late_undertime' => $lateUndertime,
                 ]);
             }
         }
+
+
         // Fetch flat modifications mapping
         $adjustments = Adjustment::whereIn('employee_id', $employeeids)
             ->where('date_period_id', $period->id)->get()->groupBy('employee_id');
@@ -273,6 +277,13 @@ class PayrollSummaryController extends Controller
             ->where('date_period_id', $period->id)->get()->groupBy('employee_id');
         // 3. FIXED: Fetch middle section (Timesheet / Atlogs) using the date range
         $holidays = Holiday::orderBy('percentage', 'asc')->get();
+        // 2. Fetch ONLY the unique schedules assigned to these specific employees
+        // 2. Fetch the raw schedules including their matching employeeid properties
+        $availableSchedules = EmpSchedule::where('status', true)
+            ->whereIn('employeeid', $employeeids)
+            ->orderBy('timein')
+            ->get(); // No groupBy here so employeeid is preserved!
+
         return view('payroll.process_matrix', compact(
             'employees',
             'period',
@@ -281,6 +292,7 @@ class PayrollSummaryController extends Controller
             'deductionHeaders',
             'employeeTimesheets',
             'adjustments',
+            'availableSchedules',
             'govDeductions',
             'deductions',
             'holidays',
@@ -414,6 +426,8 @@ class PayrollSummaryController extends Controller
 
     public function updateBatch(Request $request)
     {
+
+        // dd($request->input('timesheet'));
         $validationErrors = [];
         // 1. Validate incoming data framework context requirements
         $request->validate([
@@ -576,6 +590,8 @@ class PayrollSummaryController extends Controller
             if ($request->has('timesheet')) {
                 foreach ($request->input('timesheet') as $dateKey => $data) {
                     $payCat = strtoupper($data['pay_cat']);
+
+                    // echo $data['sched_id'];
                     // RULE B: If category is Regular (R), enforce validation requirements
                     if ($payCat === 'R') {
                         if (empty($data['time_in']) || empty($data['time_out'])) {
@@ -677,6 +693,7 @@ class PayrollSummaryController extends Controller
                         'employee_id'    => $employeeId,
                         'date_entry'     => $dateKey,
                         'paytype'        => $payCat,
+                        'sched_id'       => $data['sched_id'] ?? null,
                         'overtime'       => $rowOvertime,
                         'acquired_hours' => $rowRegHours,
                         'late_undertime' => $rowLateHours,
@@ -768,8 +785,6 @@ class PayrollSummaryController extends Controller
         }
     }
 
-
-
     public function printBulkPayslips(Request $request)
     {
         $ids = $request->input('ids', []);
@@ -804,11 +819,19 @@ class PayrollSummaryController extends Controller
         // 3. Loop through each employee to compute and append their individual rates
         foreach ($loopData as $employee) {
             $EmpBasicPay = 0.0;
+            $EmpBasicPayDailyAllowance = 0.0;
+            $EmpCuttoffearing = 0.0;
 
             foreach ($employee->earningsData as $datass) {
                 // Use the eager-loaded relation instead of hitting the database inside the loop
                 if ($datass->category && strtoupper($datass->category->name) === 'BASIC') {
                     $EmpBasicPay += (float)($datass->amount ?? 0.0);
+                } else {
+                    if (strtoupper($datass->frequency) === 'DAILY') {
+                        $EmpBasicPayDailyAllowance += (float)($datass->amount ?? 0.0);
+                    } else {
+                        $EmpCuttoffearing += (float)($datass->amount ?? 0.0);
+                    }
                 }
             }
             // Attach the calculated properties dynamically to the employee instance
