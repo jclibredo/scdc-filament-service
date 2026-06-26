@@ -14,6 +14,7 @@ class Earnings extends Model
         'title',
         'amount',
         'status',
+        'hierarchy',
         'frequency',
     ];
     public function employee()

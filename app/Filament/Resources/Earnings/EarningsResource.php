@@ -82,13 +82,39 @@ class EarningsResource extends Resource
                             ->placeholder('Select frequency')
                             ->native(false)
                             ->required(),
-
                         TextInput::make('amount')
                             ->label('Amount')
                             ->numeric()
                             ->prefix('₱')
                             ->placeholder('0.00')
                             ->required(),
+                        Select::make('hierarchy')
+                            ->label('Hierarchy')
+                            ->required()
+                            ->options([
+                                'PRIMARY' => 'PRIMARY',
+                                'SECONDARY' => 'SECONDARY',
+                            ])
+                            ->placeholder('Select hierarchy level')
+                            ->native(false)
+                            ->columnSpanFull()
+                            // --- Add validation rules below ---
+                            ->rules([
+                                fn($get, $record) => function (string $attribute, $value, \Closure $fail) use ($get, $record) {
+                                    if ($value === 'PRIMARY') {
+                                        $employeeId = $get('employee_id');
+                                        // Check if a PRIMARY record already exists for this employee
+                                        $exists = Earnings::where('employee_id', $employeeId)
+                                            ->where('hierarchy', 'PRIMARY')
+                                            // If editing an existing record, ignore itself
+                                            ->when($record, fn($query) => $query->where('id', '!=', $record->id))
+                                            ->exists();
+                                        if ($exists) {
+                                            $fail('This employee already has a PRIMARY earnings record.');
+                                        }
+                                    }
+                                },
+                            ]),
                     ])
                     ->columns([
                         'default' => 1,
@@ -215,6 +241,17 @@ class EarningsResource extends Resource
                 TextColumn::make('category.name')->label('Earnings Type')->sortable(),
                 TextColumn::make('amount')->sortable(),
                 TextColumn::make('frequency')->sortable(),
+                TextColumn::make('hierarchy')
+                    ->label('Hierarchy')
+                    ->sortable()
+                    ->searchable()
+                    ->badge() // Formats the text inside a nice background badge
+                    ->color(fn(string $state): string => match ($state) {
+                        'PRIMARY' => 'success',   // Green badge
+                        'SECONDARY' => 'warning', // Amber/Yellow badge
+                        default => 'gray',
+                    })
+                    ->default('-'),
                 IconColumn::make('status')->boolean()->label('Active'),
             ])
             ->actions([

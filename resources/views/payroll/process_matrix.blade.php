@@ -655,7 +655,7 @@
         @endif
     </div>
 
-    <div id="payrollDetailModal" class="hidden fixed inset-0 z-50 bg-black/60 items-center justify-center p-4 transition-all"
+    <div id="payrollDetailModal" class="hidden  fixed inset-0 z-50 bg-black/60 items-center justify-center p-4 transition-all"
         data-lookup-adjustments="{{ json_encode(\App\Models\Category::query()->where('cat', 'ADJUSTMENT')->where('status', true)->get(['id', 'name'])->toArray()) }}"
         data-lookup-gov="{{ json_encode(\App\Models\GovDeduction::query()->get(['id', 'title', 'amount'])->toArray()) }}"
         data-lookup-other="{{ json_encode(\App\Models\OtherDeduction::query()->get(['id', 'title'])->toArray()) }}">
@@ -677,7 +677,7 @@
                 <input type="hidden" name="employee_id" id="modal_form_employee_id" value="">
                 <input type="hidden" name="period_code" value="{{ $period->code }}">
 
-                <div class="p-5 overflow-y-auto flex-1 space-y-6 bg-gray-50/50">
+                <div class="p-5 overflow-y-auto flex-1 space-y-4 bg-gray-50/50">
                     <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                         <h4 class="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 border-b pb-1">Adjust Cutoff Daily Work Sheets</h4>
 
@@ -771,7 +771,7 @@
             @php
             $loopData = $subcons->SubConEmployee;
             @endphp
-            <div class="overflow-x-auto custom-scrollbar w-full relative">
+            <div class="overflow-x-auto custom-scrollbar w-full relative ">
                 <table class="w-full border-collapse border border-gray-300 text-center min-w-max isolate">
                     <thead>
                         <tr class="bg-gray-50 text-gray-700 font-bold text-[10px]">

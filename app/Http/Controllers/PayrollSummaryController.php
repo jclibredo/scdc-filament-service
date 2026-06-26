@@ -156,17 +156,13 @@ class PayrollSummaryController extends Controller
                         $logTime = Carbon::parse($log->log_time);
                         $windowStart = Carbon::parse("$date 12:01:00");
                         $windowEnd = Carbon::parse("$date 12:50:00");
-
                         return $logTime->between($windowStart, $windowEnd);
                     })->sortBy('log_time'); // Ensure they are chronological
-
                     if ($breakWindowLogs->isNotEmpty()) {
                         // Break Out = First punch within the window
                         $breakOut = Carbon::parse($breakWindowLogs->first()->log_time)->format('H:i:s');
-
                         // Break In = Last punch within the window
                         $breakIn = Carbon::parse($breakWindowLogs->last()->log_time)->format('H:i:s');
-
                         // If there's only 1 punch in that window, breakOut and breakIn will be identical.
                         // Optional safety: clear breakIn if it's the exact same punch record as breakOut
                         if ($breakWindowLogs->count() === 1) {
@@ -207,7 +203,6 @@ class PayrollSummaryController extends Controller
                         if ($grossMinutes >= $standardShiftMinutes) {
                             $acquiredHours = 8.00;
                             $lateUndertime = 0.00;
-
                             // Overtime Calculation
                             $rawOvertimeMinutes = $grossMinutes - $standardShiftMinutes;
                             if ($rawOvertimeMinutes >= 60) {
@@ -560,19 +555,18 @@ class PayrollSummaryController extends Controller
             $cuttoffearnings = 0.0;
             // First calculate basic pay out of your database data loops
             foreach ($employeeData->earningsData as $datass) {
-                $earningsCat = Category::where('id', $datass->title)->first();
-                if ($earningsCat && strtoupper($earningsCat->name) === 'BASIC') {
+                // $earningsCat = Category::where('id', $datass->title)->first();
+                if (strtoupper($datass->frequency) === 'DAILY' && strtoupper($datass->hierarchy) === 'PRIMARY') {
+                    // if ($earningsCat && strtoupper($earningsCat->name) === 'BASIC') {
                     $EmpBasicPay += (float)($datass->amount ?? 0.0);
                 } else {
-                    if (strtoupper($datass->frequency) === 'DAILY') {
+                    if (strtoupper($datass->frequency) === 'DAILY' && strtoupper($datass->hierarchy) === 'SECONDARY') {
                         $dailyearnings += (float)($datass->amount ?? 0.0);
                     } else {
                         $cuttoffearnings += (float)($datass->amount ?? 0.0);
                     }
                 }
             }
-
-            // dd('BASIC ' . $EmpBasicPay . ' DAILY EARNINGS ' . $dailyearnings . ' CUTT OF ' . $cuttoffearnings);
             $percentage = (float) ($datePeriod->overtime_rate / 100);
             // Move rate definitions below the final basic pay sum value to avoid 0 division errors
             $HourRate = (float) ($EmpBasicPay / 8);
@@ -590,8 +584,6 @@ class PayrollSummaryController extends Controller
             if ($request->has('timesheet')) {
                 foreach ($request->input('timesheet') as $dateKey => $data) {
                     $payCat = strtoupper($data['pay_cat']);
-
-                    // echo $data['sched_id'];
                     // RULE B: If category is Regular (R), enforce validation requirements
                     if ($payCat === 'R') {
                         if (empty($data['time_in']) || empty($data['time_out'])) {
@@ -734,9 +726,7 @@ class PayrollSummaryController extends Controller
             $Finaltotalnetpay   = $Finalgrosspay - $Finaltotaldeductionn;
             $FinalRequiredRegularHours = $RequiredRegularHours * 8;
 
-            //required icome computation   
-            //   $dailyearnings = 0.0;
-            // $cuttoffearnings = 0.0;
+            //required icome computation  
             $requireAmount =  $HourRate * $FinalRequiredRegularHours;
             $finalrequiredincome = $requireAmount + $cuttoffearnings + ($RequiredRegularHours * $dailyearnings);
             // ==========================================
@@ -837,6 +827,9 @@ class PayrollSummaryController extends Controller
             // Attach the calculated properties dynamically to the employee instance
             $employee->basic_rate = $EmpBasicPay;
             $basichrrate = $EmpBasicPay / 8;
+
+            $employee->dailyallowance = $EmpBasicPayDailyAllowance;
+            $employee->dailyallowanceratehour = $EmpBasicPayDailyAllowance / 8;
             $employee->rate_per_hour =  $basichrrate;
             $overtime_rates = (float)($period->overtime_rate ?? 0.0);
             $employee->otratehour =  ($basichrrate  *  ($overtime_rates / 100)) + $basichrrate;

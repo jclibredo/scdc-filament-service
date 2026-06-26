@@ -12,22 +12,30 @@ class ClearSessionOutsideResources
     public function handle(Request $request, Closure $next): Response
     {
         $currentRoute = Route::currentRouteName();
+        if ($currentRoute === 'livewire.update') {
+            return $next($request);
+        }
         $allowedPatterns = [
-            'filament.admin.resources.earnings.index',
-            'filament.admin.resources.earnings.create',
-            'filament.admin.resources.earnings.edit',
-            'filament.admin.resources.payrolls.index',
-            'filament.admin.resources.payrolls.create',
-            'filament.admin.resources.payrolls.edit',
-            'filament.admin.resources.date-periods.index',
-            'filament.admin.resources.date-periods.create',
-            'filament.admin.resources.date-periods.edit',
-            'filament.admin.resources.atlogs.index',
-            'filament.admin.resources.atlogs.create',
-            'filament.admin.resources.atlogs.edit',
-            'filament.admin.resources.emp-schedules.index',
-            'filament.admin.resources.emp-schedules.create',
-            'filament.admin.resources.emp-schedules.edit',
+            'filament.admin.resources.earnings.*',
+            // 'filament.admin.resources.earnings.index',
+            // 'filament.admin.resources.earnings.create',
+            // 'filament.admin.resources.earnings.edit',
+            'filament.admin.resources.payrolls.*',
+            // 'filament.admin.resources.payrolls.index',
+            // 'filament.admin.resources.payrolls.create',
+            // 'filament.admin.resources.payrolls.edit',
+            'filament.admin.resources.date-periods.*',
+            // 'filament.admin.resources.date-periods.index',
+            // 'filament.admin.resources.date-periods.create',
+            // 'filament.admin.resources.date-periods.edit',
+            'filament.admin.resources.atlogs.*',
+            // 'filament.admin.resources.atlogs.index',
+            // 'filament.admin.resources.atlogs.create',
+            // 'filament.admin.resources.atlogs.edit',
+            'filament.admin.resources.emp-schedules.*',
+            // 'filament.admin.resources.emp-schedules.index',
+            // 'filament.admin.resources.emp-schedules.create',
+            // 'filament.admin.resources.emp-schedules.edit',
         ];
 
         $isAllowed = false;
@@ -38,19 +46,30 @@ class ClearSessionOutsideResources
             }
         }
 
+        // if (!$isAllowed) {
+        //     session()->forget([
+        //         'earnings_employeeid', // Added to clean up your earnings session too
+        //     ]);
+        // }
+
+        // if (!in_array($currentRoute, $allowedPatterns)) {
+        //     session()->forget([
+        //         'earnings_employeeid',
+        //         'session_employeestatus',
+        //         'session_employeetype',
+        //         'session_employee_id',
+        //         'session_partners',
+        //         'session_periodcode', // Just in case you have this one floating around too
+        //     ]);
+        // }
         if (!$isAllowed) {
             session()->forget([
-                'earnings_employeeid', // Added to clean up your earnings session too
-            ]);
-        }
-
-        if (!in_array($currentRoute, $allowedPatterns)) {
-            session()->forget([
+                'earnings_employeeid',
                 'session_employeestatus',
                 'session_employeetype',
                 'session_employee_id',
                 'session_partners',
-                'session_periodcode', // Just in case you have this one floating around too
+                'session_periodcode',
             ]);
         }
 

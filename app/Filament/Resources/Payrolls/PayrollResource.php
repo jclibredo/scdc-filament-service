@@ -210,20 +210,63 @@ class PayrollResource extends Resource
                         ->label('Payslip')
                         // Remove ->openUrlInNewTab() from here, we will trigger it via JavaScript below
                         ->action(function (Action $action, Collection $records) {
-                            // Collect the primary keys of the rows you just checked
-                            // $ids = $records->pluck('id')->toArray();
-                            // dd($ids);
                             // Generate your target bulk print URL
                             $periodcode = session('session_periodcode');
                             $ids = $records->pluck('id')->toArray();
                             $partnerss = session('session_partners') ?? 0;
-                            // dd($ids);
+                            $empids = $records->pluck('employeeid')->map(fn($id) => (int) $id)->toArray();
+                            $existingInPayrollSummary = [];
+                            if (!empty($empids)) {
+                                $existingInPayrollSummary = DB::table('payroll_summary_reports')
+                                    ->where('status', true)
+                                    ->whereIn('employee_id', $empids)
+                                    ->pluck('employee_id')
+                                    ->toArray();
+                            }
+
+                            // 1. Calculate missing IDs
+                            $missingInPayroll = array_diff($empids, $existingInPayrollSummary);
+
+                            // 2. Guard: If any IDs are missing, block processing and show the HTML alert
+                            if (!empty($missingInPayroll)) {
+                                $missingList = implode(', ', $missingInPayroll);
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Action Blocked')
+                                    ->body(new HtmlString("
+                                            <div x-data='{ show: true }' x-show='show' class='p-3 border border-danger-500 rounded-lg bg-danger-50 dark:bg-red-950/20 flex items-start gap-3 relative'>
+                                                <div class='text-danger-600 dark:text-danger-400 mt-0.5 flex-shrink-0'>
+                                                    <svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>
+                                                        <path stroke-linecap='round' stroke-linejoin='round' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'></path>
+                                                    </svg>
+                                                </div>
+                                                
+                                                <div class='text-left pr-6'>
+                                                    <h4 class='font-bold text-danger-800 dark:text-danger-400 text-sm leading-tight'>Missing Payroll Summaries</h4>
+                                                    <p class='text-xs text-danger-700 dark:text-danger-300 mt-1 leading-relaxed'>
+                                                        Cannot generate payslips. The following Employee IDs do not have records in the payroll summary: 
+                                                        <strong class='font-mono bg-danger-100 dark:bg-danger-900/40 px-1 rounded'>{$missingList}</strong>
+                                                    </p>
+                                                </div>
+                                                
+                                                <button @click='show = false' type='button' class='absolute top-2 right-2 text-danger-500 hover:text-danger-700 dark:hover:text-danger-300 transition-colors'>
+                                                    <svg class='w-4 h-4' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>
+                                                        <path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        "))
+                                    ->persistent() // Ensures the notification stays on screen until dismissed
+                                    ->send();
+
+                                return; // Hault executing window.open() below
+                            }
+
                             $url = route('payroll.bulk-payslip', [
                                 'ids' => $ids,
                                 'periodcode' => $periodcode,
                                 'expartners' => $partnerss,
                             ]);
-                            // $url = route('payroll.bulk-payslip', ['ids' => $ids]);
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
 
@@ -238,24 +281,52 @@ class PayrollResource extends Resource
                             // $partners = session('session_partners');
                             $employeeIds = $records->pluck('employeeid')->toArray();
                             $existingInEarnings = [];
+                            $existingSchedule = [];
                             if (!empty($employeeIds)) {
                                 $existingInEarnings = DB::table('earnings')
                                     ->where('status', true)
+                                    ->where('hierarchy', 'PRIMARY')
                                     ->whereIn('employee_id', $employeeIds) // Ensure this matches your earnings table column name
                                     ->pluck('employee_id')
+                                    ->toArray();
+                                $existingSchedule = DB::table('emp_schedule')
+                                    ->where('status', true)
+                                    ->whereIn('employeeid', $employeeIds) // Ensure this matches your earnings table column name
+                                    ->pluck('employeeid')
                                     ->toArray();
                             }
                             // 2. Find if any of the selected employees are missing from that list
                             $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
-                            if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
+                            $missingSchedule = array_diff($employeeIds, $existingSchedule);
+
+                            if (
+                                empty($employeeIds)
+                                || !$periodcode
+                                || !empty($missingInEarnings)
+                                || !empty($missingSchedule)
+                            ) {
+                                $missingBoth = array_intersect($missingInEarnings, $missingSchedule);
                                 $errorMessage = match (true) {
                                     empty($employeeIds) && !$periodcode => 'Both active session configurations and selected employees are missing.',
                                     empty($employeeIds) => 'No employees were selected. Please select at least one employee to process.',
                                     !$periodcode => 'Active session period code configuration is missing.',
-                                    // 🌟 Triggers if any selected employee ID was not found in the earnings table
-                                    !empty($existingInEarnings) => 'Processing failed. Some employee has no earnings record found for Employee IDs: ' . implode(', ', $missingInEarnings),
+
+                                    // 🌟 1. Check if BOTH are missing first
+                                    !empty($missingInEarnings) && !empty($missingSchedule)
+                                    => 'Processing failed. Some employees are missing both basic earnings and schedule records. | SCHEDULES =>
+                                    ' . implode(', ', $missingSchedule) . ' | EARNINGS =>' . implode(', ', $missingInEarnings),
+
+                                    // 2. Check if ONLY earnings records are missing
+                                    !empty($missingInEarnings)
+                                    => 'Processing failed. Some employee has no basic earnings record found for Employee IDs: ' . implode(', ', $missingInEarnings),
+
+                                    // 3. Check if ONLY schedule records are missing
+                                    !empty($missingSchedule)
+                                    => 'Processing failed. Some employee has no schedule record found for Employee IDs: ' . implode(', ', $missingSchedule),
+
                                     default => 'An unexpected processing error occurred.'
                                 };
+
                                 return [
                                     Placeholder::make('warning_message')
                                         ->label(false)
@@ -291,11 +362,22 @@ class PayrollResource extends Resource
                             $employeeIds = $records->pluck('employeeid')->toArray();
                             $existingInEarnings = DB::table('earnings')
                                 ->where('status', true)
+                                ->where('hierarchy', 'PRIMARY')
                                 ->whereIn('employee_id', $employeeIds) // Ensure this matches your earnings table column name
                                 ->pluck('employee_id')
                                 ->toArray();
+                            $schedules = DB::table('emp_schedule')
+                                ->where('status', true)
+                                ->whereIn('employeeid', $employeeIds) // Ensure this matches your earnings table column name
+                                ->pluck('employeeid')
+                                ->toArray();
+                            $missingSchedule = array_diff($employeeIds, $schedules);
                             $missingInEarnings = array_diff($employeeIds, $existingInEarnings);
-                            if (empty($employeeIds) || !$periodcode || !empty($missingInEarnings)) {
+                            if (
+                                empty($employeeIds) || !$periodcode
+                                || !empty($missingInEarnings)
+                                || !empty($missingSchedule)
+                            ) {
                                 return $action->hidden();
                             }
                             return $action
@@ -318,10 +400,6 @@ class PayrollResource extends Resource
 
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
-
-
-
-
                 ])
                     ->button()
                     ->outlined()

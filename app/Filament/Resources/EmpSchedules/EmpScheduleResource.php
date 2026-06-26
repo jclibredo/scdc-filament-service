@@ -129,7 +129,7 @@ class EmpScheduleResource extends Resource
     public static function table(Table $table): Table
     {
         $empid = session('session_employee_id');
-        if (! $empid) {
+        if (!$empid) {
             return $table;
         }
         $earningDetails = cache()->remember(

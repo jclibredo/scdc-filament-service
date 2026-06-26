@@ -56,6 +56,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                ClearSessionOutsideResources::class,
             ])
             ->breadcrumbs()
             ->darkmode(false)
@@ -67,7 +68,6 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->authMiddleware([
                 Authenticate::class,
-                ClearSessionOutsideResources::class,
             ]);
         // ->canAccess(function () {
         //     $user = auth()->user();

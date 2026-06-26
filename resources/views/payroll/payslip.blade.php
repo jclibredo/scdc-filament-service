@@ -168,7 +168,8 @@
                                     @endif
                                     @empty
                                     @endforelse
-                                    <!-- HOLIDAYS OR SUNDAYS -->
+                                    {{-- 1. Initialize the total variable to 0 before the loop --}}
+                                    @php $totalHolidayAmount = 0; @endphp
                                     @forelse($employee->payrollReportsData as $holidaysData)
                                     @if($holidaysData->holidayData?->percentage > 0)
                                     <tr class="whitespace-nowrap">
@@ -179,7 +180,12 @@
                                         <td class="p-0.5 px-2 text-right font-mono text-[10px]">
                                             @php
                                             $computedRate = ($employee->rate_per_hour * ($holidaysData->holidayData?->percentage/100))+$employee->rate_per_hour;
-                                            echo number_format(($holidaysData->acquired_hours * $computedRate), 2);
+                                            // 2. Calculate the row total as a raw number
+                                            $rowTotal = $holidaysData->acquired_hours * $computedRate;
+                                            // 3. Add it to our running total variable
+                                            $totalHolidayAmount += $rowTotal;
+                                            // 4. Echo the formatted version for display
+                                            echo number_format($rowTotal, 2);
                                             @endphp
                                         </td>
                                     </tr>
@@ -187,16 +193,15 @@
                                     @empty
                                     @endforelse
                                     <!-- TOTAL HOURS -->
-                                    @if($employee->payrollSummaryData->sum('totalhours') > 0)
+                                    <!-- @if($employee->payrollSummaryData->sum('totalhours') > 0)
                                     <tr>
                                         <td class="p-0.5 px-2 font-sans">Acquired Hours</td>
                                         <td class="p-0.5 px-2 text-center font-sans text-[9px]">
                                             {{ number_format($employee->payrollSummaryData->sum('totalhours'), 0) }} hrs.
                                         </td>
-                                        <!-- <td class="p-0.5 px-2 text-right">{{ number_format($employee->payrollSummaryData->sum('totalearnings'), 2) }}</td> -->
                                         <td class="p-0.5 px-2 text-right">{{ number_format( ($employee->payrollSummaryData->sum('totalhours') * $employee->rate_per_hour), 2) }}</td>
                                     </tr>
-                                    @endif
+                                    @endif -->
                                 </tbody>
                             </table>
                         </div>
@@ -218,7 +223,8 @@
                                         <td class="p-0.5 px-2 text-center font-sans text-[9px]">
                                             {{ number_format($employee->payrollSummaryData->sum('lateundertime'), 1) }}
                                         </td>
-                                        <td class="p-0.5 px-2 text-right">{{ number_format(($employee->payrollSummaryData->sum('lateundertime') * $employee->rate_per_hour), 2) }}</td>
+                                        <td class="p-0.5 px-2 text-right">{{ number_format(($employee->payrollSummaryData->sum('lateundertime') * 
+                                            ($employee->rate_per_hour + $employee->dailyallowanceratehour )), 2) }}</td>
                                     </tr>
                                     @endif
                                     <!-- TOTAL ABSENT -->
@@ -228,7 +234,8 @@
                                         <td class="p-0.5 px-2 text-center font-sans text-[9px]">
                                             {{ number_format($employee->payrollSummaryData->sum('totalabsent'), 0) }}
                                         </td>
-                                        <td class="p-0.5 px-2 text-right">{{ number_format(($employee->payrollSummaryData->sum('totalabsent') * $employee->basic_rate), 2) }}</td>
+                                        <td class="p-0.5 px-2 text-right">{{ number_format(($employee->payrollSummaryData->sum('totalabsent') * 
+                                            ($employee->basic_rate+$employee->dailyallowance)), 2) }}</td>
                                     </tr>
                                     @endif
                                     @forelse($employee->otherdeductionData as $otherdata)
@@ -264,18 +271,14 @@
                             Total Earnings : <span class="font-mono ml-1 font-medium">
 
                                 @php
-                                $dailyRate = $employee->basic_rate;
-                                $ratePerHour = $employee->rate_per_hour;
-                                $computedAbsent = ($employee->payrollSummaryData->sum('totalabsent') * $dailyRate);
-                                $computedLate = ($employee->payrollSummaryData->sum('lateundertime') * $ratePerHour);
-                                // echo number_format($employee->payrollSummaryData->sum('grosspay') //totalearnings
-                                echo number_format($employee->payrollSummaryData->sum('grosspay')
-                                + $computedAbsent
-                                + $computedLate,2)
-                                // + $employee->payrollSummaryData->sum('totaladjustment'), 2)
+                                $totalOvertime = $payrollsummary->totalovertime * $employee->otratehour;
+                                echo number_format($totalOvertime
+                                + $totalHolidayAmount
+                                + $employee->payrollSummaryData->sum('totaladjustment')
+                                + $payrollsummary->required_income,2)
                                 @endphp
                                 <!-- {{
-                                number_format($employee->payrollSummaryData->sum('grosspay'),2)  }} -->
+                                $totalHolidayAmount  }} -->
                             </span>
                         </div>
                         <div>
@@ -283,8 +286,8 @@
                                 @php
                                 $dailyRate = $employee->basic_rate;
                                 $ratePerHour = $employee->rate_per_hour;
-                                $computedAbsent = ($employee->payrollSummaryData->sum('totalabsent') * $dailyRate);
-                                $computedLate = ($employee->payrollSummaryData->sum('lateundertime') * $ratePerHour);
+                                $computedAbsent = ($employee->payrollSummaryData->sum('totalabsent') * ($dailyRate+$employee->dailyallowance));
+                                $computedLate = ($employee->payrollSummaryData->sum('lateundertime') * ($ratePerHour+ $employee->dailyallowanceratehour));
                                 $finalTotaldeduction =$employee->payrollSummaryData->sum('totaldeductionn') + $computedAbsent + $computedLate ;
                                 echo number_format($finalTotaldeduction, 2) ;
                                 @endphp
