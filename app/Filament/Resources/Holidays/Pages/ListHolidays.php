@@ -15,7 +15,10 @@ class ListHolidays extends ListRecords
         return [
             CreateAction::make()
                 ->label('Holidays')
-                ->color('warning')
+                ->button()
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
         ];
     }

@@ -22,7 +22,9 @@ class ListEmployees extends ListRecords
             Action::make('upload_employee')
                 ->label('Upload Employees')
                 ->icon('heroicon-o-arrow-up-tray')
+                ->size('xs')
                 ->color('success')
+                ->outlined()
                 ->button()
                 ->form([
                     FileUpload::make('uploadfile')
@@ -44,7 +46,9 @@ class ListEmployees extends ListRecords
 
             CreateAction::make()
                 ->label('New Employee')
-                ->color('warning')
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
         ];
     }

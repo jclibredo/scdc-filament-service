@@ -16,13 +16,19 @@ class ListDatePeriods extends ListRecords
         return [
             CreateAction::make()
                 ->label('New Period')
-                ->color('warning')
+                ->button()
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
 
             Action::make('refresh')
                 ->label('Load List')
                 ->icon('heroicon-o-arrow-path')
+                ->button()
                 ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->visible(
                     fn() =>
                     session()->has('session_employeestatus') &&
@@ -40,6 +46,4 @@ class ListDatePeriods extends ListRecords
 
         ];
     }
-
-    
 }

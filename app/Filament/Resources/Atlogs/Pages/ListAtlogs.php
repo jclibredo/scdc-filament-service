@@ -14,6 +14,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Section;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
@@ -40,6 +41,8 @@ class ListAtlogs extends ListRecords
             Action::make('backaction')
                 ->label('Back')
                 ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-arrow-left')
                 ->visible(
                     fn() =>
@@ -70,7 +73,9 @@ class ListAtlogs extends ListRecords
 
             CreateAction::make()
                 ->label('New Atlog')
-                ->color('warning')
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
 
             // Action::make('importAtlog')
@@ -154,12 +159,21 @@ class ListAtlogs extends ListRecords
                 ->label('Import .DAT File')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('success')
-                ->hidden(fn () => filled(session('session_employee_id')))
+                ->size('xs')
+                ->outlined()
+                ->hidden(fn() => filled(session('session_employee_id')))
                 ->form([
-                    // Inline Warning Banner using Placeholder
-                    Placeholder::make('duplicate_warning_message')
-                        ->label(false)
-                        ->content(new HtmlString("
+                    Section::make('Import Biometric Logs')
+                        ->description('Upload your raw log data and assign it to a specific project.')
+                        ->icon('heroicon-o-arrow-up-tray') // Optional: Adds a sleek icon to the header
+                        ->extraAttributes([
+                            'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                        ])
+                        ->schema([
+                            // Inline Warning Banner using Placeholder
+                            Placeholder::make('duplicate_warning_message')
+                                ->label(false)
+                                ->content(new HtmlString("
                             <div class='p-5 border border-warning-500 rounded-xl bg-warning-50 dark:bg-warning-950/20 flex items-start gap-4'>
                                 <div style='color: #eab308; margin-top: 0.125rem; flex-shrink: 0; width: 1.25rem; height: 1.25rem;'>
                                     <svg style='width: 100%; height: 100%;' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -172,21 +186,22 @@ class ListAtlogs extends ListRecords
                                 </div>
                             </div>
                         ")),
-                    // 1. Added Project Select Component
-                    Select::make('project_code')
-                        ->label('Project')
-                        ->options(Project::all()->pluck('name', 'project_code'))
-                        ->searchable()
-                        ->preload()
-                        ->required(),
+                            // 1. Added Project Select Component
+                            Select::make('project_code')
+                                ->label('Project')
+                                ->options(Project::all()->pluck('name', 'project_code'))
+                                ->searchable()
+                                ->preload()
+                                ->required(),
 
-                    FileUpload::make('attlog_file')
-                        ->label('Biometric Log File')
-                        ->required()
-                        ->disk('local')
-                        ->directory('imports')
-                        ->storeFiles(true)
-                        ->rules(['file', 'extensions:dat,txt'])
+                            FileUpload::make('attlog_file')
+                                ->label('Biometric Log File')
+                                ->required()
+                                ->disk('local')
+                                ->directory('imports')
+                                ->storeFiles(true)
+                                ->rules(['file', 'extensions:dat,txt'])
+                        ])
                 ])
                 ->action(function (array $data) {
                     $disk = 'local';

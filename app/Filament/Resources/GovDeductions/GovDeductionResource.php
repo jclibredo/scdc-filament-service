@@ -13,6 +13,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -31,39 +32,51 @@ class GovDeductionResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            TextInput::make('title')
-                ->label('Title')
-                ->required()
-                ->maxLength(255)
-                ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
-                ->dehydrateStateUsing(fn(string $state): string => strtoupper($state)),
+            Section::make('Project Details')
+                ->extraAttributes([
+                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                ])
+                ->description('Enter the timeline, budget allocations, and status details.')
+                ->icon('heroicon-o-briefcase') // Optional: Business/Project briefcase icon
+                ->columns(2) // Creates a balanced 2-column grid layout
+                ->schema([
+                    TextInput::make('title')
+                        ->label('Title')
+                        ->required()
+                        ->maxLength(255)
+                        ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
+                        ->dehydrateStateUsing(fn(string $state): string => strtoupper($state)),
 
-            DatePicker::make('date_started')
-                ->label('Date Started')
-                ->default(now()) // Sets default to today
-                ->required(),
+                    DatePicker::make('date_started')
+                        ->label('Date Started')
+                        ->default(now()) // Sets default to today
+                        ->required(),
 
-            DatePicker::make('date_ended')
-                ->label('Date Ended')
-                ->default(now()) // Sets default to today
-                ->required(),
+                    DatePicker::make('date_ended')
+                        ->label('Date Ended')
+                        ->default(now()) // Sets default to today
+                        ->required(),
 
-            TextInput::make('amount')
-                ->label('Amount')
-                ->numeric() // Ensures only numbers/decimals are allowed
-                ->prefix('PHP')
-                ->default('0.00') // Sets the default value to 0.00
-                ->required(),
+                    TextInput::make('amount')
+                        ->label('Amount')
+                        ->numeric() // Ensures only numbers/decimals are allowed
+                        ->prefix('PHP')
+                        ->default('0.00') // Sets the default value to 0.00
+                        ->required(),
 
-            Toggle::make('status')
-                ->label('Active')
-                ->default(true),
+                    Toggle::make('status')
+                        ->label('Active')
+                        ->default(true),
+                ])
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 // TextColumn::make('id')->sortable(),
@@ -84,8 +97,9 @@ class GovDeductionResource extends Resource
                 ])->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
         // ->bulkActions([
         //     DeleteBulkAction::make(),

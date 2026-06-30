@@ -15,7 +15,10 @@ class ListOtherDeductions extends ListRecords
         return [
             CreateAction::make()
                 ->label('New Deduction')
-                ->color('warning')
+                ->button()
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
         ];
     }

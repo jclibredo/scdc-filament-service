@@ -21,7 +21,10 @@ class ListPayrolls extends ListRecords
 
             Action::make('back_to_billing')
                 ->label('Back')
+                ->button()
                 ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-arrow-left')
                 ->action(function () {
                     $status = session('session_employeestatus');

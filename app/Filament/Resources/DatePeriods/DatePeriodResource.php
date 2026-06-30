@@ -46,6 +46,9 @@ class DatePeriodResource extends Resource
         return $schema
             ->schema([
                 Section::make('Date Period Configuration')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
                     ->description('Manage employee type groups, payroll categories, and active timelines.')
                     ->columns(2) // Aligns fields nicely in a 2-column grid layout
                     ->columnSpanFull()
@@ -129,6 +132,9 @@ class DatePeriodResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)    // Disables the URL redirect on click
             ->recordAction(null)
             ->query(function () {
@@ -546,8 +552,9 @@ class DatePeriodResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
 
 
             ]);

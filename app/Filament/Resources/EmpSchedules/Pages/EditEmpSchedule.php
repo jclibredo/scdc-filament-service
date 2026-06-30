@@ -9,11 +9,4 @@ use Filament\Resources\Pages\EditRecord;
 class EditEmpSchedule extends EditRecord
 {
     protected static string $resource = EmpScheduleResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

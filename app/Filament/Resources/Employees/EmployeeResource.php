@@ -48,6 +48,9 @@ class EmployeeResource extends Resource
         return $schema
             ->schema([
                 Section::make('Employee Information')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
                     ->description('Please fill out all the required fields to manage this employee record.')
                     ->columns(3) // Sets a 3-column grid layout for the entire section
                     ->columnSpanFull() // Makes the section span the full width of the form
@@ -142,6 +145,9 @@ class EmployeeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
@@ -237,8 +243,9 @@ class EmployeeResource extends Resource
                 ])->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
+                    ->size('xs')
                     ->outlined()
-                    ->color('warning'),
+                    ->color('success'),
             ])
         ;
     }

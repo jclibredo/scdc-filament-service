@@ -41,6 +41,9 @@ class CategoryResource extends Resource
             ->schema([
                 Section::make('Category Details')
                     ->columnSpanFull()
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
                     ->schema([
                         // Arranging layout items into two columns
                         TextInput::make('name')
@@ -78,6 +81,9 @@ class CategoryResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
 
@@ -115,8 +121,9 @@ class CategoryResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
     }
 

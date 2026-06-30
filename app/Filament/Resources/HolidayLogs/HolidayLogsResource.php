@@ -16,6 +16,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -33,7 +34,7 @@ class HolidayLogsResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
 
     protected static ?string $recordTitleAttribute = 'HolidayLogs';
-    
+
     public static function shouldRegisterNavigation(): bool
     {
         return false;
@@ -43,56 +44,68 @@ class HolidayLogsResource extends Resource
     {
         return $schema
             ->schema([
-                Select::make('employeeid')
-                    ->label('Employee')
-                    ->options(
-                        DB::table('employees')
-                            ->orderBy('lastname', 'asc')
-                            ->get()
-                            ->mapWithKeys(fn($emp) => [
-                                $emp->employeeid => $emp->lastname . ', ' . $emp->firstname
-                            ])
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+                Section::make('Holiday Attendance Assignment')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
+                    ->description('Assign an employee to a holiday type and configure their raw time-in/time-out stamps for that specific period.')
+                    ->icon('heroicon-o-calendar-days') // Optional: Clean calendar icon
+                    ->columns(2) // Keeps everything tight in a two-column balance
+                    ->schema([
+                        Select::make('employeeid')
+                            ->label('Employee')
+                            ->options(
+                                DB::table('employees')
+                                    ->orderBy('lastname', 'asc')
+                                    ->get()
+                                    ->mapWithKeys(fn($emp) => [
+                                        $emp->employeeid => $emp->lastname . ', ' . $emp->firstname
+                                    ])
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required(),
 
-                Select::make('holidayid')
-                    ->label('Holiday')
-                    ->options(
-                        DB::table('holidays')->pluck('type', 'id')
-                    )
-                    ->searchable()
-                    ->required(),
+                        Select::make('holidayid')
+                            ->label('Holiday')
+                            ->options(
+                                DB::table('holidays')->pluck('type', 'id')
+                            )
+                            ->searchable()
+                            ->required(),
 
-                // 💡 NEW: Date Period lookup from your session or date periods database table
-                Select::make('dateperiod_id')
-                    ->label('Period Code')
-                    ->options(
-                        DatePeriod::query()
-                            ->orderBy('id', 'desc')
-                            ->pluck('code', 'code')
-                    )
-                    ->searchable()
-                    ->default(session('session_periodcode')) // Auto-inject active session period code
-                    ->required(),
+                        // 💡 NEW: Date Period lookup from your session or date periods database table
+                        Select::make('dateperiod_id')
+                            ->label('Period Code')
+                            ->options(
+                                DatePeriod::query()
+                                    ->orderBy('id', 'desc')
+                                    ->pluck('code', 'code')
+                            )
+                            ->searchable()
+                            ->default(session('session_periodcode')) // Auto-inject active session period code
+                            ->required(),
 
-                // 💡 NEW: Replaced single date picker with structured time tracking ranges
-                DateTimePicker::make('timein')
-                    ->label('Time In Stamp')
-                    ->native(false)
-                    ->required(),
+                        // 💡 NEW: Replaced single date picker with structured time tracking ranges
+                        DateTimePicker::make('timein')
+                            ->label('Time In Stamp')
+                            ->native(false)
+                            ->required(),
 
-                DateTimePicker::make('timeout')
-                    ->label('Time Out Stamp')
-                    ->native(false)
-                    ->required(),
+                        DateTimePicker::make('timeout')
+                            ->label('Time Out Stamp')
+                            ->native(false)
+                            ->required(),
+                    ])
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('holiday.type')
@@ -166,8 +179,9 @@ class HolidayLogsResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
     }
 

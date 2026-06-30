@@ -16,6 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -38,23 +39,43 @@ class ProjectResource extends Resource
         // return ProjectForm::configure($schema);
         return $schema
             ->schema([
-                TextInput::make('project_code')
-                    ->label('Project Code'),
-                TextInput::make('name')
-                    ->label('Name')
-                    ->required(),
-                Textarea::make('address')
-                    ->label('Address'),
+                Section::make('Project Profile')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
+                    ->description('Establish basic identification data, site location info, and operational availability.')
+                    ->icon('heroicon-o-building-office-2') // Optional: Sleek building/office icon
+                    ->columns(2) // Sets up a clean, multi-column grid layout
+                    ->schema([
 
-                Toggle::make('status')
-                    ->label('Set project status')
-                    ->default(true),
+                        TextInput::make('project_code')
+                            ->label('Project Code'),
+
+                        TextInput::make('name')
+                            ->label('Name')
+                            ->required(),
+
+                        Textarea::make('address')
+                            ->label('Address')
+                            ->rows(2)
+                            ->columnSpanFull(), // Stretches the address field wide across its own row
+
+                        Toggle::make('status')
+                            ->label('Set project status')
+                            ->default(true)
+                            ->inline(false) // Aligns the toggle label beautifully over the switch component
+                            ->columnSpanFull(), // Drops the toggle nicely onto its own clean row at the bottom
+
+                    ])
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('project_code')->searchable()->sortable(),
@@ -78,11 +99,16 @@ class ProjectResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ])
             ->headerActions([
                 Action::make('importEmployees')
+                    ->button()
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined()
                     ->label('Import Employees CSV')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->form([

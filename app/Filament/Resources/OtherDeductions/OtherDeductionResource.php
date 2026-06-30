@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -28,21 +29,34 @@ class OtherDeductionResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            TextInput::make('title')
-                ->label('Title')
-                ->required()
-                ->maxLength(255),
+            Section::make('General Information')
+                ->extraAttributes([
+                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                ])
+                ->description('Provide a concise title and a detailed description for this record.')
+                ->icon('heroicon-o-document-text') // Optional: Document icon for text entry
+                ->schema([
 
-            Textarea::make('description')
-                ->label('Description')
-                ->rows(4)
-                ->nullable(),
+                    TextInput::make('title')
+                        ->label('Title')
+                        ->required()
+                        ->maxLength(255),
+
+                    Textarea::make('description')
+                        ->label('Description')
+                        ->rows(4)
+                        ->nullable(),
+
+                ])
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('id')->sortable(),
@@ -68,8 +82,9 @@ class OtherDeductionResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
     }
 

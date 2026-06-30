@@ -65,6 +65,9 @@ class ThirteenthMonthResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->columns([
                 TextColumn::make('period.category.name')
                     ->label('Category')
@@ -177,9 +180,9 @@ class ThirteenthMonthResource extends Resource
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
-                    ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
 
             ])
             ->bulkActions([

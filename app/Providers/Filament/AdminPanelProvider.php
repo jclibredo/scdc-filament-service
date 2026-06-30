@@ -32,8 +32,11 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->colors([
-                'primary' => Color::Green,
+                'primary' => Color::Blue,
             ])
+            // ->colors([
+            //     'primary' => Color::hex('#0b4c81'),
+            // ])
             ->brandLogo(asset('images/scdc.jpg'))
             ->brandLogoHeight('3.5rem')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

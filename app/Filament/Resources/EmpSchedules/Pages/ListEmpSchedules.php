@@ -18,7 +18,10 @@ class ListEmpSchedules extends ListRecords
 
             Action::make('back_to_items')
                 ->label('Back')
+                ->button()
                 ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-arrow-left')
                 ->action(function () {
                     // Forget the session data
@@ -39,7 +42,10 @@ class ListEmpSchedules extends ListRecords
 
             CreateAction::make()
                 ->label('New Sched')
-                ->color('warning')
+                ->button()
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
         ];
     }

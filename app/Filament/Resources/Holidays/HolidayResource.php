@@ -35,64 +35,74 @@ class HolidayResource extends Resource
     {
         return $schema
             ->schema([
-                TextInput::make('type')
-                    ->label('Holiday Name')
-                    ->placeholder('E.G., NON-WORKING, SPECIAL')
-                    ->required()
-                    ->maxLength(25)
-                    // 💡 FIXED REGEX: First character MUST be a letter (A-Z). Following characters can be letters, spaces, or hyphens.
-                    ->regex('/^[A-Z][A-Z\s\-]*$/')
-                    ->validationMessages([
-                        'regex' => 'The Holiday name must start with a letter and contain uppercase letters, spaces, and hyphens only.',
-                        'max' => 'The Holiday name cannot be longer than 25 characters.',
+                Section::make('Holiday Configuration')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
-                    ->extraInputAttributes([
-                        // 💡 FIXED JAVASCRIPT: 
-                        // 1. Removes non-letters/spaces/hyphens (strips numbers, symbols etc.)
-                        // 2. Removes any leading spaces dynamically as they type
-                        // 3. Converts to uppercase
-                        'oninput' => "this.value = this.value.replace(/[^a-zA-Z\s\-]/g, '').replace(/^\s+/g, '').toUpperCase()",
-                        'style' => 'text-transform: uppercase;'
-                    ])
-                    ->columnSpan(1),
+                    ->description('Define new holiday categories, adjust standard premium rate percentages, and document computational bounds.')
+                    ->icon('heroicon-o-gift') // Optional: Sleek holiday/gift icon
+                    ->columns(2) // Sets up a balanced 2-column grid layout for row 1
+                    ->schema([
+                        TextInput::make('type')
+                            ->label('Holiday Name')
+                            ->placeholder('E.G., NON-WORKING, SPECIAL')
+                            ->required()
+                            ->maxLength(25)
+                            // 💡 FIXED REGEX: First character MUST be a letter (A-Z). Following characters can be letters, spaces, or hyphens.
+                            ->regex('/^[A-Z][A-Z\s\-]*$/')
+                            ->validationMessages([
+                                'regex' => 'The Holiday name must start with a letter and contain uppercase letters, spaces, and hyphens only.',
+                                'max' => 'The Holiday name cannot be longer than 25 characters.',
+                            ])
+                            ->extraInputAttributes([
+                                // 💡 FIXED JAVASCRIPT: 
+                                // 1. Removes non-letters/spaces/hyphens (strips numbers, symbols etc.)
+                                // 2. Removes any leading spaces dynamically as they type
+                                // 3. Converts to uppercase
+                                'oninput' => "this.value = this.value.replace(/[^a-zA-Z\s\-]/g, '').replace(/^\s+/g, '').toUpperCase()",
+                                'style' => 'text-transform: uppercase;'
+                            ]),
 
-                TextInput::make('percentage')
-                    ->label('Holiday Percentage')
-                    ->numeric()
-                    ->inputMode('decimal')
-                    ->placeholder('0.00')
-                    ->suffix('%')
-                    ->minValue(0)
-                    ->maxValue(100)
-                    ->required()
-                    ->validationMessages([
-                        'numeric' => 'The percentage field must be a valid number.',
-                        'min' => 'The percentage cannot be less than 0%.',
-                        'max' => 'The percentage cannot exceed 100%.',
-                    ])
-                    ->columnSpan(1),
+                        TextInput::make('percentage')
+                            ->label('Holiday Percentage')
+                            ->numeric()
+                            ->inputMode('decimal')
+                            ->placeholder('0.00')
+                            ->suffix('%')
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->required()
+                            ->validationMessages([
+                                'numeric' => 'The percentage field must be a valid number.',
+                                'min' => 'The percentage cannot be less than 0%.',
+                                'max' => 'The percentage cannot exceed 100%.',
+                            ]),
 
-                Textarea::make('details')
-                    ->label('Computation Details')
-                    ->placeholder('DESCRIBE BRACKET RANGES OR SPECIAL EXEMPTIONS HERE...')
-                    ->rows(3)
-                    ->required()
-                    ->maxLength(100)
-                    ->regex('/^[A-Z\s\W\d_]+$/')
-                    ->validationMessages([
-                        'max' => 'The Computation Details cannot be longer than 100 characters.',
+                        Textarea::make('details')
+                            ->label('Computation Details')
+                            ->placeholder('DESCRIBE BRACKET RANGES OR SPECIAL EXEMPTIONS HERE...')
+                            ->rows(3)
+                            ->required()
+                            ->maxLength(100)
+                            ->regex('/^[A-Z\s\W\d_]+$/')
+                            ->validationMessages([
+                                'max' => 'The Computation Details cannot be longer than 100 characters.',
+                            ])
+                            ->extraInputAttributes([
+                                'oninput' => "this.value = this.value.replace(/[0-9]/g, '').toUpperCase()",
+                                'style' => 'text-transform: uppercase;'
+                            ])
+                            ->columnSpanFull(),
                     ])
-                    ->extraInputAttributes([
-                        'oninput' => "this.value = this.value.replace(/[0-9]/g, '').toUpperCase()",
-                        'style' => 'text-transform: uppercase;'
-                    ])
-                    ->columnSpanFull(),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('type')->label('Type')->sortable()->searchable(),
@@ -112,8 +122,9 @@ class HolidayResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
         // ->bulkActions([
         //     DeleteBulkAction::make(),

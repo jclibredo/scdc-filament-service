@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\BadgeColumn;
@@ -36,34 +37,47 @@ class UserResource extends Resource
     {
         // return UserForm::configure($schema);
         return $schema->schema([
-            TextInput::make('name')
-                ->required()
-                ->maxLength(255),
-
-            TextInput::make('email')
-                ->email()
-                ->required()
-                ->unique(ignoreRecord: true),
-            // 👇 New field for user role
-            Select::make('role')
-                ->options([
-                    'user' => 'User',
-                    'admin' => 'Admin',
+            Section::make('User Account Details')
+                ->extraAttributes([
+                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                 ])
-                ->default('user')
-                ->required(),
+                ->description('Manage user credentials, profile information, application roles, and system access status.')
+                ->icon('heroicon-o-user-circle') // Optional: Sleek user profile icon
+                ->columns(2) // Organizes fields into a clean two-column grid layout
+                ->schema([
 
-            // 👇 New field for status
-            Toggle::make('status')
-                ->label('Active')
-                ->default(true),
-            TextInput::make('password')
-                ->password()
-                ->revealable()
-                ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
-                ->dehydrated(fn($state) => filled($state))
-                ->required(fn(string $context): bool => $context === 'create')
-                ->maxLength(255),
+                    TextInput::make('name')
+                        ->required()
+                        ->maxLength(255),
+
+                    TextInput::make('email')
+                        ->email()
+                        ->required()
+                        ->unique(ignoreRecord: true),
+
+                    Select::make('role')
+                        ->options([
+                            'user' => 'User',
+                            'admin' => 'Admin',
+                        ])
+                        ->default('user')
+                        ->required(),
+
+                    TextInput::make('password')
+                        ->password()
+                        ->revealable()
+                        ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
+                        ->dehydrated(fn($state) => filled($state))
+                        ->required(fn(string $context): bool => $context === 'create')
+                        ->maxLength(255),
+
+                    Toggle::make('status')
+                        ->label('Active Status')
+                        ->default(true)
+                        ->inline(false) // Aligns the toggle label beautifully above the switch component
+                        ->columnSpanFull(), // Pushes the toggle to its own row at the bottom for a clean look
+
+                ])
         ]);
     }
 
@@ -71,6 +85,9 @@ class UserResource extends Resource
     {
         // return UsersTable::configure($table);
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('name')->searchable(),
@@ -100,7 +117,8 @@ class UserResource extends Resource
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
-                    ->button()
+                    ->color('success')
+                    ->size('xs')
                     ->outlined()
                     ->color('warning'),
             ]);

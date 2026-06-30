@@ -18,7 +18,10 @@ class ListEarnings extends ListRecords
         return [
             Action::make('back_to_items')
                 ->label('Back')
+                ->button()
                 ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-arrow-left')
                 ->action(function () {
                     // Forget the session data
@@ -40,7 +43,10 @@ class ListEarnings extends ListRecords
 
             CreateAction::make()
                 ->label('New Earning')
-                ->color('warning')
+                ->button()
+                ->color('success')
+                ->size('xs')
+                ->outlined()
                 ->icon('heroicon-m-plus-circle'),
 
 

@@ -45,6 +45,9 @@ class EarningsResource extends Resource
                 Section::make('Earnings Information')
                     ->description('Configure the employee earning details.')
                     ->icon('heroicon-o-banknotes')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
                     ->columnSpanFull()
                     ->schema([
 
@@ -162,6 +165,9 @@ class EarningsResource extends Resource
                 ")
             ->implode(' ');
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->header(fn() => new HtmlString("
                     <div style='
                         padding: 1rem; 
@@ -263,8 +269,9 @@ class EarningsResource extends Resource
                 ])->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ])
             ->filters([]);
     }

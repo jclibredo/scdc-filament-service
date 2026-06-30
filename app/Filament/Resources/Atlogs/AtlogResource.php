@@ -46,43 +46,10 @@ class AtlogResource extends Resource
             ->schema([
                 Section::make('Log Details')
                     ->columnSpanFull()
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
                     ->schema([
-
-
-                        // Select::make('user_id')
-                        //     ->label('Employee')
-                        //     ->required()
-                        //     ->searchable()
-                        //     ->live()
-                        //     ->getSearchResultsUsing(
-                        //         fn(string $search): array =>
-                        //         Employee::where('firstname', 'like', "%{$search}%")
-                        //             ->orWhere('lastname', 'like', "%{$search}%")
-                        //             ->orWhere('employeeid', 'like', "%{$search}%")
-                        //             ->limit(50)
-                        //             ->get()
-                        //             ->mapWithKeys(fn($item) => [$item->employeeid => "{$item->full_name} ({$item->employeeid})"])
-                        //             ->toArray()
-                        //     )
-                        //     ->getOptionLabelUsing(
-                        //         fn($value): ?string =>
-                        //         Employee::where('employeeid', $value)->first()?->full_name
-                        //     )
-                        //     // 💡 REVISED: Directly passing the string code from project_id to project_code
-                        //     ->afterStateUpdated(function (string $state, Set $set) {
-                        //         if (empty($state)) {
-                        //             return;
-                        //         }
-
-                        //         $employee = Employee::where('employeeid', $state)->first();
-
-                        //         // Since employee's 'project_id' column already holds the text code string,
-                        //         // we feed it directly into the form field 'project_code'
-                        //         if ($employee && $employee->project_id) {
-                        //             $set('project_code', $employee->project_id);
-                        //         }
-                        //     })
-                        //     ->columnSpan(2),
                         Select::make('user_id')
                             ->label('Employee')
                             ->required()
@@ -138,23 +105,6 @@ class AtlogResource extends Resource
                             ->disabled(fn() => filled(session('session_employee_id')))
                             ->dehydrated()
                             ->columnSpan(2),
-
-                        // Select::make('project_code')
-                        //     ->label('Assigned Project')
-                        //     ->placeholder('Select a project assignment...')
-                        //     ->options(
-                        //         Project::query()
-                        //             ->where('status', true)
-                        //             ->get()
-                        //             ->mapWithKeys(fn($project) => [$project->project_code => "{$project->name} ({$project->project_code})"])
-                        //             ->toArray()
-                        //     )
-                        //     ->searchable()
-                        //     ->preload()
-                        //     ->native(false)
-                        //     ->required()
-                        //     ->columnSpan(2),
-
                         DateTimePicker::make('recorded_at')
                             ->required()
                             ->label('Date & Time'),
@@ -304,6 +254,9 @@ class AtlogResource extends Resource
                         </div>
                     "))
             ->recordUrl(null)
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->query(function () {
                 $sessionEmployeeId = session('session_employee_id');
                 $sessionPeriodCode = session('session_periodcode');
@@ -455,8 +408,9 @@ class AtlogResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ])
             ->defaultSort('recorded_at', 'desc');
     }

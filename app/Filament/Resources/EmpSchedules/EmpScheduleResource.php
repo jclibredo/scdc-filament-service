@@ -22,6 +22,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -47,82 +48,71 @@ class EmpScheduleResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Select::make('employeeid')
-                ->label('Employee')
-                ->relationship('employData')
-                ->getOptionLabelFromRecordUsing(
-                    fn($record) => $record->full_name
-                )
-                ->searchable(['firstname', 'middlename', 'lastname'])
-                ->preload()
-                ->required()
-                ->disabled()
-                ->dehydrated()
-                ->default(session('session_employee_id'))
-                ->columnSpanFull(),
+            Section::make('Shift Schedule Details')
+                ->extraAttributes([
+                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                ])
+                ->description('Manage employee shift duration, time-in, and auto-calculated time-out values.')
+                ->icon('heroicon-o-clock') // Optional: Sleek clock icon for time-tracking
+                ->columns(3) // Optional: Dynamically splits your inputs into a clean 3-column grid layout
+                ->schema([
+                    Select::make('employeeid')
+                        ->label('Employee')
+                        ->relationship('employData')
+                        ->getOptionLabelFromRecordUsing(
+                            fn($record) => $record->full_name
+                        )
+                        ->searchable(['firstname', 'middlename', 'lastname'])
+                        ->preload()
+                        ->required()
+                        ->disabled()
+                        ->dehydrated()
+                        ->default(session('session_employee_id'))
+                        ->columnSpanFull(),
 
-            TimePicker::make('timein')
-                ->label('Time-In')
-                ->seconds(false)
-                ->live()
-                ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                    if (blank($state)) {
-                        return;
-                    }
-                    $workingHours = (int) ($get('workingHours') ?? 8);
-                    $timeout = Carbon::parse($state)
-                        ->addHours($workingHours + 1) // +1 hour break
-                        ->format('H:i');
-                    $set('timeout', $timeout);
-                })
-                ->required(),
+                    TimePicker::make('timein')
+                        ->label('Time-In')
+                        ->seconds(false)
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                            if (blank($state)) {
+                                return;
+                            }
+                            $workingHours = (int) ($get('workingHours') ?? 8);
+                            $timeout = Carbon::parse($state)
+                                ->addHours($workingHours + 1) // +1 hour break
+                                ->format('H:i');
+                            $set('timeout', $timeout);
+                        })
+                        ->required(),
 
-            TimePicker::make('timeout')
-                ->label('Time-Out')
-                ->seconds(false)
-                ->disabled()
-                ->dehydrated()
-                ->required(),
+                    TimePicker::make('timeout')
+                        ->label('Time-Out')
+                        ->seconds(false)
+                        ->disabled()
+                        ->dehydrated()
+                        ->required(),
+                    TextInput::make('workingHours')
+                        ->label('Working Hours')
+                        ->numeric()
+                        ->default(8)
+                        ->minValue(1)
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                            if (blank($get('timein'))) {
+                                return;
+                            }
+                            $timeout = Carbon::parse($get('timein'))
+                                ->addHours(((int) $state) + 1) // +1 hour break
+                                ->format('H:i');
+                            $set('timeout', $timeout);
+                        })
+                        ->required(),
 
-            // Select::make('workingHours')
-            //     ->options([
-            //         4 => '4 Hours',
-            //         6 => '6 Hours',
-            //         7 => '7 Hours',
-            //         8 => '8 Hours',
-            //         9 => '9 Hours',
-            //         10 => '10 Hours',
-            //         11 => '11 Hours',
-            //         12 => '12 Hours',
-            //         13 => '13 Hours',
-            //         14 => '14 Hours',
-            //         15 => '15 Hours',
-            //         16 => '16 Hours',
-            //     ])
-            //     ->default(8)
-            //     ->live()
-            //     ->required(),
-
-            TextInput::make('workingHours')
-                ->label('Working Hours')
-                ->numeric()
-                ->default(8)
-                ->minValue(1)
-                ->live()
-                ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                    if (blank($get('timein'))) {
-                        return;
-                    }
-                    $timeout = Carbon::parse($get('timein'))
-                        ->addHours(((int) $state) + 1) // +1 hour break
-                        ->format('H:i');
-                    $set('timeout', $timeout);
-                })
-                ->required(),
-
-            Toggle::make('status')
-                ->default(true)
-                ->required(),
+                    Toggle::make('status')
+                        ->default(true)
+                        ->required(),
+                ])
         ]);
     }
 
@@ -165,6 +155,9 @@ class EmpScheduleResource extends Resource
                 ")
             ->implode(' ');
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->header(fn() => new HtmlString("
                     <div style='
                         padding: 1rem; 
@@ -246,8 +239,9 @@ class EmpScheduleResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
 
             ]);
         // ->bulkActions([

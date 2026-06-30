@@ -103,6 +103,9 @@ class PayrollResource extends Resource
                 ")
             ->implode(' ');
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->header(fn() => new HtmlString("
                     <div style='
                         padding: 1rem; 
@@ -669,8 +672,9 @@ class PayrollResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
             ]);
     }
 

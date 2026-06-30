@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -31,14 +32,24 @@ class SkillResource extends Resource
         // return SkillForm::configure($schema);
         return $schema
             ->schema([
-                TextInput::make('title')
-                    ->label('Title')
-                    ->required()
-                    ->maxLength(255),
+                Section::make('Record Details')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                    ])
+                    ->description('Provide a descriptive title and any relevant supplemental details.')
+                    ->icon('heroicon-o-information-circle') // Optional: Sleek info circle icon
+                    ->schema([
 
-                Textarea::make('details')
-                    ->label('Details')
-                    ->rows(3),
+                        TextInput::make('title')
+                            ->label('Title')
+                            ->required()
+                            ->maxLength(255),
+
+                        Textarea::make('details')
+                            ->label('Details')
+                            ->rows(3),
+
+                    ])
             ]);
     }
 
@@ -46,6 +57,9 @@ class SkillResource extends Resource
     {
         // return SkillsTable::configure($table);
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('title')->searchable()->sortable(),
@@ -63,8 +77,9 @@ class SkillResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->button()
-                    ->outlined()
-                    ->color('warning'),
+                    ->color('success')
+                    ->size('xs')
+                    ->outlined(),
 
             ]);
     }
