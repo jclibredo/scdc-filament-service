@@ -9,6 +9,7 @@ use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
 // use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
+use App\Models\EmployeeProjectHistory;
 use App\Models\EmpSchedule;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -21,8 +22,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 // use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -216,15 +219,182 @@ class EmployeeResource extends Resource
             ->filtersFormWidth('2xl')
             ->actions([
                 ActionGroup::make([
+
                     Action::make('viewEarnings')
                         ->label('View Earnings')
                         ->icon('heroicon-o-banknotes')
                         ->action(function (Employee $record) {
-                            // Store the values in the session temporarily
                             session(['session_employee_id' => $record->employeeid]);
-                            // Redirect to the create page WITHOUT query parameters
                             return redirect(EarningsResource::getUrl('index'));
                         }),
+
+
+                    Action::make('transferAssignment')
+                        ->label('Transfer Assignment')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->form([
+
+                            // SECTION 1: Current Assignment & End Date
+                            Section::make('Current Assignment Details')
+                                ->extraAttributes([
+                                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                                ])
+                                ->description('Review the employee’s current status and set their assignment end date.')
+                                ->icon('heroicon-o-user')
+                                ->schema([
+                                    Grid::make(2)
+                                        ->schema([
+                                            TextInput::make('employee_display_id')
+                                                ->label('Employee ID')
+                                                ->disabled(),
+
+                                            TextInput::make('employee_display_name')
+                                                ->label('Full Name')
+                                                ->disabled(),
+
+                                            TextInput::make('employee_type')
+                                                ->label('Employee Type')
+                                                ->disabled(),
+
+                                            TextInput::make('employee_status')
+                                                ->label('Emp. Status')
+                                                ->disabled(),
+                                        ]),
+                                ]),
+
+                            // SECTION 2: New Assignment Allocation
+                            Section::make('New Assignment Allocation')
+                                ->extraAttributes([
+                                    'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+                                ])
+                                ->description('Select the target destination project and configuration rules.')
+                                ->icon('heroicon-o-briefcase')
+                                ->schema([
+                                    Grid::make(2)
+                                        ->schema([
+                                            Select::make('new_project_code')
+                                                ->label('Select New Project')
+                                                ->relationship(
+                                                    name: 'project',
+                                                    titleAttribute: 'name',
+                                                    modifyQueryUsing: fn($query, Employee $record) => $query->where('project_code', '!=', $record->project_code)
+                                                )
+                                                ->preload()
+                                                ->live() // ⚡ Forces the form to evaluate visibility conditions instantly
+                                                ->required()
+                                                ->columnSpan(2),
+
+                                            // 📅 Hidden by default, visible ONLY when a valid new project selection is made
+                                            DatePicker::make('dateended')
+                                                ->label('Current Project Date Ended')
+                                                ->default(now())
+                                                // ->required()
+                                                ->visible(fn(Get $get) => filled($get('new_project_code'))),
+
+                                            // 📅 Hidden by default, visible ONLY when a valid new project selection is made
+                                            DatePicker::make('datestarted')
+                                                ->label('New Project Date Started')
+                                                ->default(now())
+                                                // ->required()
+                                                ->visible(fn(Get $get) => filled($get('new_project_code'))),
+                                            // Select::make('project_code')
+                                            //     ->label('Select New Project')
+                                            //     ->relationship(
+                                            //         name: 'project',
+                                            //         titleAttribute: 'name',
+                                            //         modifyQueryUsing: fn($query, Employee $record) => $query->where('project_code', '!=', $record->project_code)
+                                            //     )
+                                            //     ->live()
+                                            //     ->preload()
+                                            //     ->required(),
+
+                                            // DatePicker::make('datestarted')
+                                            //     ->label('New Project Date Started')
+                                            //     ->default(now())
+                                            //     ->disabled(fn(Get $get, Employee $record) => $get('project_code') === $record->project_code)
+                                            //     ->required(),
+                                        ]),
+                                ]),
+                        ])
+                        ->mountUsing(function (Schema $form, Employee $record) {
+                            $form->fill([
+                                'employee_display_id'   => $record->employeeid,
+                                'employee_display_name' => "{$record->lastname}, {$record->firstname} {$record->middlename}",
+                                'employee_type'         => $record->empType?->name,
+                                'employee_status'       => $record->empStat?->name,
+                            ]);
+                        })
+                        ->action(function (Employee $record, array $data): void {
+                            $newProjectCode = $data['new_project_code'];
+                            $dateEnded = $data['dateended'];     // 📅 From Section 1
+                            $dateStarted = $data['datestarted']; // 📅 From Section 2
+                            // 1. Process active assignment history logic
+                            $currentHistory = EmployeeProjectHistory::where('employeeid', $record->employeeid)
+                                ->where('projectid', $record->project_id)
+                                ->where('status', true)
+                                ->first();
+                            if ($currentHistory) {
+                                if ($currentHistory->projectid != $newProjectCode) {
+                                    if ($dateEnded === null || $dateStarted === null) {
+                                        Notification::make()
+                                            ->title('Error: Both "Current Project Date Ended" and "New Project Date Started" must be provided.')
+                                            ->danger()
+                                            ->send();
+                                        return;
+                                    }
+                                    // Terminate the active history using Section 1's "dateended"
+                                    $currentHistory->update([
+                                        'status'    => false,
+                                        'dateended' => $dateEnded,
+                                    ]);
+
+                                    // Spin up new history using Section 2's "datestarted"
+                                    EmployeeProjectHistory::create([
+                                        'employeeid'      => $record->employeeid,
+                                        'projectid'       => $newProjectCode,
+                                        'employeetype'    => $record->employeetype_id,
+                                        'employee_status' => $record->empstatus_id,
+                                        'datestarted'     => $dateStarted,
+                                        'status'          => true,
+                                    ]);
+                                }
+                            } else {
+                                if ($dateStarted === null) {
+                                    Notification::make()
+                                        ->title('Error: "New Project Date Started" must be provided.')
+                                        ->danger()
+                                        ->send();
+                                    return;
+                                }
+                                // Backup initial creation if no active history tracking exists yet
+                                EmployeeProjectHistory::create([
+                                    'employeeid'      => $record->employeeid,
+                                    'projectid'       => $newProjectCode,
+                                    'employeetype'    => $record->employeetype_id,
+                                    'employee_status' => $record->empstatus_id,
+                                    'datestarted'     => $dateStarted,
+                                    'status'          => true,
+                                ]);
+                            }
+
+                            // 2. Sync to core Employee entity
+                            $record->update([
+                                'project_code' => $newProjectCode,
+                            ]);
+
+                            Notification::make()
+                                ->title('Assignment updated and structural history logged.')
+                                ->success()
+                                ->send();
+                        }),
+
+
+
+
+
+
+
                     Action::make('viewSched')
                         ->label('View Sched')
                         ->color('success')
@@ -235,6 +405,7 @@ class EmployeeResource extends Resource
                             // Redirect to the create page WITHOUT query parameters
                             return redirect(EmpScheduleResource::getUrl('index'));
                         }),
+
                     EditAction::make()
                         ->label('Update'),
                     DeleteAction::make()
@@ -246,8 +417,7 @@ class EmployeeResource extends Resource
                     ->size('xs')
                     ->outlined()
                     ->color('success'),
-            ])
-        ;
+            ]);
     }
 
     public static function getRelations(): array
