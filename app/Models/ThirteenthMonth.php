@@ -11,13 +11,31 @@ class ThirteenthMonth extends Model
 
     protected $table = 'thirteenth_months';
 
-    // Fillable fields
     protected $fillable = [
         'periodid',
         'employeeid',
-        'total_amount',
+        'earnings', // renamed from total_amount
+        // 'emptype',
+        // 'empstatus',
+        'partners',
+        'yearendrepid',
+        'project',
+        'allowance',
+        'datestart',
+        'dateend',
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'allowance' => 'decimal:2',
+        'earnings' => 'decimal:2',
+        'datestart' => 'date',
+        'dateend' => 'date',
+    ];
     /**
      * Relation: ThirteenthMonth belongs to an Employee
      */

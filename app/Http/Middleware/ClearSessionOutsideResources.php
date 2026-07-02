@@ -36,6 +36,7 @@ class ClearSessionOutsideResources
             // 'filament.admin.resources.emp-schedules.index',
             // 'filament.admin.resources.emp-schedules.create',
             // 'filament.admin.resources.emp-schedules.edit',
+            'filament.admin.resources.year-end-reports.*',
         ];
 
         $isAllowed = false;
@@ -70,6 +71,8 @@ class ClearSessionOutsideResources
                 'session_employee_id',
                 'session_partners',
                 'session_periodcode',
+                'session_yearendrepid',
+                'session_project',
             ]);
         }
 
