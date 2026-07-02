@@ -35,17 +35,22 @@ class HolidayResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'Holiday';
 
+    protected static ?string $navigationLabel = 'Payment Rate';
+    protected static ?string $pluralModelLabel = 'Payment Type & Premium Rate Data';
+
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
                 Section::make('Holiday Configuration')
+                    ->columnSpanFull()
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
                     ->description('Define new holiday categories, adjust standard premium rate percentages, and document computational bounds.')
                     ->icon('heroicon-o-gift') // Optional: Sleek holiday/gift icon
                     ->columns(2) // Sets up a balanced 2-column grid layout for row 1
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('type')
                             ->label('Holiday Name')
@@ -59,10 +64,6 @@ class HolidayResource extends Resource
                                 'max' => 'The Holiday name cannot be longer than 25 characters.',
                             ])
                             ->extraInputAttributes([
-                                // 💡 FIXED JAVASCRIPT: 
-                                // 1. Removes non-letters/spaces/hyphens (strips numbers, symbols etc.)
-                                // 2. Removes any leading spaces dynamically as they type
-                                // 3. Converts to uppercase
                                 'oninput' => "this.value = this.value.replace(/[^a-zA-Z\s\-]/g, '').replace(/^\s+/g, '').toUpperCase()",
                                 'style' => 'text-transform: uppercase;'
                             ]),
@@ -110,7 +111,7 @@ class HolidayResource extends Resource
             ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
-                  if (!$user) {
+                if (!$user) {
                     return Holiday::whereRaw('1 = 0');
                 }
                 return Holiday::where('status', true); // Add this line

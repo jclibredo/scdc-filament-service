@@ -32,7 +32,7 @@ class Employee extends Model
 
     public function emplScheduleData()
     {
-        return $this->hasMany(EmpSchedule::class, 'employeeid');
+        return $this->hasMany(EmpSchedule::class, 'employeeid', 'employeeid');
     }
     public function externalPartners()
     {

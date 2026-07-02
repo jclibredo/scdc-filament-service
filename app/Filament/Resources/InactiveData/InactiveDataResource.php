@@ -35,8 +35,6 @@ class InactiveDataResource extends Resource
 
     // 🏷️ This changes the text displayed in the Sidebar Navigation link
     protected static ?string $navigationLabel = 'Inactive Data Records';
-
-    // 🏷️ (Optional) This changes the big main heading at the top of the table page
     protected static ?string $pluralModelLabel = 'Archived Non-Active Data';
     protected static ?int $navigationSort = 5;
 
@@ -79,6 +77,9 @@ class InactiveDataResource extends Resource
                         'GovDeduction'   => 'Gov Deduction',
                         'OtherDeduction' => 'Other Deduction',
                         'Category'       => 'Category',
+                        'Earnings'       => 'Earnings',
+                        'Adjustment'     => 'Adjustment',
+                        'Holiday'       => 'Holiday',
                     ])
                     // 💡 Tell Filament to do absolutely nothing when applying this filter to SQL
                     ->query(fn($query) => $query),

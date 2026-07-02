@@ -39,6 +39,7 @@ class UserResource extends Resource
         // return UserForm::configure($schema);
         return $schema->schema([
             Section::make('User Account Details')
+                ->columnSpanFull()
                 ->extraAttributes([
                     'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                 ])
@@ -126,9 +127,9 @@ class UserResource extends Resource
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
                     ->color('success')
+                    ->button()
                     ->size('xs')
-                    ->outlined()
-                    ->color('warning'),
+                    ->outlined(),
             ]);
     }
 

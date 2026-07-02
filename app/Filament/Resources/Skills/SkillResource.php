@@ -40,6 +40,7 @@ class SkillResource extends Resource
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
+                    ->columnSpanFull()
                     ->description('Provide a descriptive title and any relevant supplemental details.')
                     ->icon('heroicon-o-information-circle') // Optional: Sleek info circle icon
                     ->schema([
@@ -66,7 +67,7 @@ class SkillResource extends Resource
             ])
             ->query(function () {
                 $user = Auth::user();
-                  if (!$user) {
+                if (!$user) {
                     return Skill::whereRaw('1 = 0');
                 }
                 return Skill::where('status', true); // Add this line

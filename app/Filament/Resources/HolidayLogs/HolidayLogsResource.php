@@ -49,6 +49,7 @@ class HolidayLogsResource extends Resource
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
+                    ->columnSpanFull()
                     ->description('Assign an employee to a holiday type and configure their raw time-in/time-out stamps for that specific period.')
                     ->icon('heroicon-o-calendar-days') // Optional: Clean calendar icon
                     ->columns(2) // Keeps everything tight in a two-column balance

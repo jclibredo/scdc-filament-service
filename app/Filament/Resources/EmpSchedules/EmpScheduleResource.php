@@ -55,6 +55,7 @@ class EmpScheduleResource extends Resource
                 ->extraAttributes([
                     'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                 ])
+                ->columnSpanFull()
                 ->description('Manage employee shift duration, time-in, and auto-calculated time-out values.')
                 ->icon('heroicon-o-clock') // Optional: Sleek clock icon for time-tracking
                 ->columns(3) // Optional: Dynamically splits your inputs into a clean 3-column grid layout
@@ -236,7 +237,7 @@ class EmpScheduleResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
+                        // ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
                         ->label('Update'),
                     Action::make('deactivate')
                         ->label('Deactivate')

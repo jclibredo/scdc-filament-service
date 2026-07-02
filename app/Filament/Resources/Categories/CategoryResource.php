@@ -36,8 +36,8 @@ class CategoryResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static ?string $recordTitleAttribute = 'Earnings Category';
-
-    protected static ?string $navigationLabel = 'Categories';
+    protected static ?string $navigationLabel = 'System Categories';
+    protected static ?string $pluralModelLabel = 'System Category Data';
 
     public static function form(Schema $schema): Schema
     {

@@ -26,9 +26,11 @@ class OtherDeductionResource extends Resource
 {
     protected static ?string $model = OtherDeduction::class;
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowPathRoundedSquare;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::MinusCircle;
 
     protected static ?string $recordTitleAttribute = 'OtherDeduction';
+    protected static ?string $navigationLabel = 'Other Deductions';
+    protected static ?string $pluralModelLabel = 'Other Deductions Category Data';
 
     public static function form(Schema $schema): Schema
     {

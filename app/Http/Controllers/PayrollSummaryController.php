@@ -112,123 +112,148 @@ class PayrollSummaryController extends Controller
                 ->groupBy(function ($log) {
                     return Carbon::parse($log->recorded_at)->toDateString();
                 });
-
-            $empSched = EmpSchedule::where('employeeid', $employee->employeeid)->first();
-            // Initialize total overtime for the current employee
+            $empSched = $employee->emplScheduleData->first();
+            // Initialize total overtime
             $totalPeriodOvertime = 0.00;
             foreach ($periodDates as $date) {
-                // 🚀 Checks if this employee already has records under this specific period
+                $schedInBoundary  = Carbon::parse("$date {$empSched->timein}");
+                $schedOutBoundary = Carbon::parse("$date {$empSched->timeout}");
                 $dayLogs = $empLogs->get($date, collect());
                 $timeIn = null;
                 $timeOut = null;
+                // Carbon versions for computation
+                $carbonIn = null;
+                $carbonOut = null;
                 if ($dayLogs->isNotEmpty()) {
-                    // 1. Sort logs chronologically to accurately target the outer boundaries
                     $sortedLogs = $dayLogs->sortBy('recorded_at');
                     $firstLog = $sortedLogs->first();
                     $lastLog = $sortedLogs->last();
-                    $firstTime = Carbon::parse($firstLog->recorded_at);
-                    $lastTime = Carbon::parse($lastLog->recorded_at);
-                    // 2. If they have only 1 punch, or first/last are the exact same database entry, skip timeout
-                    if ($sortedLogs->count() === 1 || $firstLog->id === $lastLog->id) {
-                        $timeIn = $firstTime->format('h:i A');
-                        $timeOut = null;
-                    } else {
-                        // Otherwise, reliably extract the actual first and last logs
-                        $timeIn = $firstTime->format('h:i A');
-                        $timeOut = $lastTime->format('h:i A');
+                    $carbonIn = Carbon::parse($firstLog->recorded_at);
+                    if ($sortedLogs->count() > 1 && $firstLog->id != $lastLog->id) {
+                        $carbonOut = Carbon::parse($lastLog->recorded_at);
                     }
+                    $timeIn = $carbonIn->format('h:i A');
+                    $timeOut = $carbonOut ? $carbonOut->format('h:i A') : null;
                 }
-                // Check if the current processing date is a Sunday
                 $isSunday = Carbon::parse($date)->isSunday();
-                // Variable initialization for database recording
+                $display = '';
+                $class = '';
+                $payType = 'R';
                 $overtime = 0.00;
                 $acquiredHours = 0.00;
                 $lateUndertime = 0.00;
-                $payType = 'R';
-                // Initialize break times as null
+                $lateMinutes = 0;
+                $undertimeMinutes = 0;
                 $breakOut = null;
                 $breakIn = null;
-                // Extract Break Out and Break In from raw logs if they exist
-                if (!$dayLogs->isEmpty()) {
-                    // Filter logs that fall strictly between 12:01 PM and 12:50 PM
+                if ($dayLogs->isNotEmpty()) {
                     $breakWindowLogs = $dayLogs->filter(function ($log) use ($date) {
-                        // Adjust the property name (e.g., $log->log_time or $log->created_at) to match your data structure
-                        $logTime = Carbon::parse($log->log_time);
-                        $windowStart = Carbon::parse("$date 12:01:00");
-                        $windowEnd = Carbon::parse("$date 12:50:00");
-                        return $logTime->between($windowStart, $windowEnd);
-                    })->sortBy('log_time'); // Ensure they are chronological
+                        $logTime = Carbon::parse($log->recorded_at);
+                        return $logTime->between(
+                            Carbon::parse("$date 12:01:00"),
+                            Carbon::parse("$date 12:50:00")
+                        );
+                    })->sortBy('recorded_at');
                     if ($breakWindowLogs->isNotEmpty()) {
-                        // Break Out = First punch within the window
-                        $breakOut = Carbon::parse($breakWindowLogs->first()->log_time)->format('H:i:s');
-                        // Break In = Last punch within the window
-                        $breakIn = Carbon::parse($breakWindowLogs->last()->log_time)->format('H:i:s');
-                        // If there's only 1 punch in that window, breakOut and breakIn will be identical.
-                        // Optional safety: clear breakIn if it's the exact same punch record as breakOut
-                        if ($breakWindowLogs->count() === 1) {
-                            $breakIn = null;
+
+                        $breakOut = Carbon::parse(
+                            $breakWindowLogs->first()->recorded_at
+                        )->format('H:i:s');
+
+                        if ($breakWindowLogs->count() > 1) {
+                            $breakIn = Carbon::parse(
+                                $breakWindowLogs->last()->recorded_at
+                            )->format('H:i:s');
                         }
                     }
                 }
-                // Scenario Evaluation
                 if ($dayLogs->isEmpty()) {
                     $display = 'A';
                     $payType = $isSunday ? 'N' : 'A';
                     $class = 'bg-yellow-50 font-bold text-amber-700 text-center';
-                } elseif (!$timeIn || !$timeOut) {
+                } elseif (!$carbonIn || !$carbonOut) {
+
+                    $display = 'N/A';
+                    $payType = $isSunday ? 'N' : 'A';
+                    $class = 'bg-red-100 font-bold text-red-600 text-center';
+                } elseif ($carbonIn->diffInSeconds($carbonOut) < 60) {
+
                     $display = 'N/A';
                     $payType = $isSunday ? 'N' : 'A';
                     $class = 'bg-red-100 font-bold text-red-600 text-center';
                 } else {
-                    $payType = 'R';
-                    $carbonIn = Carbon::parse("$date $timeIn");
-                    $carbonOut = Carbon::parse("$date $timeOut");
-                    // RECOMMENDATION: Check for accidental double-taps (e.g., matching logs spanning only seconds)
-                    // If they spent less than 1 minute clocked in, treat it as an invalid/incomplete entry.
-                    if ($carbonIn->diffInSeconds($carbonOut) < 60) {
-                        $display = 'N/A';
-                        $payType = $isSunday ? 'N' : 'A';
-                        $class = 'bg-red-100 font-bold text-red-600 text-center';
-                        // Treat full shift as missing hours (8.00)
-                        $lateUndertime = 8.00;
-                        $acquiredHours = 0.00;
-                    } else {
-                        // Calculate worked minutes
-                        $grossMinutes = $carbonIn->diffInMinutes($carbonOut);
-                        // Deduct 1-hour break if work exceeds 5 hours (300 minutes)
-                        if ($grossMinutes > 300) {
-                            $grossMinutes -= 60;
-                        }
-                        $standardShiftMinutes = 480; // 8 hours
-                        if ($grossMinutes >= $standardShiftMinutes) {
-                            $acquiredHours = 8.00;
-                            $lateUndertime = 0.00;
-                            // Overtime Calculation
-                            $rawOvertimeMinutes = $grossMinutes - $standardShiftMinutes;
-                            if ($rawOvertimeMinutes >= 60) {
-                                $overtime = floor($rawOvertimeMinutes / 30) * 0.5;
-                            } else {
-                                $overtime = 0.00;
-                            }
-                        } else {
-                            // Late / Undertime Calculation
-                            $missingMinutes = $standardShiftMinutes - $grossMinutes;
-                            // 1. Convert missing minutes to literal HH.MM format (e.g., 480 minutes -> 8.00)
-                            $missingHoursPart = floor($missingMinutes / 60);
-                            $missingMinutesPart = $missingMinutes % 60;
-                            $lateUndertime = (float) ($missingHoursPart . '.' . str_pad($missingMinutesPart, 2, '0', STR_PAD_LEFT));
-                            // 2. Convert gross minutes to literal HH.MM format (e.g., 467 minutes -> 7.47)
-                            $fullHours = floor($grossMinutes / 60);
-                            $remainingMinutes = $grossMinutes % 60;
-                            $acquiredHours = (float) ($fullHours . '.' . str_pad($remainingMinutes, 2, '0', STR_PAD_LEFT));
-                            $overtime = 0.00;
-                        }
-
-                        $display = number_format($acquiredHours, 2); // Set to 2 decimal places to capture full HH.MM formatting
-                        $class = 'text-center';
-                        $totalPeriodOvertime += $overtime;
+                    // Compute Late
+                    if ($carbonIn->gt($schedInBoundary)) {
+                        $lateMinutes = $schedInBoundary->diffInMinutes($carbonIn);
                     }
+
+                    // Compute Undertime
+                    if ($carbonOut->lt($schedOutBoundary)) {
+                        $undertimeMinutes = $carbonOut->diffInMinutes($schedOutBoundary);
+                    }
+
+                    // Total deduction
+                    $totalDeficitMinutes = $lateMinutes + $undertimeMinutes;
+
+                    // Acquired Hours = 8hrs - (Late + Undertime)
+                    $acquiredMinutes = max(0, 480 - $totalDeficitMinutes);
+
+                    $workedHoursPart = floor($acquiredMinutes / 60);
+                    $workedMinutesPart = $acquiredMinutes % 60;
+
+                    $acquiredHours = (float)(
+                        $workedHoursPart . '.' .
+                        str_pad($workedMinutesPart, 2, '0', STR_PAD_LEFT)
+                    );
+
+                    // Late + Undertime (display)
+                    $deficitHoursPart = floor($totalDeficitMinutes / 60);
+                    $deficitMinutesPart = $totalDeficitMinutes % 60;
+
+                    $lateUndertime = (float)(
+                        $deficitHoursPart . '.' .
+                        str_pad($deficitMinutesPart, 2, '0', STR_PAD_LEFT)
+                    );
+
+                    // Compute actual worked minutes (only for OT)
+                    $grossMinutes = $carbonIn->diffInMinutes($carbonOut);
+
+                    if ($grossMinutes > 300) {
+                        $grossMinutes -= 60; // deduct lunch
+                    }
+
+                    // Standard shift minutes
+                    $standardShiftMinutes = $schedInBoundary->diffInMinutes($schedOutBoundary);
+
+                    if ($standardShiftMinutes > 300) {
+                        $standardShiftMinutes -= 60;
+                    }
+
+                    // Overtime is only allowed when there's no late/undertime
+                    if ($totalDeficitMinutes == 0) {
+
+                        $rawOvertimeMinutes = $grossMinutes - $standardShiftMinutes;
+
+                        if ($rawOvertimeMinutes >= 60) {
+                            // Every 30 mins = 0.5 hour
+                            $overtime = floor($rawOvertimeMinutes / 30) * 0.5;
+                        }
+                    }
+
+                    $display = number_format($acquiredHours, 2);
+                    $class = 'text-center';
+                    $totalPeriodOvertime += $overtime;
                 }
+                $employeeTimesheets[$employee->employeeid][$date] = [
+                    'display'   => $display,
+                    'class'     => $class,
+                    'sched_id'  => $empSched->id,
+                    'hours'     => $acquiredHours,
+                    'time_in'   => $timeIn,
+                    'time_out'  => $timeOut,
+                    'break_out' => $breakOut,
+                    'break_in'  => $breakIn,
+                ];
                 $employeeTimesheets[$employee->employeeid][$date] = [
                     'display'   => $display,
                     'class'     => $class,
@@ -248,7 +273,6 @@ class PayrollSummaryController extends Controller
                 if ($payrollReportExists) {
                     continue;
                 }
-                // Otherwise, it's safe to create it!
                 PayrollReport::create([
                     'dateperiod_id'  => $period->id,
                     'employee_id'    => $employee->employeeid,

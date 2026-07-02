@@ -29,14 +29,18 @@ class GovDeductionResource extends Resource
 {
     protected static ?string $model = GovDeduction::class;
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowPathRoundedSquare;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::MinusCircle;
 
     protected static ?string $recordTitleAttribute = 'Deduction';
+
+    protected static ?string $navigationLabel = 'Mandatory Deductions';
+    protected static ?string $pluralModelLabel = 'Mandatory Deductions Data';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
             Section::make('Project Details')
+                ->columnSpanFull()
                 ->extraAttributes([
                     'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                 ])

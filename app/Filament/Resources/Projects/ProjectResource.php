@@ -42,6 +42,7 @@ class ProjectResource extends Resource
         return $schema
             ->schema([
                 Section::make('Project Profile')
+                    ->columnSpanFull()
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
