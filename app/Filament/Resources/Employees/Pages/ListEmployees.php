@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Jobs\ProcessEmployeeCsv;
+use App\Models\Employee;
+use App\Models\EmployeeProjectHistory;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -49,6 +51,17 @@ class ListEmployees extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->after(function (Employee $record) {
+                    EmployeeProjectHistory::create([
+                        'employeeid'      => $record->employeeid,
+                        'projectid'       => $record->project_id,
+                        'employeetype'    => $record->employeetype,
+                        'employee_status' => $record->empstatus,
+                        'datestarted'     => $record->datehired,
+                        'dateended'       => $record->dateseperated,
+                        'status'          => $record->dateseperated === null ? true : false,
+                    ]);
+                })
                 ->icon('heroicon-m-plus-circle'),
         ];
     }

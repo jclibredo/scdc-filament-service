@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
 use App\Models\EmpSchedule;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -36,6 +37,8 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class EmployeeResource extends Resource
@@ -138,6 +141,7 @@ class EmployeeResource extends Resource
                             ->preload(),
                         Select::make('project_id')
                             ->label('Project')
+                            ->required()
                             ->relationship('project', 'name')
                             ->searchable()
                             ->preload(),
@@ -152,6 +156,13 @@ class EmployeeResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (!$user) {
+                    return Employee::whereRaw('1 = 0');
+                }
+                return Employee::where('status', true); // Add this line
+            })
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
                 TextColumn::make('full_name')
@@ -219,7 +230,6 @@ class EmployeeResource extends Resource
             ->filtersFormWidth('2xl')
             ->actions([
                 ActionGroup::make([
-
                     Action::make('viewEarnings')
                         ->label('View Earnings')
                         ->icon('heroicon-o-banknotes')
@@ -227,7 +237,6 @@ class EmployeeResource extends Resource
                             session(['session_employee_id' => $record->employeeid]);
                             return redirect(EarningsResource::getUrl('index'));
                         }),
-
 
                     Action::make('transferAssignment')
                         ->label('Transfer Assignment')
@@ -248,15 +257,12 @@ class EmployeeResource extends Resource
                                             TextInput::make('employee_display_id')
                                                 ->label('Employee ID')
                                                 ->disabled(),
-
                                             TextInput::make('employee_display_name')
                                                 ->label('Full Name')
                                                 ->disabled(),
-
                                             TextInput::make('employee_type')
                                                 ->label('Employee Type')
                                                 ->disabled(),
-
                                             TextInput::make('employee_status')
                                                 ->label('Emp. Status')
                                                 ->disabled(),
@@ -284,36 +290,18 @@ class EmployeeResource extends Resource
                                                 ->live() // ⚡ Forces the form to evaluate visibility conditions instantly
                                                 ->required()
                                                 ->columnSpan(2),
-
                                             // 📅 Hidden by default, visible ONLY when a valid new project selection is made
                                             DatePicker::make('dateended')
                                                 ->label('Current Project Date Ended')
                                                 ->default(now())
                                                 // ->required()
                                                 ->visible(fn(Get $get) => filled($get('new_project_code'))),
-
                                             // 📅 Hidden by default, visible ONLY when a valid new project selection is made
                                             DatePicker::make('datestarted')
                                                 ->label('New Project Date Started')
                                                 ->default(now())
                                                 // ->required()
                                                 ->visible(fn(Get $get) => filled($get('new_project_code'))),
-                                            // Select::make('project_code')
-                                            //     ->label('Select New Project')
-                                            //     ->relationship(
-                                            //         name: 'project',
-                                            //         titleAttribute: 'name',
-                                            //         modifyQueryUsing: fn($query, Employee $record) => $query->where('project_code', '!=', $record->project_code)
-                                            //     )
-                                            //     ->live()
-                                            //     ->preload()
-                                            //     ->required(),
-
-                                            // DatePicker::make('datestarted')
-                                            //     ->label('New Project Date Started')
-                                            //     ->default(now())
-                                            //     ->disabled(fn(Get $get, Employee $record) => $get('project_code') === $record->project_code)
-                                            //     ->required(),
                                         ]),
                                 ]),
                         ])
@@ -407,9 +395,82 @@ class EmployeeResource extends Resource
                         }),
 
                     EditAction::make()
+                        ->after(function (Employee $record) {
+                            // 1. Handle termination logic immediately if dateseperated is set
+                            if ($record->dateseperated !== null) {
+                                EmployeeProjectHistory::where('employeeid', $record->employeeid)
+                                    ->where('status', true)
+                                    ->where('projectid', $record->project_id) // Ensure we only update the current project history
+                                    ->update([
+                                        'status'    => false,
+                                        'dateended' => $record->dateseperated,
+                                    ]);
+
+                                return; // Exit early since employment ended
+                            }
+                            if ($record->dateseperated === null) {
+                                DB::transaction(function () use ($record) {
+                                    if ($record->wasChanged(['employeeid'])) {
+                                        // Find the history using the original ID before it was changed
+                                        EmployeeProjectHistory::where('employeeid', $record->getOriginal('employeeid'))
+                                            ->where('status', true)
+                                            ->update([
+                                                'employeeid'      => $record->employeeid, // Update to the new ID
+                                                'employeetype'    => $record->employeetype,
+                                                'employee_status' => $record->empstatus,
+                                                'projectid'       => $record->project_id,
+                                            ]);
+                                    } else {
+                                        // Standard update if employeeid didn't change
+                                        EmployeeProjectHistory::where('employeeid', $record->employeeid)
+                                            ->where('status', true)
+                                            ->update([
+                                                'employeetype'    => $record->employeetype,
+                                                'employee_status' => $record->empstatus,
+                                                'projectid'       => $record->project_id,
+                                            ]);
+                                    }
+                                });
+                            }
+                        })
                         ->label('Update'),
+                    // DeleteAction::make()
+                    //     ->label('Remove'),
                     DeleteAction::make()
-                        ->label('Remove'),
+                        ->label('Remove')
+                        ->visible(fn(Employee $record) => !TransactionCheckService::hasEmployeeTransactions($record))
+                        ->requiresConfirmation() // ⚠️ Prompts the user with a confirmation modal
+                        ->modalHeading('Remove Employee Record')
+                        ->modalDescription('Are you sure you want to permanently remove this employee? This action will also wipe all linked employee project assignment histories.')
+                        ->modalSubmitActionLabel('Yes, delete everything')
+                        ->action(function (Employee $record) {
+                            DB::transaction(function () use ($record) {
+                                // 1. Purge all linked history records matching this employee configuration
+                                EmployeeProjectHistory::where('employeeid', $record->employeeid)->delete();
+                                // 2. Clear out the main employee record
+                                $record->delete();
+                            });
+                        }),
+
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation() // ⚠️ Adds the confirmation step before running
+                        ->modalHeading('Deactivate Record')
+                        ->modalDescription('This record has active transactions and cannot be deleted. Deactivating it will turn its status to inactive. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate')
+                        ->action(function ($record) {
+                            // Deactivate the record
+                            $record->status = false;
+                            $record->save();
+                            Notification::make()
+                                ->title('Record successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if it has transactions AND is currently active
+                        ->visible(fn($record) => TransactionCheckService::hasEmployeeTransactions($record) && ($record->status === true || $record->status == 1)),
 
                 ])->label('Action')
                     ->icon('heroicon-m-chevron-down')

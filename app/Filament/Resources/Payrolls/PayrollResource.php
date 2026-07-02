@@ -426,73 +426,73 @@ class PayrollResource extends Resource
                             return redirect(AtlogResource::getUrl('index'));
                         }),
                     //GOV. DEDUCTIONS
-                    Action::make('gov_contribution')
-                        ->label('Gov. Deduction')
-                        ->icon('heroicon-m-minus-circle')
-                        ->color('danger')
-                        ->modalHeading('Manage Government Contributions')
-                        ->modalWidth('md')
-                        ->form(function ($record) {
-                            return [
-                                Select::make('gov_deduction_ids')
-                                    ->label('Select Contributions')
-                                    ->options(
-                                        GovDeduction::query()
-                                            ->pluck('title', 'id')
-                                            ->toArray()
-                                    )
-                                    ->multiple()
-                                    ->statePath('gov_deduction_ids')
-                                    // 1. Fetch and display existing saved data when the modal opens
-                                    ->formatStateUsing(function () use ($record) {
-                                        return GovDeductionLog::where('date_period_id', session('session_periodcode'))
-                                            ->where('employee_id', $record->employeeid)
-                                            ->distinct()
-                                            ->pluck('gov_deduction_id')
-                                            ->toArray() ?? [];
-                                    })
-                                    ->preload()
-                                    ->searchable()
-                                    ->native(false),
-                            ];
-                        })
-                        ->action(function (array $data, $record) {
-                            $selectedDeductionIds = data_get($data, 'gov_deduction_ids', []);
-                            DB::transaction(function () use ($selectedDeductionIds,  $record) {
-                                GovDeductionLog::where('date_period_id', $record->code)
-                                    ->where('employee_id', $record->employeeid)
-                                    ->delete();
-                                if (empty($selectedDeductionIds)) {
-                                    return;
-                                }
-                                $insertData = [];
-                                $timestamp = now();
-                                foreach ($selectedDeductionIds as $deductionId) {
-                                    $insertData[] = [
-                                        'gov_deduction_id' => $deductionId,
-                                        'employee_id'      => $record->employeeid,
-                                        'date_period_id'   => session('session_periodcode'),
-                                        'created_at'       => $timestamp,
-                                        'updated_at'       => $timestamp,
-                                    ];
-                                }
+                    // Action::make('gov_contribution')
+                    //     ->label('Gov. Deduction')
+                    //     ->icon('heroicon-m-minus-circle')
+                    //     ->color('danger')
+                    //     ->modalHeading('Manage Government Contributions')
+                    //     ->modalWidth('md')
+                    //     ->form(function ($record) {
+                    //         return [
+                    //             Select::make('gov_deduction_ids')
+                    //                 ->label('Select Contributions')
+                    //                 ->options(
+                    //                     GovDeduction::query()
+                    //                         ->pluck('title', 'id')
+                    //                         ->toArray()
+                    //                 )
+                    //                 ->multiple()
+                    //                 ->statePath('gov_deduction_ids')
+                    //                 // 1. Fetch and display existing saved data when the modal opens
+                    //                 ->formatStateUsing(function () use ($record) {
+                    //                     return GovDeductionLog::where('date_period_id', session('session_periodcode'))
+                    //                         ->where('employee_id', $record->employeeid)
+                    //                         ->distinct()
+                    //                         ->pluck('gov_deduction_id')
+                    //                         ->toArray() ?? [];
+                    //                 })
+                    //                 ->preload()
+                    //                 ->searchable()
+                    //                 ->native(false),
+                    //         ];
+                    //     })
+                    //     ->action(function (array $data, $record) {
+                    //         $selectedDeductionIds = data_get($data, 'gov_deduction_ids', []);
+                    //         DB::transaction(function () use ($selectedDeductionIds,  $record) {
+                    //             GovDeductionLog::where('date_period_id', $record->code)
+                    //                 ->where('employee_id', $record->employeeid)
+                    //                 ->delete();
+                    //             if (empty($selectedDeductionIds)) {
+                    //                 return;
+                    //             }
+                    //             $insertData = [];
+                    //             $timestamp = now();
+                    //             foreach ($selectedDeductionIds as $deductionId) {
+                    //                 $insertData[] = [
+                    //                     'gov_deduction_id' => $deductionId,
+                    //                     'employee_id'      => $record->employeeid,
+                    //                     'date_period_id'   => session('session_periodcode'),
+                    //                     'created_at'       => $timestamp,
+                    //                     'updated_at'       => $timestamp,
+                    //                 ];
+                    //             }
 
-                                // UPDATED: Replaced delete + insert loop with an intelligent native upsert block
-                                foreach (array_chunk($insertData, 500) as $chunk) {
-                                    GovDeductionLog::upsert(
-                                        $chunk,
-                                        ['gov_deduction_id', 'employee_id', 'date_period_id'], // 1. Unique keys to check for matching rows
-                                        ['updated_at']                                        // 2. What columns to change if a duplicate is found (just touch timestamp, skipping changes to the main structural data)
-                                    );
-                                }
-                            });
+                    //             // UPDATED: Replaced delete + insert loop with an intelligent native upsert block
+                    //             foreach (array_chunk($insertData, 500) as $chunk) {
+                    //                 GovDeductionLog::upsert(
+                    //                     $chunk,
+                    //                     ['gov_deduction_id', 'employee_id', 'date_period_id'], // 1. Unique keys to check for matching rows
+                    //                     ['updated_at']                                        // 2. What columns to change if a duplicate is found (just touch timestamp, skipping changes to the main structural data)
+                    //                 );
+                    //             }
+                    //         });
 
-                            Notification::make()
-                                ->title('Government Contributions Synchronized')
-                                ->body('New items were added, while existing data was safely skipped.')
-                                ->success()
-                                ->send();
-                        }),
+                    //         Notification::make()
+                    //             ->title('Government Contributions Synchronized')
+                    //             ->body('New items were added, while existing data was safely skipped.')
+                    //             ->success()
+                    //             ->send();
+                    //     }),
 
 
                     //OTHER. DEDUCTIONS
@@ -659,15 +659,15 @@ class PayrollResource extends Resource
                                 ->success()
                                 ->send();
                         }),
-                    Action::make('payroll_summary')
-                        ->label('View Summary')
-                        ->icon('heroicon-m-printer') // Fixed printer icon
-                        ->color('success')
-                        ->url(fn($record) => route('payroll.summary', [
-                            'employee_id' => $record->employeeid,
-                            'period_code' => session('session_periodcode')
-                        ]))
-                        ->openUrlInNewTab(),
+                    // Action::make('payroll_summary')
+                    //     ->label('View Summary')
+                    //     ->icon('heroicon-m-printer') // Fixed printer icon
+                    //     ->color('success')
+                    //     ->url(fn($record) => route('payroll.summary', [
+                    //         'employee_id' => $record->employeeid,
+                    //         'period_code' => session('session_periodcode')
+                    //     ]))
+                    //     ->openUrlInNewTab(),
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')   //heroicon-m-chart-bar

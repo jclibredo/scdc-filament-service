@@ -19,6 +19,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use UnitEnum;
 
@@ -89,6 +90,13 @@ class UserResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (!$user) {
+                    return User::whereRaw('1 = 0');
+                }
+                return User::where('status', true); // Add this line
+            })
             ->columns([
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('email')->searchable(),

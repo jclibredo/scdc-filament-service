@@ -4,18 +4,22 @@ namespace App\Filament\Resources\Skills;
 
 use App\Filament\Resources\Skills\Pages\ListSkills;
 use App\Models\Skill;
+use App\Services\TransactionCheckService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class SkillResource extends Resource
@@ -60,6 +64,13 @@ class SkillResource extends Resource
             ->extraAttributes([
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
+            ->query(function () {
+                $user = Auth::user();
+                  if (!$user) {
+                    return Skill::whereRaw('1 = 0');
+                }
+                return Skill::where('status', true); // Add this line
+            })
             ->recordUrl(null)
             ->columns([
                 TextColumn::make('title')->searchable()->sortable(),
@@ -70,9 +81,31 @@ class SkillResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasSkillTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasSkillTransactions($record))
                         ->label('Remove'),
+
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation() // ⚠️ Adds the confirmation step before running
+                        ->modalHeading('Deactivate Record')
+                        ->modalDescription('This record has active transactions and cannot be deleted. Deactivating it will turn its status to inactive. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate')
+                        ->action(function ($record) {
+                            // Deactivate the record
+                            $record->status = false;
+                            $record->save();
+                            Notification::make()
+                                ->title('Record successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if it has transactions AND is currently active
+                        ->visible(fn($record) => TransactionCheckService::hasSkillTransactions($record) && ($record->status === true || $record->status == 1)),
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')

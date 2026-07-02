@@ -9,9 +9,11 @@ use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\GovDeduction;
 use App\Models\GovDeductionLog;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -139,7 +141,7 @@ class DatePeriodResource extends Resource
             ->recordAction(null)
             ->query(function () {
                 $user = Auth::user();
-                if (! $user || ! $user->id) {
+                if (!$user) {
                     return DatePeriod::whereRaw('1 = 0');
                 }
                 if (
@@ -273,8 +275,10 @@ class DatePeriodResource extends Resource
                 ActionGroup::make([
                     Action::make('proceedToPayroll')
                         ->label('Process')
-                        ->color('success')
-                        ->icon('heroicon-m-calculator')
+                        ->color('warning')
+                        // ->button()
+                        // ->outlined()
+                        ->icon('heroicon-m-arrow-right-circle')
                         ->action(function (DatePeriod $record) {
                             session(['session_periodcode' => $record->code]);
                             session(['session_partners' => $record->partners]);
@@ -284,8 +288,8 @@ class DatePeriodResource extends Resource
                         }),
                     Action::make('gov_contribution')
                         ->label('Deductables')
-                        ->icon('heroicon-m-calculator')
-                        ->color('success')
+                        ->icon('heroicon-m-minus-circle')
+                        ->color('danger')
                         ->modalHeading('Manage Government Contributions')
                         ->modalWidth('md')
                         ->form(function ($record) {
@@ -364,9 +368,11 @@ class DatePeriodResource extends Resource
                         }),
 
                     EditAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasDatePeriodTransactions($record))
                         ->label('Update'),
-                    // DeleteAction::make()
-                    //     ->label('Remove')
+                    DeleteAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasDatePeriodTransactions($record))
+                        ->label('Remove'),
                     //     ->before(function ($record) {
                     //         DB::table('thirteenth_months')
                     //             ->where('periodid', $record->id)

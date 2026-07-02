@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projects;
 use App\Filament\Resources\Projects\Pages\ListProjects;
 use App\Models\Employee;
 use App\Models\Project;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -22,6 +23,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class ProjectResource extends Resource
@@ -77,6 +79,13 @@ class ProjectResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (!$user) {
+                    return Project::whereRaw('1 = 0');
+                }
+                return Project::where('status', true); // Add this line
+            })
             ->columns([
                 TextColumn::make('project_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
@@ -91,9 +100,30 @@ class ProjectResource extends Resource
             ->filters([])
             ->actions([
                 ActionGroup::make([
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation() // ⚠️ Adds the confirmation step before running
+                        ->modalHeading('Deactivate Record')
+                        ->modalDescription('This record has active transactions and cannot be deleted. Deactivating it will turn its status to inactive. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate')
+                        ->action(function ($record) {
+                            // Deactivate the record
+                            $record->status = false;
+                            $record->save();
+                            Notification::make()
+                                ->title('Record successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if it has transactions AND is currently active
+                        ->visible(fn($record) => TransactionCheckService::hasProjectTransactions($record) && ($record->status === true || $record->status == 1)),
                     EditAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasProjectTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasProjectTransactions($record))
                         ->label('Remove'),
                 ])
                     ->label('Action')

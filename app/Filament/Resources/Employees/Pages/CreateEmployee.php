@@ -10,33 +10,16 @@ class CreateEmployee extends CreateRecord
 {
     protected static string $resource = EmployeeResource::class;
 
-    // protected function mutateFormDataBeforeCreate(array $data): array
+    // protected function afterCreate()
     // {
-
-    //     // dd($data);
-    //     // // ✅ contains the form data
-    //     // EmployeeProjectHistory::create([
-    //     //     'employeeid'      => $data['employeeid'],    // or another source
-    //     //     'projectid'       => $data['project_id'],    // map category → projectid
-    //     //     'employeetype'    => $data['employeetype'],
-    //     //     'employee_status' => 'active',                // your logic
-    //     //     'datestarted'     => $data['datehired'],
-    //     //     'dateended'       => $data['dateseperated'],
-    //     //     'status'          => 1,
-    //     // ]);
-    //     return $data;
+    //     EmployeeProjectHistory::create([
+    //         'employeeid'      => $this->data['employeeid'],    // or another source
+    //         'projectid'       => $this->data['project_id'],    // map category → projectid
+    //         'employeetype'    => $this->data['employeetype'],
+    //         'employee_status' => $this->data['empstatus'],                // your logic
+    //         'datestarted'     => $this->data['datehired'],
+    //         'dateended'       => null, // or another source if applicable
+    //         'status'          => true,
+    //     ]);
     // }
-
-    protected function afterCreate()
-    {
-        EmployeeProjectHistory::create([
-            'employeeid'      => $this->data['employeeid'],    // or another source
-            'projectid'       => $this->data['project_id'],    // map category → projectid
-            'employeetype'    => $this->data['employeetype'],
-            'employee_status' => 'active',                // your logic
-            'datestarted'     => $this->data['datehired'],
-            'dateended'       => $this->data['dateseperated'],
-            'status'          => 1,
-        ]);
-    }
 }

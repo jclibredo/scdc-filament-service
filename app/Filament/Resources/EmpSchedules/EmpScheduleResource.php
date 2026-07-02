@@ -9,8 +9,10 @@ use App\Filament\Resources\EmpSchedules\Pages\ListEmpSchedules;
 // use App\Filament\Resources\EmpSchedules\Tables\EmpSchedulesTable;
 use App\Models\Employee;
 use App\Models\EmpSchedule;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -21,6 +23,7 @@ use Filament\Forms\Components\TextInput;
 // use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -204,11 +207,12 @@ class EmpScheduleResource extends Resource
             ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
-                if (! $user || ! $user->id) {
+                  if (!$user) {
                     return EmpSchedule::whereRaw('1 = 0');
                 }
                 // Eager load the relationships
                 return EmpSchedule::query()
+                    ->where('status', true)
                     ->where(
                         'employeeid',
                         session('session_employee_id')
@@ -232,8 +236,29 @@ class EmpScheduleResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
                         ->label('Update'),
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation() // ⚠️ Adds the confirmation step before running
+                        ->modalHeading('Deactivate Record')
+                        ->modalDescription('This record has active transactions and cannot be deleted. Deactivating it will turn its status to inactive. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate')
+                        ->action(function ($record) {
+                            // Deactivate the record
+                            $record->status = false;
+                            $record->save();
+                            Notification::make()
+                                ->title('Record successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if it has transactions AND is currently active
+                        ->visible(fn($record) => TransactionCheckService::hasScheduleTransactions($record) && ($record->status === true || $record->status == 1)),
                     DeleteAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
                         ->label('Remove'),
                 ])
                     ->label('Action')

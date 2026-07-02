@@ -6,19 +6,23 @@ use App\Filament\Resources\Holidays\Pages\CreateHoliday;
 use App\Filament\Resources\Holidays\Pages\EditHoliday;
 use App\Filament\Resources\Holidays\Pages\ListHolidays;
 use App\Models\Holiday;
+use App\Services\TransactionCheckService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class HolidayResource extends Resource
@@ -104,6 +108,13 @@ class HolidayResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                  if (!$user) {
+                    return Holiday::whereRaw('1 = 0');
+                }
+                return Holiday::where('status', true); // Add this line
+            })
             ->columns([
                 TextColumn::make('type')->label('Type')->sortable()->searchable(),
                 TextColumn::make('percentage')->label('Percentage')->suffix('%')->sortable(),
@@ -115,8 +126,29 @@ class HolidayResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasHolidayTransactions($record))
                         ->label('Update'),
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation() // ⚠️ Adds the confirmation step before running
+                        ->modalHeading('Deactivate Record')
+                        ->modalDescription('This record has active transactions and cannot be deleted. Deactivating it will turn its status to inactive. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate')
+                        ->action(function ($record) {
+                            // Deactivate the record
+                            $record->status = false;
+                            $record->save();
+                            Notification::make()
+                                ->title('Record successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if it has transactions AND is currently active
+                        ->visible(fn($record) => TransactionCheckService::hasHolidayTransactions($record) && ($record->status === true || $record->status == 1)),
                     DeleteAction::make()
+                        ->visible(fn($record) => !TransactionCheckService::hasHolidayTransactions($record))
                         ->label('Remove'),
                 ])
                     ->label('Action')
