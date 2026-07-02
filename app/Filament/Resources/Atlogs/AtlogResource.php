@@ -31,12 +31,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
+use UnitEnum;
 
 class AtlogResource extends Resource
 {
     protected static ?string $model = Atlog::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::FingerPrint;
+    protected  static string|UnitEnum|null $navigationGroup = 'Reports';
 
     protected static ?string $recordTitleAttribute = 'Atlog';
 

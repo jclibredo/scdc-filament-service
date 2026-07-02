@@ -88,15 +88,13 @@ class HolidayResource extends Resource
                             ->placeholder('DESCRIBE BRACKET RANGES OR SPECIAL EXEMPTIONS HERE...')
                             ->rows(3)
                             ->required()
-                            ->maxLength(100)
-                            ->regex('/^[A-Z\s\W\d_]+$/')
-                            ->validationMessages([
-                                'max' => 'The Computation Details cannot be longer than 100 characters.',
-                            ])
                             ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[0-9]/g, '').toUpperCase()",
-                                'style' => 'text-transform: uppercase;'
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 200);",
+                                'maxlength' => 200,
                             ])
+
                             ->columnSpanFull(),
                     ])
             ]);

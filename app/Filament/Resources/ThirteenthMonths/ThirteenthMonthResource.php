@@ -35,7 +35,7 @@ class ThirteenthMonthResource extends Resource
 {
     protected static ?string $model = ThirteenthMonth::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Printer;
     protected  static string|UnitEnum|null $navigationGroup = 'Reports';
     protected static ?string $recordTitleAttribute = 'ThirteenthMonth';
     protected static ?string $navigationLabel = 'Year End Reports';

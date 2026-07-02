@@ -53,7 +53,12 @@ class CategoryResource extends Resource
                         TextInput::make('name')
                             ->label('Category Name')
                             ->required()
-                            ->maxLength(255),
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
+                                'maxlength' => 30,
+                            ]),
                         Select::make('cat')
                             ->label('Category Type')
                             ->options([
@@ -72,6 +77,12 @@ class CategoryResource extends Resource
                         Textarea::make('description')
                             ->label('Description')
                             ->rows(3)
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
+                                'maxlength' => 100,
+                            ])
                             ->columnSpanFull(), // Stretches out over full block width
                         // 💡 FIXED: Changed from ToggleColumn to Toggle
                         Toggle::make('status')

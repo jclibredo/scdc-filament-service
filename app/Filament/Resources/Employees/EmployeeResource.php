@@ -45,7 +45,7 @@ class EmployeeResource extends Resource
 {
     protected static ?string $model = Employee::class;
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::FingerPrint;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
     protected static ?string $recordTitleAttribute = 'Employee';
 
@@ -64,12 +64,48 @@ class EmployeeResource extends Resource
                         TextInput::make('employeeid')
                             ->label('Employee ID')
                             ->unique(table: 'employees', column: 'employeeid', ignoreRecord: true)
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 8);",
+                                'maxlength' => 8,
+                            ])
                             ->required(),
-                        TextInput::make('firstname')->required()->maxLength(255),
-                        TextInput::make('middlename')->maxLength(255),
-                        TextInput::make('lastname')->required()->maxLength(255),
+                        TextInput::make('firstname')->required()->maxLength(255)
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
+                            ]),
+                        TextInput::make('middlename')->maxLength(255)
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
+                            ]),
+                        TextInput::make('lastname')->required()->maxLength(255)
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
+                            ]),
                         Toggle::make('status')->label('Active')->default(true),
-                        TextInput::make('mobile')->maxLength(20),
+                        TextInput::make('mobile')->maxLength(20)
+                            ->rule([
+                                'regex:/^[89]\d{9}$/', // Starts with 8 or 9, followed by 9 digits
+                            ])
+                            ->extraInputAttributes([
+                                'oninput' => "
+                                    this.value = this.value.replace(/\\D/g, '');
+                                    if (this.value.startsWith('0')) {
+                                        this.value = this.value.substring(1);
+                                    }
+                                    this.value = this.value.slice(0, 10);
+                                ",
+                            ]),
                         Select::make('empstatus')
                             ->label('Employee Status')
                             ->options(function () {
@@ -84,6 +120,7 @@ class EmployeeResource extends Resource
 
                         TextInput::make('email')->label('Email Address')
                             ->email()
+                            ->maxLength(100)
                             ->unique(ignoreRecord: true),
                         DatePicker::make('birthdate')->required(),
                         Select::make('sex')
@@ -93,7 +130,13 @@ class EmployeeResource extends Resource
                                 'Other' => 'Other',
                             ])
                             ->required(),
-                        Textarea::make('address')->rows(3),
+                        Textarea::make('address')
+                            ->extraInputAttributes([
+                                // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
+                                'maxlength' => 100,
+                            ])->rows(3),
                         DatePicker::make('datehired')->required(),
                         DatePicker::make('dateseperated'),
 

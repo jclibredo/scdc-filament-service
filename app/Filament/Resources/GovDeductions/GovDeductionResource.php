@@ -51,7 +51,12 @@ class GovDeductionResource extends Resource
                     TextInput::make('title')
                         ->label('Title')
                         ->required()
-                        ->maxLength(255)
+                        ->extraInputAttributes([
+                            // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 25);",
+                            'maxlength' => 25,
+                        ])
                         ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
                         ->dehydrateStateUsing(fn(string $state): string => strtoupper($state)),
 

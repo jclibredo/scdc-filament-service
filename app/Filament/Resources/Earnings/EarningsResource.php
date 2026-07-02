@@ -92,6 +92,7 @@ class EarningsResource extends Resource
                             ->label('Amount')
                             ->numeric()
                             ->prefix('₱')
+                            ->maxLength(10)
                             ->placeholder('0.00')
                             ->required(),
                         Select::make('hierarchy')

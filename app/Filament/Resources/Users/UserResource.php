@@ -50,11 +50,17 @@ class UserResource extends Resource
 
                     TextInput::make('name')
                         ->required()
-                        ->maxLength(255),
+                        ->extraInputAttributes([
+                            // Added 0-9 to the regex character validation layout to permit numeric inputs safely
+                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 150);",
+                            'maxlength' => 150,
+                        ]),
 
                     TextInput::make('email')
                         ->email()
                         ->required()
+                        ->maxLength(100)
                         ->unique(ignoreRecord: true),
 
                     Select::make('role')
