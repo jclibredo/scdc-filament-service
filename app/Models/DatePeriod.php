@@ -18,6 +18,7 @@ class DatePeriod extends Model
         'status',
         'overtime_rate',
         'partners',
+        'projectid',
     ];
     protected $casts = [
         'datefrom' => 'date',
@@ -25,6 +26,11 @@ class DatePeriod extends Model
         'status' => 'boolean',
         'overtime_rate' => 'float',
     ];
+
+    public function projectData()
+    {
+        return $this->belongsTo(Project::class, 'projectid', 'project_code');
+    }
 
     public function exrternalPartner()
     {

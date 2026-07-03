@@ -53,7 +53,6 @@ class PayrollResource extends Resource
         $periodcode     = session('session_periodcode');
         $sessionStatus  = session('session_employeestatus');
         $sessionType    = session('session_employeetype');
-
         if (!$periodcode || !$sessionStatus || !$sessionType) {
             return $table;
         }
@@ -209,7 +208,7 @@ class PayrollResource extends Resource
 
                     BulkAction::make('payslip')
                         ->color('success')
-                        ->icon('heroicon-m-arrows-right-left')
+                        ->icon('heroicon-m-receipt-percent')
                         ->label('Payslip')
                         // Remove ->openUrlInNewTab() from here, we will trigger it via JavaScript below
                         ->action(function (Action $action, Collection $records) {
@@ -277,8 +276,8 @@ class PayrollResource extends Resource
 
                     BulkAction::make('payment')
                         ->label('Process Cut-off')
-                        ->icon('heroicon-m-arrows-right-left')
-                        ->color('success')
+                        ->icon('heroicon-m-cog')
+                        ->color('warning')
                         ->form(function (Collection $records) {
                             $periodcode = session('session_periodcode');
                             // $partners = session('session_partners');
@@ -425,76 +424,6 @@ class PayrollResource extends Resource
                             ]);
                             return redirect(AtlogResource::getUrl('index'));
                         }),
-                    //GOV. DEDUCTIONS
-                    // Action::make('gov_contribution')
-                    //     ->label('Gov. Deduction')
-                    //     ->icon('heroicon-m-minus-circle')
-                    //     ->color('danger')
-                    //     ->modalHeading('Manage Government Contributions')
-                    //     ->modalWidth('md')
-                    //     ->form(function ($record) {
-                    //         return [
-                    //             Select::make('gov_deduction_ids')
-                    //                 ->label('Select Contributions')
-                    //                 ->options(
-                    //                     GovDeduction::query()
-                    //                         ->pluck('title', 'id')
-                    //                         ->toArray()
-                    //                 )
-                    //                 ->multiple()
-                    //                 ->statePath('gov_deduction_ids')
-                    //                 // 1. Fetch and display existing saved data when the modal opens
-                    //                 ->formatStateUsing(function () use ($record) {
-                    //                     return GovDeductionLog::where('date_period_id', session('session_periodcode'))
-                    //                         ->where('employee_id', $record->employeeid)
-                    //                         ->distinct()
-                    //                         ->pluck('gov_deduction_id')
-                    //                         ->toArray() ?? [];
-                    //                 })
-                    //                 ->preload()
-                    //                 ->searchable()
-                    //                 ->native(false),
-                    //         ];
-                    //     })
-                    //     ->action(function (array $data, $record) {
-                    //         $selectedDeductionIds = data_get($data, 'gov_deduction_ids', []);
-                    //         DB::transaction(function () use ($selectedDeductionIds,  $record) {
-                    //             GovDeductionLog::where('date_period_id', $record->code)
-                    //                 ->where('employee_id', $record->employeeid)
-                    //                 ->delete();
-                    //             if (empty($selectedDeductionIds)) {
-                    //                 return;
-                    //             }
-                    //             $insertData = [];
-                    //             $timestamp = now();
-                    //             foreach ($selectedDeductionIds as $deductionId) {
-                    //                 $insertData[] = [
-                    //                     'gov_deduction_id' => $deductionId,
-                    //                     'employee_id'      => $record->employeeid,
-                    //                     'date_period_id'   => session('session_periodcode'),
-                    //                     'created_at'       => $timestamp,
-                    //                     'updated_at'       => $timestamp,
-                    //                 ];
-                    //             }
-
-                    //             // UPDATED: Replaced delete + insert loop with an intelligent native upsert block
-                    //             foreach (array_chunk($insertData, 500) as $chunk) {
-                    //                 GovDeductionLog::upsert(
-                    //                     $chunk,
-                    //                     ['gov_deduction_id', 'employee_id', 'date_period_id'], // 1. Unique keys to check for matching rows
-                    //                     ['updated_at']                                        // 2. What columns to change if a duplicate is found (just touch timestamp, skipping changes to the main structural data)
-                    //                 );
-                    //             }
-                    //         });
-
-                    //         Notification::make()
-                    //             ->title('Government Contributions Synchronized')
-                    //             ->body('New items were added, while existing data was safely skipped.')
-                    //             ->success()
-                    //             ->send();
-                    //     }),
-
-
                     //OTHER. DEDUCTIONS
                     Action::make('other_contribution')
                         ->label('Other Deduction')

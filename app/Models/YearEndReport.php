@@ -23,6 +23,7 @@ class YearEndReport extends Model
         'status',
         'datefrom',
         'dateto',
+        'rep_type',
     ];
 
     /**
@@ -35,6 +36,21 @@ class YearEndReport extends Model
         'datefrom' => 'date',
         'dateto' => 'date',
     ];
+
+    public function otherdeductionData()
+    {
+        return $this->hasMany(OtherDeductionLog::class, 'date_period_id', 'yearendrepid');
+    }
+
+    public function govdeductionData()
+    {
+        return $this->hasMany(GovDeductionLog::class, 'date_period_id', 'yearendrepid');
+    }
+
+    public function adjustmentData()
+    {
+        return $this->hasMany(Adjustment::class, 'date_period_id', 'yearendrepid');
+    }
 
     public function category()
     {

@@ -9,11 +9,4 @@ use Filament\Resources\Pages\EditRecord;
 class EditYearEndReport extends EditRecord
 {
     protected static string $resource = YearEndReportResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
-    }
 }

@@ -37,6 +37,8 @@ class ClearSessionOutsideResources
             // 'filament.admin.resources.emp-schedules.create',
             // 'filament.admin.resources.emp-schedules.edit',
             'filament.admin.resources.year-end-reports.*',
+            'filament.admin.resources.thirteenth-months.*',
+            'filament.admin.resources.thirteenth-month-logs.*',
         ];
 
         $isAllowed = false;
@@ -69,13 +71,16 @@ class ClearSessionOutsideResources
                 'session_employeestatus',
                 'session_employeetype',
                 'session_employee_id',
-                'session_partners',
                 'session_periodcode',
-                'session_yearendrepid',
-                'session_project',
+                'session_partnersid',
+                'session_yearendreportspid',
+                'session_projectid',
+                'session_employeetypeid',
+                'session_employeestatusid',
+                'session_reptype',
+                'session_employeeid',
             ]);
         }
-
         return $next($request);
     }
 }

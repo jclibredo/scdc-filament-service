@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\YearEndReport;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -30,16 +31,18 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use UnitEnum;
 
 class YearEndReportResource extends Resource
 {
     protected static ?string $model = YearEndReport::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Printer;
     protected  static string|UnitEnum|null $navigationGroup = 'Reports';
-    protected static ?string $recordTitleAttribute = 'YearEndReport';
+    protected static ?string $navigationLabel = 'Year End Reports';
 
     public static function form(Schema $schema): Schema
     {
@@ -59,22 +62,26 @@ class YearEndReportResource extends Resource
                             ->disabled()
                             ->dehydrated()
                             ->default(fn() => strtoupper(Str::random(6)))
-                            // 💡 Filament automatically ignores the current record when updating
-                            ->unique(table: 'date_periods', column: 'code', ignoreRecord: true)
+                            ->rules(function ($record) {
+                                // If updating, ignore the row matching the current record's code
+                                return [
+                                    Rule::unique('date_periods', 'code')->ignore($record?->code, 'code')
+                                ];
+                            })
                             ->required(),
-
+                        Select::make('rep_type')
+                            ->label('Resource Type')
+                            ->options([
+                                'INCENTIVES' => 'Incentives',
+                                '13THMONTH'  => '13th Month Pay',
+                                'BONUS'      => 'Bonus',
+                            ])
+                            ->required()
+                            ->native(false),
                         // 2. Employee Type (Linked to Categories)
-                        // Select::make('emptype')
-                        //     ->label('Employee Type')
-                        //     ->options(fn() => Category::where('cat', 'EMPLOYEE_TYPE')->pluck('name', 'name'))
-                        //     ->searchable()
-                        //     ->preload()
-                        //     ->live()
-                        //     ->required(),
                         Select::make('emptype')
                             ->label('Employee Type')
                             ->options(function () {
-                                // Dynamically filters categories matching the 'EMPLOYEE_TYPE' handle
                                 return Category::query()
                                     ->where('cat', 'EMPLOYEE_TYPE')
                                     ->pluck('name', 'id');
@@ -84,16 +91,9 @@ class YearEndReportResource extends Resource
                             ->live()
                             ->required(),
                         // 3. Employee Status (Linked to Categories)
-                        // Select::make('empstatus')
-                        //     ->label('Employee Status')
-                        //     ->options(fn() => Category::where('cat', 'EMPLOYEE_STATUS')->pluck('name', 'name'))
-                        //     ->searchable()
-                        //     ->preload()
-                        //     ->required(),
                         Select::make('empstatus')
                             ->label('Employee Status')
                             ->options(function () {
-                                // Dynamically filters categories matching the 'PAYROLL' handle
                                 return Category::query()
                                     ->where('cat', 'EMPLOYEE_STATUS')
                                     ->pluck('name', 'id');
@@ -108,17 +108,7 @@ class YearEndReportResource extends Resource
                             ->relationship('project', 'name')
                             ->searchable()
                             ->preload(),
-
-                        // 5. Partners (Sub-Contractor) - Visible only if Employee Type is SUB-CON
-                        // Select::make('partners')
-                        //     ->label('Sub-Contractor')
-                        //     ->options(fn() => Category::where('cat', 'SUBCON')->pluck('name', 'name')->prepend('ALL', 'ALL'))
-                        //     ->visible(function (Get $get) {
-                        //         return strtoupper($get('emptype')) === 'SUB-CON';
-                        //     })
-                        //     ->required(fn(Get $get) => strtoupper($get('emptype')) === 'SUB-CON')
-                        //     ->searchable()
-                        //     ->preload(),
+                        // 5. Partner (Subcontractor)
                         Select::make('partners')
                             ->label('Sub. Contractor')
                             ->options(function () {
@@ -130,7 +120,7 @@ class YearEndReportResource extends Resource
                             ->searchable()
                             ->preload()
                             ->visible(function (Get $get) {
-                                $selectedId = $get('employeetype');
+                                $selectedId = $get('emptype');
                                 if (! $selectedId) {
                                     return false;
                                 }
@@ -138,7 +128,7 @@ class YearEndReportResource extends Resource
                                 return $category && strtoupper($category->name) === 'SUB-CON';
                             })
                             ->required(
-                                fn(Get $get) => ($cat = Category::find($get('employeetype'))) && strtoupper($cat->name) === 'SUB-CON'
+                                fn(Get $get) => ($cat = Category::find($get('emptype'))) && strtoupper($cat->name) === 'SUB-CON'
                             ),
 
                         DatePicker::make('datefrom')
@@ -150,9 +140,7 @@ class YearEndReportResource extends Resource
                         DatePicker::make('dateto')
                             ->label('Date To')
                             ->required()
-                            // 1. Dynamic disable logic: Evaluates to true if 'datefrom' is empty/null
                             ->disabled(fn(Get $get) => empty($get('datefrom')))
-                            // 2. Validation constraint: Blocks any calendar selection prior to 'datefrom'
                             ->minDate(fn(Get $get) => $get('datefrom')),
 
                         // 6. Status Toggle
@@ -168,12 +156,39 @@ class YearEndReportResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
+            ->query(function () {
+                $user = Auth::user();
+                if (! $user || ! $user->id) {
+                    return YearEndReport::whereRaw('1 = 0');
+                }
+                $query = YearEndReport::query()
+                    ->where('status', true);
+                $code = session('session_yearendreportspid');
+                if ($code) {
+                    $query->where('code', $code);
+                }
+                return $query;
+            })
             ->columns([
                 TextColumn::make('code')
                     ->label('Code')
                     ->searchable()
                     ->sortable()
                     ->copyable(),
+
+                TextColumn::make('rep_type')
+                    ->label('Resource Type')
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'INCENTIVES' => 'Incentives',
+                        '13THMONTH'  => '13th Month Pay',
+                        'BONUS'      => 'Bonus',
+                        default      => $state,
+                    })
+                    ->searchable()
+                    ->sortable(),
 
                 // 1. Automatically pulls the Category name through your relationship
                 TextColumn::make('employeeTypeCategory.name')
@@ -187,7 +202,7 @@ class YearEndReportResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('project')
+                TextColumn::make('project.name')
                     ->label('Project')
                     ->placeholder('N/A')
                     ->searchable(),
@@ -218,29 +233,35 @@ class YearEndReportResource extends Resource
                     ->options(fn() => Category::where('cat', 'EMPLOYEE_TYPE')->pluck('name', 'name')),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-                Action::make('proceedToPayroll')
-                    ->label('Process')
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
+                    Action::make('proceedToPayroll')
+                        ->label('Process')
+                        ->color('warning')
+                        ->icon('heroicon-m-arrow-right-circle')
+                        ->action(function (YearEndReport $record) {
+                            
+                            session([
+                                'session_yearendreportspid'  => $record->code,
+                                'session_partnersid'         => $record->partners,
+                                'session_employeetypeid'     => $record->emptype,
+                                'session_employeestatusid'   => $record->empstatus,
+                                'session_projectid'          => $record->projectid,
+                                'session_reptype'            => $record->rep_type,
+                            ]);
+                            return redirect(ThirteenthMonthResource::getUrl('index'));
+                        }),
+
+                ])
+                    ->label('Action')
+                    ->icon('heroicon-m-chevron-down')
+                    ->button()
                     ->color('warning')
-                    ->icon('heroicon-m-arrow-right-circle')
-                    ->action(function (YearEndReport $record) {
-                        // dd('PROJECT: ' . $record->projectid . ' PARTNERS: ' . $record->partners . ' EMP TYPE: ' . $record->emptype .
-                        //     ' EMP STATUS: ' . $record->empstatus . ' YEAR ID: ' . $record->id);
-                        // session(['session_yearendrepid' => $record->id]);
-                        // session(['session_partners' => $record->partners]);
-                        // session(['session_employeetype' => $record->emptype]);
-                        // session(['session_employeestatus' => $record->empstatus]);
-                        // session(['session_project' => $record->projectid]);
-                        // return redirect(ThirteenthMonthResource::getUrl('index'));
-                        return redirect(ThirteenthMonthResource::getUrl('index', [
-                            'yearendid' => $record->id,
-                            'emptype' => $record->emptype,
-                            'empstatus' => $record->empstatus,
-                            'partners' => $record->partners,
-                            'projectid' => $record->projectid,
-                        ]));
-                    }),
+                    ->size('xs')
+                    ->outlined(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

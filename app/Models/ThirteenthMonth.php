@@ -14,9 +14,7 @@ class ThirteenthMonth extends Model
     protected $fillable = [
         'periodid',
         'employeeid',
-        'earnings', // renamed from total_amount
-        // 'emptype',
-        // 'empstatus',
+        'earnings',
         'partners',
         'yearendrepid',
         'project',
@@ -36,6 +34,24 @@ class ThirteenthMonth extends Model
         'datestart' => 'date',
         'dateend' => 'date',
     ];
+
+    public function otherdeductionData()
+    {
+        return $this->hasMany(OtherDeductionLog::class, 'date_period_id', 'yearendrepid')
+            ->where('employee_id', $this->employeeid);
+    }
+
+    public function govdeductionData()
+    {
+        return $this->hasMany(GovDeductionLog::class, 'date_period_id', 'yearendrepid')
+            ->where('employee_id', $this->employeeid);
+    }
+
+    public function adjustmentData()
+    {
+        return $this->hasMany(Adjustment::class, 'date_period_id', 'yearendrepid')
+            ->where('employee_id', $this->employeeid);
+    }
     /**
      * Relation: ThirteenthMonth belongs to an Employee
      */
