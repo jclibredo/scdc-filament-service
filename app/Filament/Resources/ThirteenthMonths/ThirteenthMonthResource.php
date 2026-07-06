@@ -8,7 +8,11 @@ use App\Filament\Resources\ThirteenthMonths\Pages\EditThirteenthMonth;
 use App\Filament\Resources\ThirteenthMonths\Pages\ListThirteenthMonths;
 use App\Models\Category;
 use App\Models\DatePeriod;
+use App\Models\Earnings;
 use App\Models\Employee;
+use App\Models\Payroll;
+use App\Models\PayrollReport;
+use App\Models\PayrollSummaryReport;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
 use Carbon\Carbon;
@@ -160,7 +164,7 @@ class ThirteenthMonthResource extends Resource
             ? Carbon::parse($yearenddetails->dateto)->format('M d, Y') : 'N/A';
 
         $partnerSession = session('session_partnersid');
-        $reportsType = ($sessionReptype === '13THMONTH' ? '13th Month Reports' : 'Processing Reports');
+        $reportsType = ($sessionReptype === '13THMONTH' ? '13th Month Reports' : 'Incentives Reports');
         $details = [
             "DATE START: {$startdate}",
             "DATE END: {$enddate}",
@@ -267,8 +271,7 @@ class ThirteenthMonthResource extends Resource
                 if ($sessionProject !== null) {
                     $query->where('project_id', $sessionProject);
                 }
-
-                return $query;
+                return $query->orderBy('lastname');
             })
             ->columns([
                 TextColumn::make('employeeid')->sortable()->searchable(),
@@ -304,9 +307,9 @@ class ThirteenthMonthResource extends Resource
                     DeleteAction::make()
                         ->label('Remove'),
                     Action::make('proceedToPayroll')
-                        ->label('Process')
+                        ->label('Manage Reports')
                         ->color('warning')
-                        ->icon('heroicon-m-arrow-right-circle')
+                        ->icon('heroicon-m-cog')
                         ->action(function (Employee $record) {
                             $yearendid     = session('session_yearendreportspid');
                             $partners     = session('session_partnersid');
@@ -315,6 +318,93 @@ class ThirteenthMonthResource extends Resource
                             $projectid     = session('session_projectid');
                             $rep_type     = session('session_reptype');
 
+                            if (!$yearendid || !$record->employeeid) {
+                                Notification::make()
+                                    ->title($rep_type === '13THMONTH' ? 'Processing 13th Month Reports...' : 'Processing Incentives Reports...')
+                                    ->body('Year End Reports Details or Employee not found')
+                                    ->danger()
+                                    ->send();
+                                return; // Halt execution safely
+                            }
+
+                            $query = DatePeriod::query();
+                            if ($emptype) {
+                                $query->where('employeetype', $emptype);
+                            }
+                            if ($empstatus) {
+                                $query->where('category_id', $empstatus);
+                            }
+                            if ($projectid) {
+                                $query->where('projectid', $projectid);
+                            }
+                            // Get the active YearEndReport from the session
+                            if ($partners !== 'ALL' && $partners !== null) {
+                                $query->where('partners', $partners);
+                            }
+                            $report = YearEndReport::where('code', $yearendid)->first();
+                            // If the report exists, filter periods within its date range
+                            if ($report && $report->datefrom && $report->dateto) {
+                                $query->whereBetween('datefrom', [$report->datefrom, $report->dateto])
+                                    ->whereBetween('dateto', [$report->datefrom, $report->dateto]);
+                            }
+                            $datePeriods = $query->get();
+                            $processedCount = 0;
+                            foreach ($datePeriods as $listdateperiod) {
+                                $queryPayrollReports = PayrollSummaryReport::where('dateperiod_id', $listdateperiod->id)
+                                    ->where('employee_id', $record->employeeid)
+                                    ->first();
+                                // 🛡️ Skip or initialize defaults if summary doesn't exist to prevent crash
+                                if (!$queryPayrollReports) {
+                                    continue;
+                                }
+                                $totalhours = (float) $queryPayrollReports->totalhours;
+                                // Fetch dynamic earning thresholds
+                                $allowance = (float) Earnings::where('employee_id', $record->employeeid)
+                                    ->where('hierarchy', 'SECONDARY')
+                                    ->sum('amount');
+
+                                $primary = (float) Earnings::where('employee_id', $record->employeeid)
+                                    ->where('hierarchy', 'PRIMARY')
+                                    ->sum('amount');
+                                $allowPerhourSec = $allowance / 8;
+                                $allowPerHourPri = $primary / 8;
+                                $totalEarnings  = $allowPerHourPri * $totalhours;
+                                $totalAllowance = $allowPerhourSec * $totalhours;
+
+                                // 📝 CREATE OR UPDATE THIRTEENTH MONTH RECORDS
+                                ThirteenthMonth::updateOrCreate(
+                                    [
+                                        // Unique constraint keys to find the existing row
+                                        'periodid'     => $listdateperiod->id, // Using code as per your specification
+                                        'employeeid'   => $record->employeeid,
+                                        'yearendrepid' => $yearendid,
+                                    ],
+                                    [
+                                        // Dynamic metric columns to write/override
+                                        'earnings'  => $queryPayrollReports->totalnetpay ?? 0.0,
+                                        'partners'  => $totalEarnings,
+                                        'project'   => $projectid ?? 0.0,
+                                        'allowance' => $totalAllowance,
+                                        'datestart' => $listdateperiod->datefrom,
+                                        'dateend'   => $listdateperiod->dateto,
+                                    ]
+                                );
+                                $processedCount++;
+                            }
+                            // Show a success message detailing what was generated
+                            if ($processedCount > 0) {
+                                Notification::make()
+                                    ->title('Success')
+                                    ->body("Successfully processed {$processedCount} period reports for this employee.")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('No Reports Found')
+                                    ->body('No payroll summary history available to process for the active timeline records.')
+                                    ->warning()
+                                    ->send();
+                            }
                             session([
                                 'session_yearendreportspid' => $yearendid,
                                 'session_partnersid'        => $partners,

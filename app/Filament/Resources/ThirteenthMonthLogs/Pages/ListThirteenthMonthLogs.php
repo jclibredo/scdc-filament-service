@@ -142,9 +142,6 @@ class ListThirteenthMonthLogs extends ListRecords
                                 ->schema([
                                     Repeater::make('otherdeductionData')
                                         ->defaultItems(0)
-                                        ->extraAttributes([
-                                            'style' => 'border: 2px solid #d4670d !important; border-radius: 0.75rem;', // Deep Sapphire Blue
-                                        ])
                                         ->addAction(fn(Action $action) => $action->color('warning')->outlined())
                                         ->schema([
                                             Select::make('other_deduction_id')
@@ -160,9 +157,6 @@ class ListThirteenthMonthLogs extends ListRecords
                                 ->schema([
                                     Repeater::make('govdeductionData')
                                         ->defaultItems(0)
-                                        ->extraAttributes([
-                                            'style' => 'border: 2px solid #d4670d !important; border-radius: 0.75rem;', // Deep Sapphire Blue
-                                        ])
                                         ->addAction(fn(Action $action) => $action->color('warning')->outlined())
                                         ->schema([
                                             Select::make('gov_deduction_id')
@@ -193,9 +187,6 @@ class ListThirteenthMonthLogs extends ListRecords
                             Tabs\Tab::make('Adjustments')
                                 ->schema([
                                     Repeater::make('adjustmentData')
-                                        ->extraAttributes([
-                                            'style' => 'border: 2px solid #d4670d !important; border-radius: 0.75rem;', // Deep Sapphire Blue
-                                        ])
                                         ->defaultItems(0)
                                         ->addAction(fn(Action $action) => $action->color('warning')->outlined())
                                         ->schema([

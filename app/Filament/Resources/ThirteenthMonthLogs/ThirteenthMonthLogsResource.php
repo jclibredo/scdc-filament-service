@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\ThirteenthMonthLogs;
 
 use App\Filament\Resources\ThirteenthMonthLogs\Pages\ListThirteenthMonthLogs;
+use App\Models\Adjustment;
 use App\Models\DatePeriod;
 use App\Models\Employee;
+use App\Models\GovDeductionLog;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
 use BackedEnum;
@@ -21,11 +23,16 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+
+// use Illuminate\Support\HtmlString;
 
 class ThirteenthMonthLogsResource extends Resource
 {
@@ -52,48 +59,66 @@ class ThirteenthMonthLogsResource extends Resource
                     ->columnSpanFull()
                     ->schema([
                         // 1. Period ID (Nullable as per migration)
-                        Select::make('periodid')
-                            ->label('Period')
-                            ->options(function () {
-                                $yearEndCode = session('session_yearendreportspid');
-                                $partners     = session('session_partnersid');
-                                $emptype       = session('session_employeetypeid');
-                                $empstatus     = session('session_employeestatusid');
-                                $projectid     = session('session_projectid');
-                                $query = DatePeriod::query();
-                                if ($emptype) {
-                                    $query->where('employeetype', $emptype);
-                                }
-                                if ($empstatus) {
-                                    $query->where('category_id', $empstatus);
-                                }
-                                if ($projectid) {
-                                    $query->where('projectid', $projectid);
-                                }
-                                // Get the active YearEndReport from the session
-                                if ($partners !== 'ALL' && $partners !== null) {
-                                    $query->where('partners', $partners);
-                                }
-                                if ($yearEndCode) {
-                                    $report = YearEndReport::where('code', $yearEndCode)->first();
-                                    // If the report exists, filter periods within its date range
-                                    if ($report && $report->datefrom && $report->dateto) {
-                                        $query->whereBetween('datefrom', [$report->datefrom, $report->dateto])
-                                            ->whereBetween('dateto', [$report->datefrom, $report->dateto]);
-                                    }
-                                }
-                                return $query->get()->mapWithKeys(function ($period) {
-                                    $from = is_string($period->datefrom) ? date('Y-m-d', strtotime($period->datefrom)) : $period->datefrom?->format('Y-m-d');
-                                    $to = is_string($period->dateto) ? date('Y-m-d', strtotime($period->dateto)) : $period->dateto?->format('Y-m-d');
+                        // Select::make('periodid')
+                        //     ->label('Period')
+                        //     ->disabled()
+                        //     ->options(function () {
+                        //         $yearEndCode = session('session_yearendreportspid');
+                        //         $partners     = session('session_partnersid');
+                        //         $emptype       = session('session_employeetypeid');
+                        //         $empstatus     = session('session_employeestatusid');
+                        //         $projectid     = session('session_projectid');
+                        //         $query = DatePeriod::query();
+                        //         if ($emptype) {
+                        //             $query->where('employeetype', $emptype);
+                        //         }
+                        //         if ($empstatus) {
+                        //             $query->where('category_id', $empstatus);
+                        //         }
+                        //         if ($projectid) {
+                        //             $query->where('projectid', $projectid);
+                        //         }
+                        //         // Get the active YearEndReport from the session
+                        //         if ($partners !== 'ALL' && $partners !== null) {
+                        //             $query->where('partners', $partners);
+                        //         }
+                        //         if ($yearEndCode) {
+                        //             $report = YearEndReport::where('code', $yearEndCode)->first();
+                        //             // If the report exists, filter periods within its date range
+                        //             if ($report && $report->datefrom && $report->dateto) {
+                        //                 $query->whereBetween('datefrom', [$report->datefrom, $report->dateto])
+                        //                     ->whereBetween('dateto', [$report->datefrom, $report->dateto]);
+                        //             }
+                        //         }
+                        //         return $query->get()->mapWithKeys(function ($period) {
+                        //             $from = is_string($period->datefrom) ? date('Y-m-d', strtotime($period->datefrom)) : $period->datefrom?->format('Y-m-d');
+                        //             $to = is_string($period->dateto) ? date('Y-m-d', strtotime($period->dateto)) : $period->dateto?->format('Y-m-d');
 
-                                    return [
-                                        $period->id => "{$from} to {$to} [{$period->code}]" // Note: changed key to $period->id to match typical relationship foreign keys
-                                    ];
-                                });
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                        //             return [
+                        //                 $period->id => "{$from} to {$to} [{$period->code}]" // Note: changed key to $period->id to match typical relationship foreign keys
+                        //             ];
+                        //         });
+                        //     })
+                        //     ->searchable()
+                        //     ->preload()
+                        //     ->nullable()
+                        //     ->live() // ⚡ Makes the field reactive so it tracks state changes immediately
+                        //     ->afterStateUpdated(function (?string $state, Set $set) { // ⚡ Explicitly typehint the 'Set' class
+                        //         if (! $state) {
+                        //             $set('datestart', null);
+                        //             $set('dateend', null);
+                        //             return;
+                        //         }
+                        //         $period = DatePeriod::find($state);
+                        //         if ($period) {
+                        //             // Force conversion to a clean standard Y-m-d string format for the datepickers
+                        //             $dateFrom = is_string($period->datefrom) ? date('Y-m-d', strtotime($period->datefrom)) : $period->datefrom?->format('Y-m-d');
+                        //             $dateTo = is_string($period->dateto) ? date('Y-m-d', strtotime($period->dateto)) : $period->dateto?->format('Y-m-d');
+
+                        //             $set('datestart', $dateFrom);
+                        //             $set('dateend', $dateTo);
+                        //         }
+                        //     }),
 
                         // 2. Employee ID
                         Select::make('employeeid')
@@ -118,27 +143,105 @@ class ThirteenthMonthLogsResource extends Resource
                         TextInput::make('allowance')
                             ->label('Allowance')
                             ->numeric()
+                            ->minValue(0) // Blocks negative numbers natively
                             ->placeholder('0.00')
-                            ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/'])
+                            ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/', 'min:0'])
                             ->required(),
 
                         // 8. Earnings (Renamed from total_amount)
                         TextInput::make('earnings')
                             ->label('Earnings')
                             ->numeric()
+                            ->minValue(0) // Blocks negative numbers natively
                             ->placeholder('0.00')
-                            ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/'])
+                            ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/', 'min:0'])
                             ->required(),
 
                         // 9. Date Start (maps to model 'datestart', nullable)
                         DatePicker::make('datestart')
                             ->label('Date Start')
+                            // ->disabled(function (Get $get) {
+                            //     // 🔒 Disables this field if 'periodid' has a value filled in
+                            //     return filled($get('periodid'));
+                            // })
+                            ->dehydrated()
+                            ->live()
+                            // ->rules([
+                            //     function (Get $get) {
+                            //         return function (string $attribute, $value, $fail) {
+                            //             $yearEndCode = session('session_yearendreportspid');
+                            //             if (!$yearEndCode || !$value) {
+                            //                 return;
+                            //             }
+                            //             // Fetch target report boundary limits
+                            //             $report = YearEndReport::where('code', $yearEndCode)->first();
+
+                            //             if ($report && $report->datefrom && $report->dateto) {
+                            //                 $chosenDate = Carbon::parse($value);
+                            //                 $fromBound = Carbon::parse($report->datefrom);
+                            //                 $toBound = Carbon::parse($report->dateto);
+
+                            //                 // Check if date falls outside the session report window
+                            //                 if (! $chosenDate->between($fromBound, $toBound)) {
+                            //                     $fail("The Date Start must be between {$fromBound->format('Y-m-d')} and {$toBound->format('Y-m-d')}.");
+                            //                 }
+                            //             }
+                            //         };
+                            //     },
+                            // ])
+                            ->minDate(function () {
+                                $yearEndCode = session('session_yearendreportspid');
+                                $report = YearEndReport::where('code', $yearEndCode)->first();
+                                return $report?->datefrom ? \Carbon\Carbon::parse($report->datefrom) : null;
+                            })
+                            ->maxDate(function () {
+                                $yearEndCode = session('session_yearendreportspid');
+                                $report = YearEndReport::where('code', $yearEndCode)->first();
+                                return $report?->dateto ? \Carbon\Carbon::parse($report->dateto) : null;
+                            })
+                            ->rules([
+                                function (Get $get, $record) {
+                                    return function (string $attribute, $value, $fail) use ($get, $record) {
+                                        $yearEndCode = session('session_yearendreportspid');
+                                        $employeeId = session('session_empployeeid');
+
+                                        if (!$yearEndCode || !$value) {
+                                            return;
+                                        }
+
+                                        // 1. Duplicate & Overlap Check
+                                        $duplicateQuery = \App\Models\ThirteenthMonth::where('employeeid', $employeeId)
+                                            ->where('yearendrepid', $yearEndCode)
+                                            ->where(function ($query) use ($value) {
+                                                $query->whereDate('datestart', $value)
+                                                    ->orWhereDate('dateend', $value);
+                                            });
+
+                                        if ($record) {
+                                            $duplicateQuery->where('id', '!=', $record->id);
+                                        }
+
+                                        if ($duplicateQuery->exists()) {
+                                            $fail("A 13th-month record already exists for this employee within this period configuration with that date.");
+                                        }
+                                    };
+                                },
+                            ])
                             ->nullable(),
 
                         // 10. Date End (maps to model 'dateend', nullable)
                         DatePicker::make('dateend')
                             ->label('Date End')
-                            ->nullable(),
+                            ->after('datestart')
+                            ->dehydrated()
+                            ->nullable()
+                            ->disabled(fn(Get $get) => empty($get('datestart')))
+                            ->rules([
+                                // Optional: Ensures Date End is required if Date Start has been filled manually
+                                fn(Get $get): array => [
+                                    'required_with:datestart'
+                                ],
+                            ]),
                         Hidden::make('yearendrepid')
                             ->default(session('session_yearendreportspid')),
 
@@ -207,49 +310,40 @@ class ThirteenthMonthLogsResource extends Resource
                 ->implode(' ');
         }
         return $table
-            ->header(fn() => blank(session('session_empployeeid')) ? null : new HtmlString("
-                        <div style='
-                            padding: 1rem; 
-                            margin: 1rem 1rem 0 1rem; 
-                            border-left: 4px solid #d97706; 
-                            background-color: rgba(254, 243, 199, 0.4); 
-                            border-top-right-radius: 0.75rem; 
-                            border-bottom-right-radius: 0.75rem; 
-                            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                        '>
-                            <div style='
-                                display: flex; 
-                                flex-direction: column; 
-                                gap: 0.75rem;
-                            '>
-                                <div style='display: flex; align-items: center; gap: 0.5rem;'>
-                                    <span style='
-                                        width: 0.5rem; 
-                                        height: 0.5rem; 
-                                        background-color: #f59e0b; 
-                                        border-radius: 9999px;
-                                    '></span>
-                                    <h3 style='
-                                        font-size: 1rem; 
-                                        font-weight: 700; 
-                                        color: #111827; 
-                                        margin: 0;
-                                        font-family: system-ui, sans-serif;
-                                    '>
-                                        {$empFullname} <span style='font-family: monospace; color: #b45309;'>{$yearendid}</span>
-                                    </h3>
-                                </div>
-                                <div style='
-                                    display: flex; 
-                                    flex-wrap: wrap; 
-                                    align-items: center; 
-                                    gap: 0.5rem;
-                                '>
-                                    {$formattedBadges}
-                                </div>
-                            </div>
-                        </div>
-                    "))
+            ->header(function () use ($yearendid, $sessionEmpId, $empFullname, $formattedBadges) {
+                if (blank(session('session_empployeeid'))) {
+                    return null;
+                }
+
+                // 1. Fetch breakdown records
+                $adjustments = \App\Models\Adjustment::with('adjustmentName')
+                    ->where('date_period_id', $yearendid)
+                    ->where('employee_id', $sessionEmpId)->get();
+
+                $govDeductions = \App\Models\GovDeductionLog::with('govDeduction')
+                    ->where('date_period_id', $yearendid)
+                    ->where('employee_id', $sessionEmpId)->get();
+
+                $otherDeductions = \App\Models\OtherDeductionLog::with('otherDeduction')
+                    ->where('date_period_id', $yearendid)
+                    ->where('employee_id', $sessionEmpId)->get();
+
+                // 2. Compute the 13th Month Total Base (Sum of Earnings + Allowances from the main query, divided by 12)
+                $thirteenthMonthRecords = \App\Models\ThirteenthMonth::where('yearendrepid', $yearendid)->get();
+                $totalEarningsAndAllowances = $thirteenthMonthRecords->sum('earnings') + $thirteenthMonthRecords->sum('allowance');
+                $total13thMonth = $totalEarningsAndAllowances / 12;
+
+                // 3. Return everything safely to the clean Blade view wrapper
+                return view('filament.table-footer', [
+                    'empFullname' => $empFullname,
+                    'yearendid' => $yearendid,
+                    'formattedBadges' => $formattedBadges,
+                    'adjustments' => $adjustments,
+                    'govDeductions' => $govDeductions,
+                    'otherDeductions' => $otherDeductions,
+                    'total13thMonth' => $total13thMonth,
+                ]);
+            })
             ->recordUrl(null)
             ->extraAttributes([
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
@@ -262,50 +356,39 @@ class ThirteenthMonthLogsResource extends Resource
                     // Assuming yearendrepid stores the code from the year-end configuration
                     $query->where('yearendrepid', $yearEndRepCode);
                 }
-                return $query;
+                return $query->orderBy('datestart');
             })
             ->columns([
-                // Period Relationship (Assuming DatePeriod has a 'name' or 'code' column)
-                TextColumn::make('periodid')
-                    ->label('Period Code')
-                    ->sortable()
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                // Earnings (Formatted as currency)
-                TextColumn::make('earnings')
-                    ->label('Earnings')
-                    ->money('PHP') // Change currency code if needed
-                    ->sortable(),
-                // ->alignRight(),
-
-                // Allowance (Formatted as currency)
-                TextColumn::make('allowance')
-                    ->label('Allowance')
-                    ->money('PHP')
-                    ->sortable(),
-                // ->alignRight(),
                 TextColumn::make('datestart')
+                    ->extraAttributes(['style' => 'font-size: 0.75rem;'])
                     ->label('Date Covered')
                     ->formatStateUsing(function ($record) {
                         // Handle cases where dates might be null
                         if (!$record->datestart || !$record->dateend) {
                             return 'N/A';
                         }
-
                         // Format both dates in your preferred format (e.g., Jan 01, 2026)
                         $start = $record->datestart->format('M d, Y');
                         $end = $record->dateend->format('M d, Y');
-
                         return "{$start} - {$end}";
                     })
                     ->sortable(['datestart']),
+                // Earnings (Formatted as currency)
+                TextColumn::make('earnings')
+                    ->extraAttributes(['style' => 'font-size: 0.75rem;'])
+                    ->label('Earnings')
+                    ->money('PHP')
+                    ->sortable(),
+
+                // Allowance (Formatted as currency)
+                TextColumn::make('allowance')
+                    ->extraAttributes(['style' => 'font-size: 0.75rem;'])
+                    ->label('Allowance')
+                    ->money('PHP')
+                    ->sortable(),
+                // ->alignRight(),
             ])
-            ->filters([
-                // SelectFilter::make('project')
-                //     ->label('Filter by Project')
-                //     ->options(fn() => ThirteenthMonth::whereNotNull('project')->distinct()->pluck('project', 'project')),
-            ])
+            ->filters([])
             ->actions([
                 ActionGroup::make([
                     // ViewAction::make(),
