@@ -159,6 +159,7 @@ class YearEndReportResource extends Resource
             ->extraAttributes([
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
+            ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
                 if (! $user || ! $user->id) {
@@ -243,7 +244,7 @@ class YearEndReportResource extends Resource
                         ->color('warning')
                         ->icon('heroicon-m-arrow-right-circle')
                         ->action(function (YearEndReport $record) {
-                            
+
                             session([
                                 'session_yearendreportspid'  => $record->code,
                                 'session_partnersid'         => $record->partners,
@@ -262,12 +263,12 @@ class YearEndReportResource extends Resource
                     ->color('warning')
                     ->size('xs')
                     ->outlined(),
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
+            // ->bulkActions([
+            //     BulkActionGroup::make([
+            //         DeleteBulkAction::make(),
+            //     ]),
+            // ]);
     }
 
     public static function getRelations(): array
