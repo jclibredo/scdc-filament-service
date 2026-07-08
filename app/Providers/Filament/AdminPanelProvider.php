@@ -62,52 +62,47 @@ class AdminPanelProvider extends PanelProvider
             ->darkmode(false)
             ->spa()
             ->sidebarCollapsibleOnDesktop()
-            // ->renderHook(
-            //     'panels::head.end',
-            //     fn(): HtmlString => new HtmlString('
-            //         <style>
-            //             /* ==========================================================================
-            //                SIDEBAR NAVIGATION AMBER STYLES
-            //                ========================================================================== */
-            //             /* 1. Base / Inactive Sidebar Icon Color */
-            //             .fi-sidebar-item-icon {
-            //                 color: #94a3b8 !important;
-            //             }
+            ->renderHook(
+                'panels::head.end',
+                fn(): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString('
+                <style>
+                    /* 1. Shrink the login card container width */
+                    .fi-simple-main-ctn {
+                        max-width: 22rem !important;
+                    }
 
-            //             /* 2. Hover Sidebar Icon Color */
-            //             .fi-sidebar-item:hover .fi-sidebar-item-icon {
-            //                 color: #64748b !important;
-            //             }
+                    /* 2. Add a border and roundness to the login card section */
+                    .fi-simple-main-ctn > :first-child {
+                        border: 2px solid #112a6e !important; /* Amber border */
+                        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -2px rgba(245, 158, 11, 0.1) !important; /* Subtle amber glow shadow */
+                    }
 
-            //             /* 3. Active / Current Tab Icon Color */
-            //             .fi-sidebar-item-active .fi-sidebar-item-icon {
-            //                 color: #f59e0b !important;
-            //             }
+                    /* 3. Set a smaller global base font size for all text inside the login wrapper */
+                    .fi-simple-layout-ctn {
+                        font-size: 0.85rem !important;
+                    }
 
-            //             /* ==========================================================================
-            //                HEADER TABS / TOP NAVIGATION AMBER STYLES
-            //                ========================================================================== */
-            //             /* 4. Active Header Tab Text Color */
-            //             .fi-tabs-item-active {
-            //                 color: #f59e0b !important;
-            //                 background-color: #fffbeb !important; /* Soft Amber background fill */
-            //                 border-radius: 0.375rem;
-            //             }
+                    /* 4. Scale down the primary form title (e.g., "Sign in") */
+                    .fi-simple-header-heading {
+                        font-size: 1.25rem !important;
+                    }
 
-            //             /* 5. FORCE ACTIVE HEADER TAB ICON COLOR (Targets the internal SVG) */
-            //             .fi-tabs-item-active .fi-tabs-item-icon,
-            //             .fi-tabs-item-active svg {
-            //                 color: #f59e0b !important;
-            //                 fill: currentColor !important; /* Ensures path vectors inherit the color change */
-            //             }
+                    /* 5. Target input elements, placeholders, and interactive buttons */
+                    .fi-input-wrp input,
+                    .fi-btn,
+                    .fi-link,
+                    .fi-fo-field-wrp-label label {
+                        font-size: 0.825rem !important;
+                    }
 
-            //             /* 6. Active Header Tab Bottom Border / Indicator Line */
-            //             .fi-tabs-item-active::after {
-            //                 background-color: #f59e0b !important;
-            //             }
-            //         </style>
-            //     ')
-            // )
+                    /* 6. Slightly adjust input padding so the smaller text feels balanced */
+                    .fi-input-wrp input {
+                        padding-top: 0.35rem !important;
+                        padding-bottom: 0.35rem !important;
+                    }
+                </style>
+            ')
+            )
             ->maxContentWidth('full')
             ->authMiddleware([
                 Authenticate::class,

@@ -6,6 +6,7 @@ use App\Http\Controllers\PayrollSummaryController;
 // use App\Models\DatePeriod;
 // use App\Models\Employee;
 use App\Models\OtherDeductionLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -20,7 +21,15 @@ Route::get('/login', function () {
     // Default fallback if context is unclear
     return redirect()->route('filament.admin.auth.login');
 })->name('login');
+// Route::get('/account/activate/{user}', function (Request $request, $user) {
+//     if (! $request->hasValidSignature()) {
+//         abort(401, 'This activation link has expired or is invalid.');
+//     }
+//     return 'Your account is successfully activated!';
+// })->name('account.activate');
 Route::middleware(['auth'])->group(function () {
+
+
     Route::get('/payslips/view/{id}', function ($id) {
         $datePeriod = DB::table('date_periods')
             ->where('id', $id)

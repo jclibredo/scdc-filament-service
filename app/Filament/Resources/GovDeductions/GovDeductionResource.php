@@ -28,7 +28,7 @@ use UnitEnum;
 class GovDeductionResource extends Resource
 {
     protected static ?string $model = GovDeduction::class;
-    protected  static string|UnitEnum|null $navigationGroup = 'User Management';
+    protected  static string|UnitEnum|null $navigationGroup = 'Utility Management';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::MinusCircle;
 
     protected static ?string $recordTitleAttribute = 'Deduction';

@@ -8,6 +8,7 @@ use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -26,17 +27,16 @@ use UnitEnum;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static ?string $navigationLabel = 'Users';
+    protected static ?string $navigationLabel = 'User';
     protected static ?int $navigationSort = 1;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserCircle;
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
-
     protected static ?string $recordTitleAttribute = 'User';
+    protected static ?string $pluralModelLabel = 'User Account';
 
     public static function form(Schema $schema): Schema
     {
-        // return UserForm::configure($schema);
         return $schema->schema([
             Section::make('User Account Details')
                 ->columnSpanFull()
@@ -49,9 +49,9 @@ class UserResource extends Resource
                 ->schema([
 
                     TextInput::make('name')
+                        ->label('Full Name')
                         ->required()
                         ->extraInputAttributes([
-                            // Added 0-9 to the regex character validation layout to permit numeric inputs safely
                             'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 150);",
                             'maxlength' => 150,
@@ -62,15 +62,6 @@ class UserResource extends Resource
                         ->required()
                         ->maxLength(100)
                         ->unique(ignoreRecord: true),
-
-                    Select::make('role')
-                        ->options([
-                            'user' => 'User',
-                            'admin' => 'Admin',
-                        ])
-                        ->default('user')
-                        ->required(),
-
                     TextInput::make('password')
                         ->password()
                         ->revealable()
@@ -78,12 +69,10 @@ class UserResource extends Resource
                         ->dehydrated(fn($state) => filled($state))
                         ->required(fn(string $context): bool => $context === 'create')
                         ->maxLength(255),
-
-                    Toggle::make('status')
-                        ->label('Active Status')
-                        ->default(true)
-                        ->inline(false) // Aligns the toggle label beautifully above the switch component
-                        ->columnSpanFull(), // Pushes the toggle to its own row at the bottom for a clean look
+                    Hidden::make('role')
+                        ->default('admin'),
+                    Hidden::make('status')
+                        ->default(false),
 
                 ])
         ]);
@@ -102,20 +91,14 @@ class UserResource extends Resource
                 if (!$user) {
                     return User::whereRaw('1 = 0');
                 }
-                return User::where('status', true); // Add this line
+                // return User::where('status', true)
+                //     ->whereNot('id', $user->id);
+                return User::whereNot('id', $user->id)
+                    ->orderBy('name', 'asc');
             })
             ->columns([
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('email')->searchable(),
-                // 👇 Show user role
-                BadgeColumn::make('role')
-                    ->colors([
-                        'primary',
-                        'success' => 'admin',
-                        'secondary' => 'user',
-                    ])
-                    ->sortable(),
-
                 // 👇 Show active/inactive status
                 IconColumn::make('status')
                     ->boolean()

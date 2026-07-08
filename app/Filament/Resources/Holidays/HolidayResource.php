@@ -31,7 +31,7 @@ class HolidayResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected  static string|UnitEnum|null $navigationGroup = 'User Management';
+    protected  static string|UnitEnum|null $navigationGroup = 'Utility Management';
 
     protected static ?string $recordTitleAttribute = 'Holiday';
 

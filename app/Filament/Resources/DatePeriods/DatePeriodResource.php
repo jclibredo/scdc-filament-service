@@ -38,7 +38,7 @@ use UnitEnum;
 class DatePeriodResource extends Resource
 {
     protected static ?string $model = DatePeriod::class;
-    protected  static string|UnitEnum|null $navigationGroup = 'Reports';
+    protected  static string|UnitEnum|null $navigationGroup = 'Report Management';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Printer;
 
     protected static ?string $recordTitleAttribute = 'DatePeriod';

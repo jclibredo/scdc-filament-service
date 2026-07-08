@@ -12,7 +12,7 @@ class UserPermission extends Model
 
     protected $fillable = [
         'user_id',
-        'module'
+        'role'
     ];
 
     public function userDetails(): BelongsTo

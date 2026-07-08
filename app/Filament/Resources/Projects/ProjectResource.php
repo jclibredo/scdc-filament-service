@@ -30,7 +30,7 @@ class ProjectResource extends Resource
 {
     protected static ?string $model = Project::class;
 
-    protected  static string|UnitEnum|null $navigationGroup = 'User Management';
+    protected  static string|UnitEnum|null $navigationGroup = 'Utility Management';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 

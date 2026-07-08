@@ -34,7 +34,7 @@ class InactiveDataResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'Archive Management';
 
     // 🏷️ This changes the text displayed in the Sidebar Navigation link
-    protected static ?string $navigationLabel = 'Inactive Data Records';
+    protected static ?string $navigationLabel = 'Inactive Records';
     protected static ?string $pluralModelLabel = 'Archived Non-Active Data';
     protected static ?int $navigationSort = 5;
 

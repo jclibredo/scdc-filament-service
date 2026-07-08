@@ -38,7 +38,7 @@ class AtlogResource extends Resource
     protected static ?string $model = Atlog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::FingerPrint;
-    protected  static string|UnitEnum|null $navigationGroup = 'Reports';
+    protected  static string|UnitEnum|null $navigationGroup = 'Report Management';
 
     protected static ?string $recordTitleAttribute = 'Atlog';
 

@@ -41,8 +41,8 @@ class YearEndReportResource extends Resource
     protected static ?string $model = YearEndReport::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Printer;
-    protected  static string|UnitEnum|null $navigationGroup = 'Reports';
-    protected static ?string $navigationLabel = 'Year End Reports';
+    protected  static string|UnitEnum|null $navigationGroup = 'Report Management';
+    protected static ?string $navigationLabel = 'Year End';
 
     public static function form(Schema $schema): Schema
     {

@@ -2,11 +2,7 @@
 
 namespace App\Filament\Resources\UserPermissions;
 
-use App\Filament\Resources\UserPermissions\Pages\CreateUserPermission;
-use App\Filament\Resources\UserPermissions\Pages\EditUserPermission;
 use App\Filament\Resources\UserPermissions\Pages\ListUserPermissions;
-use App\Filament\Resources\UserPermissions\Schemas\UserPermissionForm;
-use App\Filament\Resources\UserPermissions\Tables\UserPermissionsTable;
 use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -23,14 +19,16 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Validation\Rules\Unique;
+use UnitEnum;
 
 class UserPermissionResource extends Resource
 {
     protected static ?string $model = UserPermission::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-
-    protected static ?string $recordTitleAttribute = 'UserPermission';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::ShieldCheck;
+    protected  static string|UnitEnum|null $navigationGroup = 'User Management';
+    protected static ?string $navigationLabel = 'Role';
+    protected static ?string $pluralModelLabel = 'User Role Data';
 
     public static function form(Schema $schema): Schema
     {
@@ -54,10 +52,14 @@ class UserPermissionResource extends Resource
                         // Select Module with hardcoded options
                         Select::make('module')
                             ->options([
-                                'THIRTEENTMONTH' => '13th Month',
-                                'INCENTIVES' => 'Incentives',
-                                'PAYROLL' => 'Payroll',
-                                'PAYSLIP' => 'Payslip',
+                                'IMPORT' => 'Data Importing',
+                                'EXPORT' => 'Data Exporting',
+                                'OFFICEMANAGER' => 'Office Manager',
+                                'PAYROLLADMINWEEKLY' => 'Payroll Admin Weekly',
+                                'PAYROLLADMINMONTHLY' => 'Payroll Admin Monthly',
+                                'PAYROLLSUBCONWEEKLY' => 'Payroll Subcon Weekly',
+                                'PAYROLLSUBCONMONTHLY' => 'Payroll Subcon Monthly',
+                                'HR' => 'Human Resources',
                                 'SUPERADMIN' => 'System Administrator'
                             ])
                             ->required()
@@ -91,11 +93,16 @@ class UserPermissionResource extends Resource
                 TextColumn::make('module')
                     ->badge() // Optional: Makes the module look nice as a badge
                     ->color(fn(string $state): string => match ($state) {
-                        'THIRTEENTMONTH' => 'success',
-                        'INCENTIVES' => 'warning',
-                        'PAYROLL' => 'danger',
-                        'PAYSLIP' => 'info',
-                        default => 'gray',
+                        'IMPORT' => 'warning',
+                        'EXPORT' => 'warning',
+                        'OFFICEMANAGER' => 'success',
+                        'PAYROLLADMINWEEKLY' => 'success',
+                        'PAYROLLADMINMONTHLY' => 'success',
+                        'PAYROLLSUBCONWEEKLY' => 'success',
+                        'PAYROLLSUBCONMONTHLY' => 'success',
+                        'HR' => 'success',
+                        'SUPERADMIN' => 'success',
+                        default => 'danger',
                     })
                     ->sortable()
                     ->searchable(),
@@ -110,8 +117,14 @@ class UserPermissionResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make(),
-                    DeleteAction::make(),
+                    EditAction::make()
+                        // ->disabled(fn()=> {
+
+
+                        // })
+                        ->label('Update'),
+                    DeleteAction::make()
+                        ->label('Remove'),
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')

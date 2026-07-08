@@ -25,7 +25,7 @@ use UnitEnum;
 class SkillResource extends Resource
 {
     protected static ?string $model = Skill::class;
-    protected  static string|UnitEnum|null $navigationGroup = 'User Management';
+    protected  static string|UnitEnum|null $navigationGroup = 'Utility Management';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::FolderPlus;
 

@@ -47,7 +47,9 @@ class EmployeeResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'User Management';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
-    protected static ?string $recordTitleAttribute = 'Employee';
+
+    protected static ?string $recordTitleAttribute = 'Employee Details';
+    protected static ?string $pluralModelLabel = 'Employee';
 
     public static function form(Schema $schema): Schema
     {
