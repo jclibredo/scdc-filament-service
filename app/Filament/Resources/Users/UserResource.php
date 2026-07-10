@@ -18,7 +18,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+// use Illuminate\Support\Facades\Hash;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -31,6 +31,36 @@ class UserResource extends Resource
     protected static ?string $recordTitleAttribute = 'User';
     protected static ?string $pluralModelLabel = 'User Account';
 
+    public static function canViewAny(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->where('module', 'SUPERADMIN')
+            ->exists();
+    }
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->where('module', 'SUPERADMIN')
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([

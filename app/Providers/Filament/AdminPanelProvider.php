@@ -2,11 +2,16 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\Categories\CategoryResource;
+use App\Filament\Resources\Employees\EmployeeResource;
 use App\Http\Middleware\ClearSessionOutsideResources;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -111,5 +116,48 @@ class AdminPanelProvider extends PanelProvider
         //     $user = auth()->user();
         //     return $user && $user->role === 'admin';
         // });
+    }
+
+    public function boot(): void
+    {
+        Filament::serving(function () {
+            $panel = Filament::getCurrentPanel();
+
+            if ($panel) {
+                $panel->navigationGroups([
+                    NavigationGroup::make()
+                        ->label('Archive Management')
+                        ->icon('heroicon-o-archive-box'), // Box/Storage icon
+
+                    NavigationGroup::make()
+                        ->label('Report Management')
+                        ->icon('heroicon-o-document-chart-bar'), // Chart/Analytics document
+
+                    NavigationGroup::make()
+                        ->label('Utility Management')
+                        ->icon('heroicon-o-wrench-screwdriver'), // Tools/Settings icon
+
+                    NavigationGroup::make()
+                        ->label('User Management')
+                        ->icon('heroicon-o-users'), // Group of users icon
+                    NavigationGroup::make()
+                        ->label('Activity')
+                        ->icon('heroicon-o-shield-check'),
+                ]);
+
+                // Safely sort the items inside EVERY group alphabetically
+                foreach ($panel->getNavigationGroups() as $group) {
+                    if ($group instanceof NavigationGroup) {
+                        $items = $group->getItems();
+
+                        usort($items, function ($a, $b) {
+                            return strcmp($a->getLabel(), $b->getLabel());
+                        });
+
+                        $group->items($items);
+                    }
+                }
+            }
+        });
     }
 }

@@ -6,6 +6,7 @@ use App\Filament\Resources\Holidays\Pages\CreateHoliday;
 use App\Filament\Resources\Holidays\Pages\EditHoliday;
 use App\Filament\Resources\Holidays\Pages\ListHolidays;
 use App\Models\Holiday;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -37,7 +38,21 @@ class HolidayResource extends Resource
 
     protected static ?string $navigationLabel = 'Payment Rate';
     protected static ?string $pluralModelLabel = 'Payment Type & Premium Rate Data';
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema

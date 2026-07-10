@@ -9,6 +9,7 @@ use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\GovDeduction;
 use App\Models\GovDeductionLog;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -43,6 +44,31 @@ class DatePeriodResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'DatePeriod';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn(
+                'module',
+                [
+                    'SUPERADMIN',
+                    'IMPORT',
+                    'PAYROLLADMINWEEKLY',
+                    'PAYROLLADMINMONTHLY',
+                    'PAYROLLSUBCONWEEKLY',
+                    'PAYROLLSUBCONMONTHLY'
+                ]
+            )
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -144,19 +170,71 @@ class DatePeriodResource extends Resource
                 if (!$user) {
                     return DatePeriod::whereRaw('1 = 0');
                 }
+                // if (
+                //     session('session_employeestatus')
+                //     && session('session_employeetype')
+                //     && session('session_periodcode')
+                // ) {
+                //     return DatePeriod::query()
+                //         ->where('status', true)
+                //         ->where('code', session('session_periodcode'))
+                //         ->where('category_id', session('session_employeestatus'))
+                //         ->where('employeetype', session('session_employeetype'));
+                // }
+                // return DatePeriod::query()
+                //     ->where('status', true);
+                // Start building the base query
+                // Check if we have a valid User model instance now
+                if (! $user instanceof \App\Models\User) {
+                    return DatePeriod::whereRaw('1 = 0');
+                }
+
+                $query = DatePeriod::query()->where('status', true);
+
+                // 1. Superadmin has bypass access to see everything
+                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+
+                if (!$isSuperAdmin) {
+                    // Check for specific Administrative payroll permissions
+                    $hasAdminPermission = $user->userPermissions()
+                        ->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])
+                        ->exists();
+
+                    // Check for specific Sub-Contractor payroll permissions
+                    $hasSubConPermission = $user->userPermissions()
+                        ->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])
+                        ->exists();
+
+                    // Filter database query based on the active structural permission types
+                    $query->whereHas('employeeTypeCategory', function ($q) use ($hasAdminPermission, $hasSubConPermission) {
+                        $q->where(function ($subQuery) use ($hasAdminPermission, $hasSubConPermission) {
+                            if ($hasAdminPermission) {
+                                $subQuery->orWhere('name', 'ADMIN');
+                            }
+                            if ($hasSubConPermission) {
+                                $subQuery->orWhere('name', 'SUB-CON');
+                            }
+
+                            // If they have neither permission, make sure they see nothing
+                            if (!$hasAdminPermission && !$hasSubConPermission) {
+                                $subQuery->whereRaw('1 = 0');
+                            }
+                        });
+                    });
+                }
+
+                // 2. Existing Session-Based Filters
                 if (
                     session('session_employeestatus')
                     && session('session_employeetype')
                     && session('session_periodcode')
                 ) {
-                    return DatePeriod::query()
-                        ->where('status', true)
-                        ->where('code', session('session_periodcode'))
+                    return $query->where('code', session('session_periodcode'))
                         ->where('category_id', session('session_employeestatus'))
                         ->where('employeetype', session('session_employeetype'));
                 }
-                return DatePeriod::query()
-                    ->where('status', true);
+
+                return $query;
             })
             ->columns([
                 TextColumn::make('code')

@@ -8,6 +8,7 @@ use App\Models\Atlog;
 use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\Project;
+use App\Models\User;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ActionGroup;
@@ -41,7 +42,26 @@ class AtlogResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'Report Management';
 
     protected static ?string $recordTitleAttribute = 'Atlog';
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', 
+            [
+            'SUPERADMIN',
+            'IMPORT',
+            'PAYROLLADMINWEEKLY',
+            'PAYROLLADMINMONTHLY'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema

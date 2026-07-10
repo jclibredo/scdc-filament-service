@@ -4,6 +4,7 @@ namespace App\Filament\Resources\GovDeductions;
 
 use App\Filament\Resources\GovDeductions\Pages\ListGovDeductions;
 use App\Models\GovDeduction;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -36,6 +37,21 @@ class GovDeductionResource extends Resource
     protected static ?string $navigationLabel = 'Mandatory Deductions';
     protected static ?string $pluralModelLabel = 'Mandatory Deductions Data';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([

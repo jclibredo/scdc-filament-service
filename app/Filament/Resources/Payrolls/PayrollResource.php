@@ -271,9 +271,6 @@ class PayrollResource extends Resource
                             ]);
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
-
-
-
                     BulkAction::make('payment')
                         ->label('Process Cut-off')
                         ->icon('heroicon-m-cog')

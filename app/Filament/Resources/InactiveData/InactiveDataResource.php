@@ -9,6 +9,7 @@ use App\Filament\Resources\InactiveDataResource\Pages\ManageInactiveData as Page
 // use App\Filament\Resources\InactiveData\Schemas\InactiveDataForm;
 // use App\Filament\Resources\InactiveData\Tables\InactiveDataTable;
 use App\Models\Employee;
+use App\Models\User;
 // use App\Models\InactiveData;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -23,6 +24,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 // use Illuminate\Database\Query\Builder;
@@ -39,10 +41,27 @@ class InactiveDataResource extends Resource
     protected static ?int $navigationSort = 5;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBoxXMark;
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->where('module', 'SUPERADMIN')
+            ->exists();
+    }
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->columns([
                 TextColumn::make('module_type')
                     ->label('Module')

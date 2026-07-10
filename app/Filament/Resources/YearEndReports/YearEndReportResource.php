@@ -9,6 +9,7 @@ use App\Filament\Resources\YearEndReports\Pages\ListYearEndReports;
 use App\Filament\Resources\YearEndReports\Schemas\YearEndReportForm;
 use App\Filament\Resources\YearEndReports\Tables\YearEndReportsTable;
 use App\Models\Category;
+use App\Models\User;
 use App\Models\YearEndReport;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -44,6 +45,32 @@ class YearEndReportResource extends Resource
     protected  static string|UnitEnum|null $navigationGroup = 'Report Management';
     protected static ?string $navigationLabel = 'Year End';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn(
+                'module',
+                [
+                    'SUPERADMIN',
+                    'IMPORT',
+                    'PAYROLLADMINWEEKLY',
+                    'PAYROLLADMINMONTHLY',
+                    'PAYROLLSUBCONWEEKLY',
+                    'PAYROLLSUBCONMONTHLY',
+                    'OFFICEMANAGER',
+                ]
+            )
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return  $schema
@@ -264,11 +291,11 @@ class YearEndReportResource extends Resource
                     ->size('xs')
                     ->outlined(),
             ]);
-            // ->bulkActions([
-            //     BulkActionGroup::make([
-            //         DeleteBulkAction::make(),
-            //     ]),
-            // ]);
+        // ->bulkActions([
+        //     BulkActionGroup::make([
+        //         DeleteBulkAction::make(),
+        //     ]),
+        // ]);
     }
 
     public static function getRelations(): array

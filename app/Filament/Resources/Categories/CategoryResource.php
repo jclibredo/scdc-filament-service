@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Categories;
 
 use App\Filament\Resources\Categories\Pages\ListCategories;
 use App\Models\Category;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -35,10 +36,24 @@ class CategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static ?string $recordTitleAttribute = 'Earnings Category';
-    protected static ?string $navigationLabel = 'System Categories';
+    // protected static ?string $recordTitleAttribute = 'Earnings Category';
+    protected static ?string $navigationLabel = 'Categories';
     protected static ?string $pluralModelLabel = 'System Category Data';
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema

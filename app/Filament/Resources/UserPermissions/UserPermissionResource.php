@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UserPermissions;
 
 use App\Filament\Resources\UserPermissions\Pages\ListUserPermissions;
+use App\Models\User;
 use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -18,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
 
@@ -30,6 +32,21 @@ class UserPermissionResource extends Resource
     protected static ?string $navigationLabel = 'Role';
     protected static ?string $pluralModelLabel = 'User Role Data';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->where('module', 'SUPERADMIN')
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -43,14 +60,23 @@ class UserPermissionResource extends Resource
                     ->schema([
                         // Select User via Relationship
                         Select::make('user_id')
-                            ->relationship('userDetails', 'name')
+                            // ->relationship('userDetails', 'name')
+                            ->relationship(
+                                name: 'userDetails',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn($query) => $query->where('id', '!=', Auth::user()->id)
+                                    ->where('status', true)
+                            )
                             ->searchable()
                             ->preload()
+                            ->searchDebounce(500)
                             ->required()
+                            ->native(false)
                             ->label('User'),
 
                         // Select Module with hardcoded options
                         Select::make('module')
+                            ->label('Module Permission')
                             ->options([
                                 'IMPORT' => 'Data Importing',
                                 'EXPORT' => 'Data Exporting',
@@ -63,17 +89,15 @@ class UserPermissionResource extends Resource
                                 'SUPERADMIN' => 'System Administrator'
                             ])
                             ->required()
-                            ->label('Module Permission')
-                            // Ensures the user_id + module combination is unique
-                            ->unique(
-                                table: 'user_permissions',
-                                column: 'module',
-                                modifyRuleUsing: function (Unique $rule, Get $get) {
-                                    return $rule->where('user_id', $get('user_id'));
-                                },
-                                ignoreRecord: true // Allows editing the record without failing validation
-                            )
-                            ->label('Module Permission'),
+                            ->native(false)
+                            // 1. Dynamic casting context for Multiple selection vs single row editing
+                            ->multiple(fn(?UserPermission $record) => $record === null)
+                            ->afterStateHydrated(function (Select $component, ?UserPermission $record) {
+                                if ($record) {
+                                    // Set string value if editing an existing table row
+                                    $component->state($record->module);
+                                }
+                            }),
                     ])
             ]);
     }
@@ -84,6 +108,15 @@ class UserPermissionResource extends Resource
             ->extraAttributes([
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
+            ->recordUrl(null)
+            ->query(function () {
+                $user = Auth::user();
+                if (!$user) {
+                    return UserPermission::whereRaw('1 = 0');
+                }
+                return UserPermission::whereNot('user_id', $user->id)
+                    ->orderBy('module', 'asc');
+            })
             ->columns([
                 TextColumn::make('userDetails.name')
                     ->label('User')

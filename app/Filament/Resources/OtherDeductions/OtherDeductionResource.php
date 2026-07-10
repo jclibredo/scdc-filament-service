@@ -4,6 +4,7 @@ namespace App\Filament\Resources\OtherDeductions;
 
 use App\Filament\Resources\OtherDeductions\Pages\ListOtherDeductions;
 use App\Models\OtherDeduction;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -31,7 +32,21 @@ class OtherDeductionResource extends Resource
     protected static ?string $recordTitleAttribute = 'OtherDeduction';
     protected static ?string $navigationLabel = 'Other Deductions';
     protected static ?string $pluralModelLabel = 'Other Deductions Category Data';
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([

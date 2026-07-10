@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Skills;
 
 use App\Filament\Resources\Skills\Pages\ListSkills;
 use App\Models\Skill;
+use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -30,7 +31,21 @@ class SkillResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::FolderPlus;
 
     protected static ?string $recordTitleAttribute = 'Skill';
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+        // If $user is an integer (ID), fetch the actual User model from the database
+        if (is_int($user)) {
+            $user = User::find($user);
+        }
+        // Check if we have a valid User model instance now
+        if (! $user instanceof User) {
+            return false;
+        }
+        return $user->userPermissions()
+            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->exists();
+    }
     public static function form(Schema $schema): Schema
     {
         // return SkillForm::configure($schema);
