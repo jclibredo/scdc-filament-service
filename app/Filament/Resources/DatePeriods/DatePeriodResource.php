@@ -64,7 +64,8 @@ class DatePeriodResource extends Resource
                     'PAYROLLADMINWEEKLY',
                     'PAYROLLADMINMONTHLY',
                     'PAYROLLSUBCONWEEKLY',
-                    'PAYROLLSUBCONMONTHLY'
+                    'PAYROLLSUBCONMONTHLY',
+                    'OFFICEMANAGER',
                 ]
             )
             ->exists();
@@ -97,6 +98,34 @@ class DatePeriodResource extends Resource
                                     ->where('cat', 'EMPLOYEE_TYPE')
                                     ->pluck('name', 'id');
                             })
+                            ->default(function () {
+                                $user = Auth::user();
+                                if (!$user) return null;
+                                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+                                if ($isSuperAdmin) return null; // Or set a specific default for Super Admin if preferred
+                                $hasAdminPermission = $user->userPermissions()->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])->exists();
+                                $hasSubConPermission = $user->userPermissions()->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])->exists();
+                                // If they only have SUB-CON permissions, default to the SUB-CON category ID
+                                if ($hasSubConPermission && !$hasAdminPermission) {
+                                    return Category::where('cat', 'EMPLOYEE_TYPE')->where('name', 'SUB-CON')->value('id');
+                                }
+                                // If they only have ADMIN permissions, default to the ADMIN category ID
+                                if ($hasAdminPermission && !$hasSubConPermission) {
+                                    return Category::where('cat', 'EMPLOYEE_TYPE')->where('name', 'ADMIN')->value('id');
+                                }
+
+                                return null;
+                            })
+                            ->disabled(function () {
+                                $user = Auth::user();
+                                if (!$user) return false;
+                                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+                                if ($isSuperAdmin) return false; // Super admin can always edit
+                                $hasAdminPermission = $user->userPermissions()->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])->exists();
+                                $hasSubConPermission = $user->userPermissions()->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])->exists();
+                                return ($hasAdminPermission xor $hasSubConPermission);
+                            })
+                            ->dehydrated()
                             ->searchable()
                             ->preload()
                             ->live()
@@ -185,7 +214,7 @@ class DatePeriodResource extends Resource
                 //     ->where('status', true);
                 // Start building the base query
                 // Check if we have a valid User model instance now
-                if (! $user instanceof \App\Models\User) {
+                if (! $user instanceof User) {
                     return DatePeriod::whereRaw('1 = 0');
                 }
 

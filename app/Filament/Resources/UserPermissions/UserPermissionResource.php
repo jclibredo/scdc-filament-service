@@ -114,8 +114,14 @@ class UserPermissionResource extends Resource
                 if (!$user) {
                     return UserPermission::whereRaw('1 = 0');
                 }
-                return UserPermission::whereNot('user_id', $user->id)
-                    ->orderBy('module', 'asc');
+                // return UserPermission::whereNot('user_id', $user->id)
+                //     ->orderBy('module', 'asc');
+                // Join the user table to allow proper ordering by user name
+                return UserPermission::query()
+                    ->select('user_permissions.*') // Avoid column collision issues
+                    ->join('users', 'user_permissions.user_id', '=', 'users.id')
+                    ->whereNot('user_permissions.user_id', $user->id)
+                    ->orderBy('users.name', 'asc');
             })
             ->columns([
                 TextColumn::make('userDetails.name')

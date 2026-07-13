@@ -3,20 +3,20 @@
 namespace App\Filament\Resources\YearEndReports;
 
 use App\Filament\Resources\ThirteenthMonths\ThirteenthMonthResource;
-use App\Filament\Resources\YearEndReports\Pages\CreateYearEndReport;
-use App\Filament\Resources\YearEndReports\Pages\EditYearEndReport;
+// use App\Filament\Resources\YearEndReports\Pages\CreateYearEndReport;
+// use App\Filament\Resources\YearEndReports\Pages\EditYearEndReport;
 use App\Filament\Resources\YearEndReports\Pages\ListYearEndReports;
-use App\Filament\Resources\YearEndReports\Schemas\YearEndReportForm;
-use App\Filament\Resources\YearEndReports\Tables\YearEndReportsTable;
+// use App\Filament\Resources\YearEndReports\Schemas\YearEndReportForm;
+// use App\Filament\Resources\YearEndReports\Tables\YearEndReportsTable;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\YearEndReport;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
+// use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
+// use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -30,8 +30,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
+// use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+// use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -61,7 +63,7 @@ class YearEndReportResource extends Resource
                 'module',
                 [
                     'SUPERADMIN',
-                    'IMPORT',
+                    // 'IMPORT',
                     'PAYROLLADMINWEEKLY',
                     'PAYROLLADMINMONTHLY',
                     'PAYROLLSUBCONWEEKLY',
@@ -113,6 +115,34 @@ class YearEndReportResource extends Resource
                                     ->where('cat', 'EMPLOYEE_TYPE')
                                     ->pluck('name', 'id');
                             })
+                            ->default(function () {
+                                $user = Auth::user();
+                                if (!$user) return null;
+                                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+                                if ($isSuperAdmin) return null; // Or set a specific default for Super Admin if preferred
+                                $hasAdminPermission = $user->userPermissions()->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])->exists();
+                                $hasSubConPermission = $user->userPermissions()->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])->exists();
+                                // If they only have SUB-CON permissions, default to the SUB-CON category ID
+                                if ($hasSubConPermission && !$hasAdminPermission) {
+                                    return Category::where('cat', 'EMPLOYEE_TYPE')->where('name', 'SUB-CON')->value('id');
+                                }
+                                // If they only have ADMIN permissions, default to the ADMIN category ID
+                                if ($hasAdminPermission && !$hasSubConPermission) {
+                                    return Category::where('cat', 'EMPLOYEE_TYPE')->where('name', 'ADMIN')->value('id');
+                                }
+
+                                return null;
+                            })
+                            ->disabled(function () {
+                                $user = Auth::user();
+                                if (!$user) return false;
+                                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+                                if ($isSuperAdmin) return false; // Super admin can always edit
+                                $hasAdminPermission = $user->userPermissions()->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])->exists();
+                                $hasSubConPermission = $user->userPermissions()->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])->exists();
+                                return ($hasAdminPermission xor $hasSubConPermission);
+                            })
+                            ->dehydrated()
                             ->searchable()
                             ->preload()
                             ->live()
@@ -194,10 +224,41 @@ class YearEndReportResource extends Resource
                 }
                 $query = YearEndReport::query()
                     ->where('status', true);
+                $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+
+                if (!$isSuperAdmin) {
+                    // Check for specific Administrative payroll permissions
+                    $hasAdminPermission = $user->userPermissions()
+                        ->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])
+                        ->exists();
+
+                    // Check for specific Sub-Contractor payroll permissions
+                    $hasSubConPermission = $user->userPermissions()
+                        ->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])
+                        ->exists();
+
+                    // Filter database query based on the active structural permission types
+                    $query->whereHas('employeeTypeCategory', function ($q) use ($hasAdminPermission, $hasSubConPermission) {
+                        $q->where(function ($subQuery) use ($hasAdminPermission, $hasSubConPermission) {
+                            if ($hasAdminPermission) {
+                                $subQuery->orWhere('name', 'ADMIN');
+                            }
+                            if ($hasSubConPermission) {
+                                $subQuery->orWhere('name', 'SUB-CON');
+                            }
+
+                            // If they have neither permission, make sure they see nothing
+                            if (!$hasAdminPermission && !$hasSubConPermission) {
+                                $subQuery->whereRaw('1 = 0');
+                            }
+                        });
+                    });
+                }
                 $code = session('session_yearendreportspid');
                 if ($code) {
                     $query->where('code', $code);
                 }
+                // 1. Superadmin has bypass access to see everything
                 return $query;
             })
             ->columns([
@@ -256,9 +317,56 @@ class YearEndReportResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                TernaryFilter::make('status'),
+                // SelectFilter::make('empstatus')
+                //     ->options(fn() => Category::where('cat', 'EMPLOYEE_STATUS')->pluck('name', 'name')),
+
+                // SelectFilter::make('emptype')
+                //     ->options(fn() => Category::where('cat', 'EMPLOYEE_TYPE')->pluck('name', 'name'))
+                //     ->hidden(function () {
+                //         $user = Auth::user();
+                //         if (!$user) return false;
+
+                //         // Super Admins can filter everything, so keep it visible for them
+                //         $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
+                //         if ($isSuperAdmin) return false;
+
+                //         $hasAdminPermission = $user->userPermissions()
+                //             ->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])
+                //             ->exists();
+
+                //         $hasSubConPermission = $user->userPermissions()
+                //             ->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])
+                //             ->exists();
+
+                //         // Hide this filter entirely if they only have one of the roles.
+                //         // Because your main query() code blocks the other group automatically, 
+                //         // they don't need a filter dropdown to change it.
+                //         return ($hasAdminPermission xor $hasSubConPermission);
+                //     }),
+
+                // 1. FILTER: Employee Type (Filtered by Category: EMPLOYEE_TYPE)
+                SelectFilter::make('empstatus')
+                    ->label('Employee Type')
+                    ->relationship(
+                        name: 'category',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_TYPE')
+                    )
+                    ->preload()
+                    ->placeholder('All Employee Types'),
+
+                // 2. FILTER: Employment Status (Filtered by Category: EMPLOYEE_STATUS)
                 SelectFilter::make('emptype')
-                    ->options(fn() => Category::where('cat', 'EMPLOYEE_TYPE')->pluck('name', 'name')),
+                    ->label('Employment Status')
+                    ->relationship(
+                        name: 'employeeTypeCategory',
+                        titleAttribute: 'name',
+                        // 💡 Scopes down the drop-down list to ONLY show items under this category
+                        modifyQueryUsing: fn(Builder $query) => $query->where('cat', 'EMPLOYEE_STATUS')
+                    )
+                    ->preload()
+                    ->placeholder('All Employee Statuses'),
             ])
             ->actions([
                 ActionGroup::make([

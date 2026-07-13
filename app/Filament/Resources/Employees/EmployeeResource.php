@@ -10,7 +10,7 @@ use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
-use App\Models\EmpSchedule;
+// use App\Models\EmpSchedule;
 use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
@@ -156,8 +156,6 @@ class EmployeeResource extends Resource
                             ])->rows(3),
                         DatePicker::make('datehired')->required(),
                         DatePicker::make('dateseperated'),
-
-
                         Select::make('employeetype')
                             ->label('Employee Type')
                             ->options(function () {
