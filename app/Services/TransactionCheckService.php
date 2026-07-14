@@ -12,8 +12,10 @@ use App\Models\Holiday;
 use App\Models\OtherDeduction;
 use App\Models\Project;
 use App\Models\Skill;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
+use App\Models\User;
+use App\Models\YearEndReport;
+// use Filament\Actions\Action;
+// use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 
 class TransactionCheckService
@@ -21,6 +23,30 @@ class TransactionCheckService
     /**
      * Check if an Employee has existing transactional data.
      */
+    public static function hasYearEndRepTransactions(String $code): bool
+    {
+        $yearendcode = $code ?? 'NA';
+        // Returns true if they have entries inside the activity_logs table
+        return DB::table('thirteenth_months')
+            ->where('status', false)
+            ->where('yearendrepid', $yearendcode)->exists();
+    }
+
+
+    public static function hasUserTransactions(User $user): bool
+    {
+        $id = $user->id;
+        // Returns true if they have entries inside the activity_logs table
+        return DB::table('activity_logs')->where('user_id', $id)->exists();
+    }
+
+    public static function hasYearEndTransactions(YearEndReport $yearendrep): bool
+    {
+        $codeid = $yearendrep->code;
+        // Returns true if they have entries inside the activity_logs table
+        return DB::table('thirteenth_months')->where('yearendcode', $codeid)->exists();
+    }
+
     public static function hasEmployeeTransactions(Employee $employee): bool
     {
         $id = $employee->employeeid;

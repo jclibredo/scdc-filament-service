@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\YearEndReports\Pages;
 
 use App\Filament\Resources\YearEndReports\YearEndReportResource;
+use App\Models\ActivityLog;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListYearEndReports extends ListRecords
 {
@@ -20,6 +22,16 @@ class ListYearEndReports extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->after(function ($record) {
+                    // $record contains the newly created YearEndReport model instance
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Created a new year-end report code: {$record->code} (ID: {$record->id})",
+                        'module'    => 'Year-End Reports',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+                })
                 ->icon('heroicon-m-plus-circle'),
 
             Action::make('refresh')
@@ -31,7 +43,7 @@ class ListYearEndReports extends ListRecords
                 ->outlined()
                 ->visible(
                     fn() =>
-                    session()->has('session_yearendreportspid') 
+                    session()->has('session_yearendreportspid')
                 )
                 ->action(function () {
                     session()->forget([

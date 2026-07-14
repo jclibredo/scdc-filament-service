@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\DatePeriods\Pages;
 
 use App\Filament\Resources\DatePeriods\DatePeriodResource;
+use App\Models\ActivityLog;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListDatePeriods extends ListRecords
 {
@@ -20,6 +22,16 @@ class ListDatePeriods extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->after(function ($record) {
+                    // 5. Log New Date Period Creation
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Configured a new processing Date Period: Code [{$record->code}] ({$record->datefrom} to {$record->dateto}) | Baseline OT Rate: {$record->overtime_rate}%",
+                        'module'    => 'Report Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+                })
                 ->icon('heroicon-m-plus-circle'),
 
             Action::make('refresh')

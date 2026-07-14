@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EmpSchedules;
 // use App\Filament\Resources\EmpSchedules\Pages\CreateEmpSchedule;
 // use App\Filament\Resources\EmpSchedules\Pages\EditEmpSchedule;
 use App\Filament\Resources\EmpSchedules\Pages\ListEmpSchedules;
+use App\Models\ActivityLog;
 // use App\Filament\Resources\EmpSchedules\Schemas\EmpScheduleForm;
 // use App\Filament\Resources\EmpSchedules\Tables\EmpSchedulesTable;
 use App\Models\Employee;
@@ -208,7 +209,7 @@ class EmpScheduleResource extends Resource
             ->recordUrl(null)
             ->query(function () {
                 $user = Auth::user();
-                  if (!$user) {
+                if (!$user) {
                     return EmpSchedule::whereRaw('1 = 0');
                 }
                 // Eager load the relationships
@@ -237,6 +238,15 @@ class EmpScheduleResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated shift schedule for Employee ID [{$record->employeeid}]: In: {$record->timein} | Out: {$record->timeout} ({$record->workingHours} hrs) (ID: {$record->id})",
+                                'module'    => 'Schedule Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         // ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
                         ->label('Update'),
                     Action::make('deactivate')
@@ -251,6 +261,16 @@ class EmpScheduleResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 1. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated shift schedule for Employee ID [{$record->employeeid}] due to active transactions (ID: {$record->id})",
+                                'module'    => 'Schedule Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
+                            // 2. Display notification toast
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()
@@ -259,6 +279,15 @@ class EmpScheduleResource extends Resource
                         // 👁️ Only visible if it has transactions AND is currently active
                         ->visible(fn($record) => TransactionCheckService::hasScheduleTransactions($record) && ($record->status === true || $record->status == 1)),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted shift schedule category for Employee ID [{$record->employeeid}] (ID: {$record->id})",
+                                'module'    => 'Schedule Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasScheduleTransactions($record))
                         ->label('Remove'),
                 ])

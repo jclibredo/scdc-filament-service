@@ -3,13 +3,17 @@
 namespace App\Filament\Resources\Users;
 
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\TransactionCheckService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -133,9 +137,60 @@ class UserResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->label('Update'),
+                        ->label('Update')
+                        ->visible(fn($record) => !TransactionCheckService::hasUserTransactions($record))
+                        ->after(function ($record) {
+                            // Logs the update activity after the user details are successfully saved
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated user account: {$record->email} (ID: {$record->id})",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        }),
                     DeleteAction::make()
-                        ->label('Remove'),
+                        ->label('Remove')
+                        ->visible(fn($record) => !TransactionCheckService::hasUserTransactions($record))
+                        ->after(function ($record) {
+                            // Logs the deletion activity before the model is completely flushed from memory
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted user account: {$record->email} (ID: {$record->id})",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        }),
+
+                    Action::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('Deactivate User')
+                        ->modalDescription('This user has system activity logs and cannot be deleted. Deactivating their account will restrict login access. Proceed?')
+                        ->modalSubmitActionLabel('Yes, deactivate user')
+                        ->action(function ($record) {
+                            // 1. Change user account status to inactive
+                            $record->status = false;
+                            $record->save();
+                            // 2. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated user due to active system logs: {$record->name} (Email: {$record->email}, ID: {$record->id})",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                            // 3. Trigger toaster toast notification confirmation
+                            Notification::make()
+                                ->title('User successfully deactivated.')
+                                ->warning()
+                                ->send();
+                        })
+                        // 👁️ Only visible if they HAVE logs AND are currently active
+                        ->visible(fn($record) => TransactionCheckService::hasUserTransactions($record) && ($record->status === true || $record->status == 1)),
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')

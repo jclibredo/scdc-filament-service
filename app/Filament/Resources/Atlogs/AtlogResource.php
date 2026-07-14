@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Atlogs;
 
 // use App\Filament\Resources\Atlogs\Pages\EditAtlog;
 use App\Filament\Resources\Atlogs\Pages\ListAtlogs;
+use App\Models\ActivityLog;
 use App\Models\Atlog;
 use App\Models\DatePeriod;
 use App\Models\Employee;
@@ -54,12 +55,15 @@ class AtlogResource extends Resource
             return false;
         }
         return $user->userPermissions()
-            ->whereIn('module', 
-            [
-            'SUPERADMIN',
-            'IMPORT',
-            'PAYROLLADMINWEEKLY',
-            'PAYROLLADMINMONTHLY'])
+            ->whereIn(
+                'module',
+                [
+                    'SUPERADMIN',
+                    'IMPORT',
+                    'PAYROLLADMINWEEKLY',
+                    'PAYROLLADMINMONTHLY'
+                ]
+            )
             ->exists();
     }
     public static function form(Schema $schema): Schema
@@ -423,8 +427,37 @@ class AtlogResource extends Resource
                     // ViewAction::make()
                     //     ->label('Details'),
                     EditAction::make()
+                        ->after(function (Atlog $record) {
+                            // Construct a detailed log descriptive of the modification
+                            $activityLogMessage = "Updated Attendance Log for Employee ID: {$record->user_id} on " . Carbon::parse($record->recorded_at)->format('M d, Y h:i A') . ". New Verify Type: " . match ($record->verification_mode) {
+                                0 => 'Check-In',
+                                1 => 'Check-Out',
+                                2 => 'Break Out',
+                                3 => 'Break In',
+                                default => "Code ({$record->verification_mode})",
+                            };
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => $activityLogMessage,
+                                'module'    => 'Timekeeping Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function (Atlog $record) {
+                            // Log what was removed before the object completely leaves the tracking scope
+                            $activityLogMessage = "Removed Attendance Log entry for Employee ID: {$record->user_id} recorded at " . Carbon::parse($record->recorded_at)->format('M d, Y h:i A');
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => $activityLogMessage,
+                                'module'    => 'Timekeeping Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->label('Remove'),
                 ])
                     ->label('Action')

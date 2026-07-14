@@ -6,11 +6,13 @@ use App\Filament\Resources\ThirteenthMonths\ThirteenthMonthResource;
 // use App\Filament\Resources\YearEndReports\Pages\CreateYearEndReport;
 // use App\Filament\Resources\YearEndReports\Pages\EditYearEndReport;
 use App\Filament\Resources\YearEndReports\Pages\ListYearEndReports;
+use App\Models\ActivityLog;
 // use App\Filament\Resources\YearEndReports\Schemas\YearEndReportForm;
 // use App\Filament\Resources\YearEndReports\Tables\YearEndReportsTable;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\YearEndReport;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -225,18 +227,15 @@ class YearEndReportResource extends Resource
                 $query = YearEndReport::query()
                     ->where('status', true);
                 $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
-
                 if (!$isSuperAdmin) {
                     // Check for specific Administrative payroll permissions
                     $hasAdminPermission = $user->userPermissions()
                         ->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])
                         ->exists();
-
                     // Check for specific Sub-Contractor payroll permissions
                     $hasSubConPermission = $user->userPermissions()
                         ->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])
                         ->exists();
-
                     // Filter database query based on the active structural permission types
                     $query->whereHas('employeeTypeCategory', function ($q) use ($hasAdminPermission, $hasSubConPermission) {
                         $q->where(function ($subQuery) use ($hasAdminPermission, $hasSubConPermission) {
@@ -246,7 +245,6 @@ class YearEndReportResource extends Resource
                             if ($hasSubConPermission) {
                                 $subQuery->orWhere('name', 'SUB-CON');
                             }
-
                             // If they have neither permission, make sure they see nothing
                             if (!$hasAdminPermission && !$hasSubConPermission) {
                                 $subQuery->whereRaw('1 = 0');
@@ -317,33 +315,6 @@ class YearEndReportResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // SelectFilter::make('empstatus')
-                //     ->options(fn() => Category::where('cat', 'EMPLOYEE_STATUS')->pluck('name', 'name')),
-
-                // SelectFilter::make('emptype')
-                //     ->options(fn() => Category::where('cat', 'EMPLOYEE_TYPE')->pluck('name', 'name'))
-                //     ->hidden(function () {
-                //         $user = Auth::user();
-                //         if (!$user) return false;
-
-                //         // Super Admins can filter everything, so keep it visible for them
-                //         $isSuperAdmin = $user->userPermissions()->where('module', 'SUPERADMIN')->exists();
-                //         if ($isSuperAdmin) return false;
-
-                //         $hasAdminPermission = $user->userPermissions()
-                //             ->whereIn('module', ['PAYROLLADMINWEEKLY', 'PAYROLLADMINMONTHLY'])
-                //             ->exists();
-
-                //         $hasSubConPermission = $user->userPermissions()
-                //             ->whereIn('module', ['PAYROLLSUBCONWEEKLY', 'PAYROLLSUBCONMONTHLY'])
-                //             ->exists();
-
-                //         // Hide this filter entirely if they only have one of the roles.
-                //         // Because your main query() code blocks the other group automatically, 
-                //         // they don't need a filter dropdown to change it.
-                //         return ($hasAdminPermission xor $hasSubConPermission);
-                //     }),
-
                 // 1. FILTER: Employee Type (Filtered by Category: EMPLOYEE_TYPE)
                 SelectFilter::make('empstatus')
                     ->label('Employee Type')
@@ -371,15 +342,37 @@ class YearEndReportResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->label('Update'),
+                        ->visible(fn($record) => !TransactionCheckService::hasYearEndTransactions($record))
+                        ->label('Update')
+                        ->after(function ($record) {
+                            // Logs the update activity after the changes have successfully saved
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated year-end report code: {$record->code} (ID: {$record->id})",
+                                'module'    => 'Year-End Reports',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        }),
                     DeleteAction::make()
-                        ->label('Remove'),
+                        ->visible(fn($record) => !TransactionCheckService::hasYearEndTransactions($record))
+                        ->label('Remove')
+                        ->after(function ($record) {
+                            // Logs the deletion activity. (The $record data is still accessible in memory)
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted year-end report code: {$record->code} (ID: {$record->id})",
+                                'module'    => 'Year-End Reports',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        }),
+
                     Action::make('proceedToPayroll')
                         ->label('Process')
                         ->color('warning')
                         ->icon('heroicon-m-arrow-right-circle')
                         ->action(function (YearEndReport $record) {
-
                             session([
                                 'session_yearendreportspid'  => $record->code,
                                 'session_partnersid'         => $record->partners,

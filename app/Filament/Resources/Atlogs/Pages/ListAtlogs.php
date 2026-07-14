@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Atlogs\Pages;
 
 use App\Filament\Resources\Atlogs\AtlogResource;
 use App\Filament\Resources\Payrolls\PayrollResource;
+use App\Models\ActivityLog;
 use App\Models\Atlog;
 use App\Models\Project;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Section;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
@@ -75,10 +77,20 @@ class ListAtlogs extends ListRecords
                 ->label('New Atlog')
                 ->color('success')
                 ->size('xs')
+                ->after(function ($record) {
+                    // 1. Log Manual Atlog Creation
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Manually created Biometric Log for User ID: [{$record->user_id}] | Project: {$record->project_code} | Recorded At: {$record->recorded_at}",
+                        'module'    => 'Timekeeping Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+                })
                 ->outlined()
                 ->icon('heroicon-m-plus-circle'),
 
-          
+
             Action::make('importAtlog')
                 ->label('Import .DAT File')
                 ->icon('heroicon-o-arrow-up-tray')
@@ -183,9 +195,24 @@ class ListAtlogs extends ListRecords
                     fclose($handle);
                     Storage::disk($disk)->delete($data['attlog_file']);
                     // Create a descriptive success message
-                    $bodyMessage = "Successfully imported <strong class='font-bold'>{$count}</strong> records.";
+                    // Log Batch Import Action
+                    $activityLogMessage = "Imported raw biometric file to project: [{$projectCode}]. Added: {$count} records";
                     if ($skippedCount > 0) {
-                        $bodyMessage .= "<br><span class='text-warning-600 dark:text-warning-400 font-medium'>Skipped {$skippedCount} duplicate rows.</span>";
+                        $activityLogMessage .= " | Skipped: {$skippedCount} duplicates";
+                    }
+
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => $activityLogMessage,
+                        'module'    => 'Timekeeping Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+
+                    // Success Notification with custom styling
+                    $bodyMessage = "Successfully imported <strong style='font-weight: 700;'>{$count}</strong> records.";
+                    if ($skippedCount > 0) {
+                        $bodyMessage .= "<br><span style='color: #d97706; font-weight: 500;'>Skipped {$skippedCount} duplicate rows.</span>";
                     }
                     Notification::make()
                         ->title('Import Completed')

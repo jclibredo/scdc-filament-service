@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Jobs\ProcessEmployeeCsv;
+use App\Models\ActivityLog;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
 use Filament\Actions\Action;
@@ -11,6 +12,7 @@ use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListEmployees extends ListRecords
 {
@@ -60,6 +62,14 @@ class ListEmployees extends ListRecords
                         'datestarted'     => $record->datehired,
                         'dateended'       => $record->dateseperated,
                         'status'          => $record->dateseperated === null ? true : false,
+                    ]);
+
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Registered new employee profile: {$record->lastname}, {$record->firstname} {$record->middlename} (Assigned ID: {$record->employeeid})",
+                        'module'    => 'Employee Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
                     ]);
                 })
                 ->icon('heroicon-m-plus-circle'),

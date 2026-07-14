@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UserPermissions;
 
 use App\Filament\Resources\UserPermissions\Pages\ListUserPermissions;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\UserPermission;
 use BackedEnum;
@@ -19,6 +20,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
@@ -157,13 +159,29 @@ class UserPermissionResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
-                        // ->disabled(fn()=> {
-
-
-                        // })
+                        ->after(function ($record) {
+                            // Logs the update details after the row updates
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated permission to '{$record->module}' for user: {$record->userDetails?->name}",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->label('Update'),
                     DeleteAction::make()
-                        ->label('Remove'),
+                        ->label('Remove')
+                        ->after(function ($record) {
+                            // Logs the deletion details before the record is completely purged
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Revoked permission '{$record->module}' from user: {$record->userDetails?->name}",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        }),
                 ])
                     ->label('Action')
                     ->icon('heroicon-m-chevron-down')
@@ -175,6 +193,20 @@ class UserPermissionResource extends Resource
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->after(function (Collection $records) {
+                            // Group bulk records to log them efficiently
+                            $logDetails = $records->map(function ($record) {
+                                return "'{$record->module}' from {$record->userDetails?->name}";
+                            })->implode(', ');
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Bulk revoked permissions: [{$logDetails}]",
+                                'module'    => 'User Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->label('Remove Permission'),
                 ])
                     ->label('BulkAction')

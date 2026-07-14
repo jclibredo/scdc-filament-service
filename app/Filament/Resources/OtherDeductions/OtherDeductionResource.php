@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OtherDeductions;
 
 use App\Filament\Resources\OtherDeductions\Pages\ListOtherDeductions;
+use App\Models\ActivityLog;
 use App\Models\OtherDeduction;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -62,8 +63,8 @@ class OtherDeductionResource extends Resource
                     TextInput::make('title')
                         ->label('Title')
                         ->extraInputAttributes([
-                            // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                            // Added '\\.' and '-' to permit periods and hyphens safely
+                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
                             'maxlength' => 30,
                         ])
@@ -119,6 +120,14 @@ class OtherDeductionResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 1. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated other deduction category due to active transactions: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Other-Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()
@@ -127,6 +136,24 @@ class OtherDeductionResource extends Resource
                         // 👁️ Only visible if it has transactions AND is currently active
                         ->visible(fn($record) => TransactionCheckService::hasOtherDeductionTransactions($record) && ($record->status === true || $record->status == 1)),
                     EditAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted other deduction category: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Other-Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated other deduction category: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Other-Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasOtherDeductionTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()

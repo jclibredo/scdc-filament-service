@@ -4,9 +4,11 @@ namespace App\Filament\Resources\EmpSchedules\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
+use App\Models\ActivityLog;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListEmpSchedules extends ListRecords
 {
@@ -45,6 +47,15 @@ class ListEmpSchedules extends ListRecords
                 ->button()
                 ->color('success')
                 ->size('xs')
+                ->after(function ($record) {
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Created a new shift schedule for Employee ID [{$record->employeeid}]: In: {$record->timein} | Out: {$record->timeout} ({$record->workingHours} Working Hours)",
+                        'module'    => 'Schedule Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+                })
                 ->outlined()
                 ->icon('heroicon-m-plus-circle'),
         ];

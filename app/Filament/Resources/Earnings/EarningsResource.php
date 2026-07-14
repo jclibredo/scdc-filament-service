@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Earnings;
 
 use App\Filament\Resources\Earnings\Pages\ListEarnings;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Earnings;
 use App\Models\Employee;
@@ -267,9 +268,33 @@ class EarningsResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->after(function ($record) {
+                            $empName = $record->employee ? "{$record->employee->lastname}, {$record->employee->firstname}" : 'Unknown Employee';
+                            $typeName = $record->category?->name ?? 'N/A';
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated earnings record for {$empName}: Type: {$typeName} | Amount: ₱" . number_format($record->amount, 2) . " | Freq: {$record->frequency} | Level: {$record->hierarchy}",
+                                'module'    => 'Financial Configuration',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasEarningTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            $empName = $record->employee ? "{$record->employee->lastname}, {$record->employee->firstname}" : 'Unknown Employee';
+                            $typeName = $record->category?->name ?? 'N/A';
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Permanently removed earnings record for {$empName}: Type: {$typeName} | Amount: ₱" . number_format($record->amount, 2) . " | Level: {$record->hierarchy}",
+                                'module'    => 'Financial Configuration',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasEarningTransactions($record))
                         ->label('Remove'),
 
@@ -285,6 +310,18 @@ class EarningsResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+
+                            $empName = $record->employee ? "{$record->employee->lastname}, {$record->employee->firstname}" : 'Unknown Employee';
+                            $typeName = $record->category?->name ?? 'N/A';
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated historic earnings allocation record for {$empName} (Type: {$typeName} | Value: ₱" . number_format($record->amount, 2) . ")",
+                                'module'    => 'Financial Configuration',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()

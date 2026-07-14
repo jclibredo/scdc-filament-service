@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Holidays;
 use App\Filament\Resources\Holidays\Pages\CreateHoliday;
 use App\Filament\Resources\Holidays\Pages\EditHoliday;
 use App\Filament\Resources\Holidays\Pages\ListHolidays;
+use App\Models\ActivityLog;
 use App\Models\Holiday;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -73,13 +74,13 @@ class HolidayResource extends Resource
                             ->required()
                             ->maxLength(25)
                             // 💡 FIXED REGEX: First character MUST be a letter (A-Z). Following characters can be letters, spaces, or hyphens.
-                            ->regex('/^[A-Z][A-Z\s\-]*$/')
+                            ->regex('/^[A-Z][A-Z\s\.-]*$/')
                             ->validationMessages([
                                 'regex' => 'The Holiday name must start with a letter and contain uppercase letters, spaces, and hyphens only.',
                                 'max' => 'The Holiday name cannot be longer than 25 characters.',
                             ])
                             ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[^a-zA-Z\s\-]/g, '').replace(/^\s+/g, '').toUpperCase()",
+                                'oninput' => "this.value = this.value.replace(/[^a-zA-Z\s\.-]/g, '').replace(/^\s+/g, '').toUpperCase()",
                                 'style' => 'text-transform: uppercase;'
                             ]),
 
@@ -140,6 +141,15 @@ class HolidayResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated payment rate/holiday: {$record->type} to {$record->percentage}% (ID: {$record->id})",
+                                'module'    => 'Payment Rate Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasHolidayTransactions($record))
                         ->label('Update'),
                     Action::make('deactivate')
@@ -154,6 +164,14 @@ class HolidayResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 1. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated payment rate/holiday due to active transactions: {$record->type} (ID: {$record->id})",
+                                'module'    => 'Payment Rate Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()
@@ -162,6 +180,15 @@ class HolidayResource extends Resource
                         // 👁️ Only visible if it has transactions AND is currently active
                         ->visible(fn($record) => TransactionCheckService::hasHolidayTransactions($record) && ($record->status === true || $record->status == 1)),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted payment rate/holiday: {$record->type} (ID: {$record->id})",
+                                'module'    => 'Payment Rate Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasHolidayTransactions($record))
                         ->label('Remove'),
                 ])

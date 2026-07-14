@@ -6,6 +6,7 @@ namespace App\Filament\Resources\InactiveData;
 // use App\Filament\Resources\InactiveData\Pages\EditInactiveData;
 // use App\Filament\Resources\InactiveData\Pages\ListInactiveData;
 use App\Filament\Resources\InactiveDataResource\Pages\ManageInactiveData as PagesManageInactiveData;
+use App\Models\ActivityLog;
 // use App\Filament\Resources\InactiveData\Schemas\InactiveDataForm;
 // use App\Filament\Resources\InactiveData\Tables\InactiveDataTable;
 use App\Models\Employee;
@@ -114,7 +115,22 @@ class InactiveDataResource extends Resource
                     ->action(function ($record) {
                         $record->status = true;
                         $record->save();
-
+                        // 1. Resolve dynamic data details for cleaner activity logs
+                        $recordType = class_basename($record);
+                        $details = match ($recordType) {
+                            'Employee' => "[$record->employeeid] " . ($record->fullname ?? $record->name),
+                            'Project'  => "[$record->code] $record->name",
+                            'Skill', 'Category', 'GovDeduction', 'OtherDeduction' => $record->name ?? $record->title ?? "ID: $record->id",
+                            default    => "ID: " . $record->getKey(),
+                        };
+                        // 2. Log activation activity
+                        ActivityLog::create([
+                            'user_id'   => Auth::id() ?? 'System',
+                            'activity'  => "Restored inactive {$recordType} record: {$details}",
+                            'module'    => 'Archive Management',
+                            'ipaddress' => request()->ip(),
+                            'windows'   => request()->userAgent(),
+                        ]);
                         Notification::make()
                             ->title('Record successfully restored to active status.')
                             ->success()
@@ -132,10 +148,36 @@ class InactiveDataResource extends Resource
                         ->modalDescription('Are you sure you want to restore all selected records back to an active status?')
                         ->action(function (Collection $records) {
                             // 🔄 Efficiently loop through and activate each selected model item
-                            $records->each(function ($record) {
+                            // $records->each(function ($record) {
+                            //     $record->status = true;
+                            //     $record->save();
+                            // });
+                            // 🔄 Efficiently loop through and activate each selected model item
+                            $records->each(function ($record) use (&$activatedDetails) {
                                 $record->status = true;
                                 $record->save();
+                                // Identify the item for structured logging
+                                $recordType = class_basename($record);
+                                $details = match ($recordType) {
+                                    'Employee' => "[$record->employeeid] " . ($record->fullname ?? $record->name),
+                                    'Project'  => "[$record->code] $record->name",
+                                    'Skill', 'Category', 'GovDeduction', 'OtherDeduction' => $record->name ?? $record->title ?? "ID: $record->id",
+                                    default    => "ID: " . $record->getKey(),
+                                };
+                                $activatedDetails[] = "{$recordType} ({$details})";
                             });
+
+                            // Log the bulk activation set in a single clean entry
+                            if (!empty($activatedDetails)) {
+                                $logString = implode(', ', $activatedDetails);
+                                ActivityLog::create([
+                                    'user_id'   => Auth::id() ?? 'System',
+                                    'activity'  => "Bulk restored inactive records: [{$logString}]",
+                                    'module'    => 'Utility Management',
+                                    'ipaddress' => request()->ip(),
+                                    'windows'   => request()->userAgent(),
+                                ]);
+                            }
 
                             Notification::make()
                                 ->title('Selected records successfully restored to active status.')

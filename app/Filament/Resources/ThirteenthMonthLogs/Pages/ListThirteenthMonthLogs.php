@@ -262,10 +262,6 @@ class ListThirteenthMonthLogs extends ListRecords
                 }),
 
 
-
-
-
-
         ];
     }
 }

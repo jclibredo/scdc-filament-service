@@ -78,9 +78,9 @@ class ProjectResource extends Resource
                         TextInput::make('name')
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
-                                'maxlength' => 30,
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
                             ])
                             ->label('Name')
                             ->required(),
@@ -89,7 +89,7 @@ class ProjectResource extends Resource
                             ->label('Address')
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
                                 'maxlength' => 100,
                             ])

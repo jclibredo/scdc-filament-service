@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Categories;
 
 use App\Filament\Resources\Categories\Pages\ListCategories;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -18,12 +19,10 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
@@ -70,20 +69,20 @@ class CategoryResource extends Resource
                             ->required()
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
                                 'maxlength' => 30,
                             ]),
                         Select::make('cat')
                             ->label('Category Type')
                             ->options([
-                                'PAYROLL' => 'Payroll',
-                                'EARNINGS' => 'Earnings',
-                                'ADJUSTMENT' => 'Adjustment',
-                                'DEDUCTION' => 'Deduction',
-                                'EMPLOYEE_STATUS' => 'Employee Status',
-                                'EMPLOYEE_TYPE' => 'Employee Type',
-                                'SUBCON' => 'Sub-Contractor Details'
+                                'PAYROLL' => 'PAYROLL',
+                                'EARNINGS' => 'EARNINGS',
+                                'ADJUSTMENT' => 'ADJUSTMENT',
+                                'DEDUCTION' => 'DEDUCTION',
+                                'EMPLOYEE_STATUS' => 'EMPLOYEE STATUS',
+                                'EMPLOYEE_TYPE' => 'EMPLOYEE TYPE',
+                                'SUBCON' => 'SUB-CONTRACTOR DETAILS'
                             ])
                             // 💡 Optional: Makes it searchable if your options list grows later
                             ->searchable()
@@ -153,9 +152,29 @@ class CategoryResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->after(function ($record) {
+                            // 1. Log Category Updates
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated System Category: [{$record->name}] | Type: {$record->cat} | Status: " . ($record->status ? 'ACTIVE' : 'INACTIVE'),
+                                'module'    => 'System Category Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasCategoryTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            // 2. Log Hard Deletions
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Permanently deleted System Category: [{$record->name}] (Type: {$record->cat})",
+                                'module'    => 'System Category Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasCategoryTransactions($record))
                         ->label('Remove'),
                     Action::make('deactivate')
@@ -170,6 +189,14 @@ class CategoryResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 3. Log Soft Deactivations
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated System Category: [{$record->name}] (Type: {$record->cat}) due to active transactions limit restriction",
+                                'module'    => 'System Category Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\DatePeriods;
 
 use App\Filament\Resources\DatePeriods\Pages\ListDatePeriods;
 use App\Filament\Resources\Payrolls\PayrollResource;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
@@ -391,6 +392,16 @@ class DatePeriodResource extends Resource
                             session(['session_partners' => $record->partners]);
                             session(['session_employeetype' => $record->employeetype]);
                             session(['session_employeestatus' => $record->category_id]);
+
+                            // 1. Log transition to Payroll Processing
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Initiated payroll processing run for Date Period Code [{$record->code}] ({$record->datefrom} to {$record->dateto})",
+                                'module'    => 'Date Period Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
                             // dd(session('session_periodcode'), session('session_partners'), session('session_employeetype'), session('session_employeestatus'));
                             return redirect(PayrollResource::getUrl('index'));
                         }),
@@ -468,6 +479,18 @@ class DatePeriodResource extends Resource
                                 }
                             });
 
+                            // 2. Fetch deduction titles for descriptive log trace
+                            $deductionTitles = GovDeduction::whereIn('id', $selectedDeductionIds)->pluck('title')->implode(', ');
+                            $appliedTrace = empty($deductionTitles) ? 'Cleared all deductions' : "Applied [{$deductionTitles}]";
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Synchronized mandatory deductions for Period [{$record->code}]: {$appliedTrace} across " . count($employeeIds) . " active employees",
+                                'module'    => 'Report Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
                             Notification::make()
                                 ->title('Government Contributions Synchronized')
                                 ->body('New items were added, while existing data was safely skipped.')
@@ -476,9 +499,29 @@ class DatePeriodResource extends Resource
                         }),
 
                     EditAction::make()
+                        ->after(function ($record) {
+                            // 3. Log Update Event
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated configuration timeline for Date Period [{$record->code}] ({$record->datefrom} to {$record->dateto}) | OT Rate: {$record->overtime_rate}%",
+                                'module'    => 'Report Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasDatePeriodTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            // 4. Log Removal Event
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Permanently deleted Date Period structural configurations for Code [{$record->code}] ({$record->datefrom} to {$record->dateto})",
+                                'module'    => 'Report Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasDatePeriodTransactions($record))
                         ->label('Remove'),
                 ])

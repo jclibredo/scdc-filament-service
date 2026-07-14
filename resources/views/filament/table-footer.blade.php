@@ -5,7 +5,7 @@
             <div style='display: flex; align-items: center; gap: 0.5rem;'>
                 <span style='width: 0.4rem; height: 0.4rem; background-color: #f59e0b; border-radius: 9999px;'></span>
                 <h3 style='font-size: 0.9rem; font-weight: 700; color: #111827; margin: 0; font-family: system-ui, sans-serif;'>
-                    {{ $empFullname }} <span style='font-family: monospace; color: #b45309; font-size: 0.85rem;'>{{ $yearendid }}</span>
+                    {{ $empFullname }} <span style='font-family: monospace; color: #b45309; font-size: 0.85rem;'>[{{ $empID }}]</span>
                 </h3>
             </div>
             <div style='display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;'>

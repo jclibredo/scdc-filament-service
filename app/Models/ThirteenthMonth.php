@@ -21,6 +21,8 @@ class ThirteenthMonth extends Model
         'allowance',
         'datestart',
         'dateend',
+        'yearendcode',
+        'status',
     ];
 
     /**
@@ -29,6 +31,7 @@ class ThirteenthMonth extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'status' => 'boolean',
         'allowance' => 'decimal:2',
         'earnings' => 'decimal:2',
         'datestart' => 'date',

@@ -37,112 +37,17 @@ use Illuminate\Support\HtmlString;
 class ThirteenthMonthResource extends Resource
 {
     protected static ?string $model = ThirteenthMonth::class;
-
-    // protected static string|BackedEnum|null $navigationIcon = Heroicon::Printer;
-    // protected  static string|UnitEnum|null $navigationGroup = 'Reports';
-    // protected static ?string $recordTitleAttribute = 'ThirteenthMonth';
-    // protected static ?string $navigationLabel = 'Year End Reports Logs';
     protected static ?string $modelLabel = '13Month and Incentives Reports';
     public static function shouldRegisterNavigation(): bool
     {
         return false;
     }
-
-    // public static function form(Schema $schema): Schema
-    // {
-    //     return $schema
-    //         ->schema([
-    //             Section::make('Date Period Configuration')
-    //                 ->extraAttributes([
-    //                     'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
-    //                 ])
-    //                 ->description('Manage employee type groups, payroll categories, and active timelines.')
-    //                 ->columns(2) // Aligns fields nicely in a 2-column grid layout
-    //                 ->columnSpanFull()
-    //                 ->schema([
-    //                     // 1. Period ID (Nullable as per migration)
-    //                     Select::make('periodid')
-    //                         ->label('Period')
-    //                         ->options(function () {
-    //                             return DatePeriod::query()
-    //                                 ->get()
-    //                                 ->mapWithKeys(function ($period) {
-    //                                     // Formatting dates safely if they are carbon instances or raw strings
-    //                                     $from = is_string($period->datefrom) ? date('Y-m-d', strtotime($period->datefrom)) : $period->datefrom?->format('Y-m-d');
-    //                                     $to = is_string($period->dateto) ? date('Y-m-d', strtotime($period->dateto)) : $period->dateto?->format('Y-m-d');
-
-    //                                     return [
-    //                                         $period->code => "{$from} to {$to} [{$period->code}]"
-    //                                     ];
-    //                                 });
-    //                         })
-    //                         ->searchable()
-    //                         ->preload()
-    //                         ->nullable(),
-
-    //                     // 2. Employee ID
-    //                     Select::make('employeeid')
-    //                         ->label('Employee')
-    //                         ->options(function () {
-    //                             return Employee::query()
-    //                                 ->get()
-    //                                 ->mapWithKeys(function ($employee) {
-    //                                     // Cleans up trailing/empty spaces if middlename is missing
-    //                                     $fullName = collect([$employee->firstname, $employee->middlename, $employee->lastname])
-    //                                         ->filter()
-    //                                         ->implode(' ');
-    //                                     return [
-    //                                         $employee->employeeid => "{$fullName} [{$employee->employeeid}]"
-    //                                     ];
-    //                                 });
-    //                         })
-    //                         ->searchable()
-    //                         ->preload()
-    //                         ->required(),
-    //                     // 6. Project
-    //                     TextInput::make('project')
-    //                         ->label('Project / Cost Center')
-    //                         ->required(),
-
-    //                     // 7. Allowance (Decimal)
-    //                     TextInput::make('allowance')
-    //                         ->label('Allowance')
-    //                         ->numeric()
-    //                         ->placeholder('0.00')
-    //                         ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/'])
-    //                         ->required(),
-
-    //                     // 8. Earnings (Renamed from total_amount)
-    //                     TextInput::make('earnings')
-    //                         ->label('Earnings')
-    //                         ->numeric()
-    //                         ->placeholder('0.00')
-    //                         ->rules(['regex:/^\d{1,10}(\.\d{1,2})?$/'])
-    //                         ->required(),
-
-    //                     // 9. Date Start (maps to model 'datestart', nullable)
-    //                     DatePicker::make('datestart')
-    //                         ->label('Date Start')
-    //                         ->nullable(),
-
-    //                     // 10. Date End (maps to model 'dateend', nullable)
-    //                     DatePicker::make('dateend')
-    //                         ->label('Date End')
-    //                         ->nullable(),
-
-    //                 ]),
-    //         ]);
-    // }
-
-
     public static function table(Table $table): Table
     {
 
         $yearendid     = session('session_yearendreportspid');
-        // $sessionpartners  = session('session_partnersid');
         $sessionType    = session('session_employeetypeid');
         $sessionStatus  = session('session_employeestatusid');
-        // $sessionproject    = session('session_projectid');
         $sessionReptype  = session('session_reptype');
         if (!$yearendid || !$sessionStatus || !$sessionType) {
             return $table;
@@ -297,26 +202,27 @@ class ThirteenthMonthResource extends Resource
                     ->badge()
                     ->color('info')
                     ->sortable(),
-                TextColumn::make('skill.title')->label('Skill'),
-                TextColumn::make('project.name')->label('Project'),
+                // TextColumn::make('skill.title')->label('Skill'),
+                // TextColumn::make('project.name')->label('Project'),
             ])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make()
-                        ->label('Update'),
-                    DeleteAction::make()
-                        ->label('Remove'),
+                    // EditAction::make()
+
+                    //     ->label('Update'),
+                    // DeleteAction::make()
+                    //     ->label('Remove'),
                     Action::make('proceedToPayroll')
                         ->label('Manage Reports')
                         ->color('warning')
                         ->icon('heroicon-m-cog')
                         ->action(function (Employee $record) {
-                            $yearendid     = session('session_yearendreportspid');
-                            $partners     = session('session_partnersid');
-                            $emptype     = session('session_employeetypeid');
-                            $empstatus     = session('session_employeestatusid');
-                            $projectid     = session('session_projectid');
-                            $rep_type     = session('session_reptype');
+                            $yearendid      = session('session_yearendreportspid');
+                            $partners       = session('session_partnersid');
+                            $emptype        = session('session_employeetypeid');
+                            $empstatus      = session('session_employeestatusid');
+                            $projectid      = session('session_projectid');
+                            $rep_type       = session('session_reptype');
 
                             if (!$yearendid || !$record->employeeid) {
                                 Notification::make()
@@ -378,6 +284,7 @@ class ThirteenthMonthResource extends Resource
                                         'periodid'     => $listdateperiod->id, // Using code as per your specification
                                         'employeeid'   => $record->employeeid,
                                         'yearendrepid' => $yearendid,
+                                        // 'yearendcode' => $yearendid,
                                     ],
                                     [
                                         // Dynamic metric columns to write/override

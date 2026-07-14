@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\GovDeductionLog;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
+use App\Services\TransactionCheckService;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\ActionGroup;
@@ -98,35 +99,8 @@ class ThirteenthMonthLogsResource extends Resource
                         // 9. Date Start (maps to model 'datestart', nullable)
                         DatePicker::make('datestart')
                             ->label('Date Start')
-                            // ->disabled(function (Get $get) {
-                            //     // 🔒 Disables this field if 'periodid' has a value filled in
-                            //     return filled($get('periodid'));
-                            // })
                             ->dehydrated()
                             ->live()
-                            // ->rules([
-                            //     function (Get $get) {
-                            //         return function (string $attribute, $value, $fail) {
-                            //             $yearEndCode = session('session_yearendreportspid');
-                            //             if (!$yearEndCode || !$value) {
-                            //                 return;
-                            //             }
-                            //             // Fetch target report boundary limits
-                            //             $report = YearEndReport::where('code', $yearEndCode)->first();
-
-                            //             if ($report && $report->datefrom && $report->dateto) {
-                            //                 $chosenDate = Carbon::parse($value);
-                            //                 $fromBound = Carbon::parse($report->datefrom);
-                            //                 $toBound = Carbon::parse($report->dateto);
-
-                            //                 // Check if date falls outside the session report window
-                            //                 if (! $chosenDate->between($fromBound, $toBound)) {
-                            //                     $fail("The Date Start must be between {$fromBound->format('Y-m-d')} and {$toBound->format('Y-m-d')}.");
-                            //                 }
-                            //             }
-                            //         };
-                            //     },
-                            // ])
                             ->minDate(function () {
                                 $yearEndCode = session('session_yearendreportspid');
                                 $report = YearEndReport::where('code', $yearEndCode)->first();
@@ -182,6 +156,8 @@ class ThirteenthMonthLogsResource extends Resource
                             ]),
                         Hidden::make('yearendrepid')
                             ->default(session('session_yearendreportspid')),
+                        // Hidden::make('yearendcode')
+                        //     ->default(session('session_yearendreportspid')),
 
                     ]),
             ]);
@@ -225,6 +201,7 @@ class ThirteenthMonthLogsResource extends Resource
             $enddate = $datePerioDetails->dateto
                 ? Carbon::parse($datePerioDetails->dateto)->format('M d, Y') : 'N/A';
             $details = [
+                "REPORT CODE: {$yearendid}",
                 "REPORT TYPE: {$rep_type}",
                 "DATE COVERED: {$startdate} - {$enddate}",
                 "EMP TYPE: {$emtype}",
@@ -274,6 +251,7 @@ class ThirteenthMonthLogsResource extends Resource
                 // 3. Return everything safely to the clean Blade view wrapper
                 return view('filament.table-footer', [
                     'empFullname' => $empFullname,
+                    'empID' => $sessionEmpId,
                     'yearendid' => $yearendid,
                     'formattedBadges' => $formattedBadges,
                     'adjustments' => $adjustments,
@@ -293,6 +271,11 @@ class ThirteenthMonthLogsResource extends Resource
                 if ($yearEndRepCode) {
                     // Assuming yearendrepid stores the code from the year-end configuration
                     $query->where('yearendrepid', $yearEndRepCode);
+                }
+                $sessionEmpId = session('session_empployeeid');
+                if ($sessionEmpId) {
+                    // Assuming yearendrepid stores the code from the year-end configuration
+                    $query->where('employeeid', $sessionEmpId);
                 }
                 return $query->orderBy('datestart');
             })
@@ -329,10 +312,16 @@ class ThirteenthMonthLogsResource extends Resource
             ->filters([])
             ->actions([
                 ActionGroup::make([
-                    // ViewAction::make(),
+                    ViewAction::make()
+                        ->visible(fn() =>
+                        TransactionCheckService::hasYearEndRepTransactions(session('session_yearendreportspid'))),
                     DeleteAction::make()
+                        ->visible(fn() =>
+                        !TransactionCheckService::hasYearEndRepTransactions(session('session_yearendreportspid')))
                         ->label('Remove'),
                     EditAction::make()
+                        ->visible(fn() =>
+                        !TransactionCheckService::hasYearEndRepTransactions(session('session_yearendreportspid')))
                         ->label('Update'),
                 ])
                     ->label('Action')

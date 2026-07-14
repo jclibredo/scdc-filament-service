@@ -6,10 +6,12 @@ use App\Filament\Resources\Earnings\EarningsResource;
 // use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
+use App\Models\ActivityLog;
 // use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
+use App\Models\Project;
 // use App\Models\EmpSchedule;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -91,21 +93,21 @@ class EmployeeResource extends Resource
                         TextInput::make('firstname')->required()->maxLength(255)
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z\\s]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
                                 'maxlength' => 50,
                             ]),
                         TextInput::make('middlename')->maxLength(255)
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z\\s]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
                                 'maxlength' => 50,
                             ]),
                         TextInput::make('lastname')->required()->maxLength(255)
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z\\s]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
                                 'maxlength' => 50,
                             ]),
@@ -293,6 +295,14 @@ class EmployeeResource extends Resource
                         ->icon('heroicon-o-banknotes')
                         ->action(function (Employee $record) {
                             session(['session_employee_id' => $record->employeeid]);
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Accessed financial records for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             return redirect(EarningsResource::getUrl('index'));
                         }),
 
@@ -375,6 +385,7 @@ class EmployeeResource extends Resource
                             $newProjectCode = $data['new_project_code'];
                             $dateEnded = $data['dateended'];     // 📅 From Section 1
                             $dateStarted = $data['datestarted']; // 📅 From Section 2
+                            $oldProjectName = $record->project?->name ?? 'None';
                             // 1. Process active assignment history logic
                             $currentHistory = EmployeeProjectHistory::where('employeeid', $record->employeeid)
                                 ->where('projectid', $record->project_id)
@@ -429,6 +440,16 @@ class EmployeeResource extends Resource
                                 'project_code' => $newProjectCode,
                             ]);
 
+                            // Resolve name of new project for explicit logging
+                            $newProjectName = Project::where('id', $newProjectCode)->value('name') ?? $newProjectCode;
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Transferred employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid}) from project '{$oldProjectName}' to '{$newProjectName}'",
+                                'module'    => 'Utility Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             Notification::make()
                                 ->title('Assignment updated and structural history logged.')
                                 ->success()
@@ -449,11 +470,25 @@ class EmployeeResource extends Resource
                             // Store the values in the session temporarily
                             session(['session_employee_id' => $record->employeeid]);
                             // Redirect to the create page WITHOUT query parameters
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Accessed operational work schedule for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             return redirect(EmpScheduleResource::getUrl('index'));
                         }),
 
                     EditAction::make()
                         ->after(function (Employee $record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated core details for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             // 1. Handle termination logic immediately if dateseperated is set
                             if ($record->dateseperated !== null) {
                                 EmployeeProjectHistory::where('employeeid', $record->employeeid)
@@ -508,6 +543,14 @@ class EmployeeResource extends Resource
                                 // 2. Clear out the main employee record
                                 $record->delete();
                             });
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Permanently deleted employee file and historical tracking for: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                         }),
 
                     Action::make('deactivate')
@@ -522,6 +565,13 @@ class EmployeeResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated active profile record for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()

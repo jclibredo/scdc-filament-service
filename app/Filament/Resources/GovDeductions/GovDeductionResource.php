@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\GovDeductions;
 
 use App\Filament\Resources\GovDeductions\Pages\ListGovDeductions;
+use App\Models\ActivityLog;
 use App\Models\GovDeduction;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -68,12 +69,12 @@ class GovDeductionResource extends Resource
                         ->label('Title')
                         ->required()
                         ->extraInputAttributes([
-                            // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 25);",
-                            'maxlength' => 25,
+                            // Added '\\.' and '-' to permit periods and hyphens safely
+                            'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
+                    .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
+                            'maxlength' => 30,
                         ])
-                        ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
+                        // ->extraInputAttributes(['style' => 'text-transform: uppercase;'])
                         ->dehydrateStateUsing(fn(string $state): string => strtoupper($state)),
 
                     DatePicker::make('date_started')
@@ -138,6 +139,16 @@ class GovDeductionResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 1. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated mandatory deduction due to active transactions: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Gov Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
+                            // 2. Display notification toast
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()
@@ -146,9 +157,27 @@ class GovDeductionResource extends Resource
                         // 👁️ Only visible if it has transactions AND is currently active
                         ->visible(fn($record) => TransactionCheckService::hasGovDeductionTransactions($record) && ($record->status === true || $record->status == 1)),
                     EditAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated mandatory deduction details: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Gov Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasGovDeductionTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted mandatory deduction category: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Gov Deduction Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasGovDeductionTransactions($record))
                         ->label('Remove'),
                 ])->label('Action')

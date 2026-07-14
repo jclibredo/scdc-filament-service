@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Earnings\Pages;
 
 use App\Filament\Resources\Earnings\EarningsResource;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Models\ActivityLog;
 use App\Models\Employee;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListEarnings extends ListRecords
 {
@@ -47,6 +49,19 @@ class ListEarnings extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->after(function ($record) {
+                    // Resolve names for structured logs
+                    $empName = $record->employee ? "{$record->employee->lastname}, {$record->employee->firstname}" : 'Unknown Employee';
+                    $typeName = $record->category?->name ?? 'N/A';
+
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Configured new earnings record for {$empName}: Type: {$typeName} | Amount: ₱" . number_format($record->amount, 2) . " | Freq: {$record->frequency} | Level: {$record->hierarchy}",
+                        'module'    => 'Financial Configuration',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+                })
                 ->icon('heroicon-m-plus-circle'),
 
 

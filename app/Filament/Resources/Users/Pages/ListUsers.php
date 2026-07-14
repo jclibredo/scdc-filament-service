@@ -6,6 +6,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\ActivityLog;
 use App\Notifications\AccountActivationNotification;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,7 +27,6 @@ class ListUsers extends ListRecords
                     $user = $record;
                     // Trigger your notification
                     $user->notify(new AccountActivationNotification($user));
-
                     // 2. Log the activity
                     ActivityLog::create([
                         'user_id'   => Auth::id() ?? 'System', // The admin/user who created this account

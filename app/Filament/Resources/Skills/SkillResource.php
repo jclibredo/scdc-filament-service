@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Skills;
 
 use App\Filament\Resources\Skills\Pages\ListSkills;
+use App\Models\ActivityLog;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\TransactionCheckService;
@@ -65,16 +66,16 @@ class SkillResource extends Resource
                             ->required()
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 30);",
-                                'maxlength' => 30,
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
+                            .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
                             ]),
 
                         Textarea::make('details')
                             ->label('Details')
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s]/g, '')
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
                             .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
                                 'maxlength' => 100,
                             ])
@@ -109,8 +110,26 @@ class SkillResource extends Resource
                 ActionGroup::make([
                     EditAction::make()
                         ->visible(fn($record) => !TransactionCheckService::hasSkillTransactions($record))
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Updated skill details: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Skill Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->label('Update'),
                     DeleteAction::make()
+                        ->after(function ($record) {
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deleted skill: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Skill Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                        })
                         ->visible(fn($record) => !TransactionCheckService::hasSkillTransactions($record))
                         ->label('Remove'),
 
@@ -126,6 +145,15 @@ class SkillResource extends Resource
                             // Deactivate the record
                             $record->status = false;
                             $record->save();
+                            // 1. Log the deactivation activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Deactivated skill due to active transactions: {$record->title} (ID: {$record->id})",
+                                'module'    => 'Skill Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+                            // 2. Trigger toaster notification
                             Notification::make()
                                 ->title('Record successfully deactivated.')
                                 ->warning()
