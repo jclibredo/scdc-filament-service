@@ -30,6 +30,11 @@ class Employee extends Model
         'partners'
     ];
 
+    public function thirteenthMonths()
+    {
+        return $this->hasMany(ThirteenthMonth::class, 'employeeid', 'employeeid');
+    }
+
     public function emplScheduleData()
     {
         return $this->hasMany(EmpSchedule::class, 'employeeid', 'employeeid');

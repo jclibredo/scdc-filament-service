@@ -73,8 +73,13 @@
 
                 <div class="col-span-3 p-2.5 flex flex-col justify-between text-[10px] leading-tight">
                     <div>
-                        <p class="text-justify mb-2 text-gray-900">
+                        <!-- <p class="text-justify mb-2 text-gray-900">
                             I acknowledge to have received from <strong class="font-bold">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</strong> The amount stated below and have no further claims for service rendered.
+                        </p> -->
+                        <p class="text-justify mb-2 text-gray-900">
+                            I acknowledge to have received from <strong class="font-bold">HIRO Premier JAPANESE YAKINIKU
+
+                            </strong> The amount stated below and have no further claims for service rendered.
                         </p>
                         <div class="space-y-0.5 mt-2">
                             <div>Date Covered : <strong class="font-bold">{{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }}
@@ -94,7 +99,8 @@
 
                 <div class="col-span-9 flex flex-col justify-between">
                     <div class="p-2 text-center border-b border-black">
-                        <h1 class="text-sm font-extrabold tracking-wide uppercase">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</h1>
+                        <!-- <h1 class="text-sm font-extrabold tracking-wide uppercase">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</h1> -->
+                        <h1 class="text-sm font-extrabold tracking-wide uppercase">HIRO Premier JAPANESE YAKINIKU</h1>
                         <h2 class="text-xs font-bold tracking-wider uppercase">PAYSLIP</h2>
                         <div class="grid grid-cols-2 text-left mt-1.5 text-[10px] gap-y-0.5 font-medium">
                             <div class="truncate">Name : <span class="font-bold uppercase">

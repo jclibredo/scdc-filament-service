@@ -33,7 +33,7 @@
         <div class="p-4 bg-amber-50 border-l-4 border-amber-500 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div class="flex flex-col items-center md:items-start justify-center text-center md:text-left">
                 <div class="flex items-center justify-center md:justify-start">
-                    <img src="{{ asset('images/scdc_full.png') }}" alt="SCDC Logo" class="h-14 w-auto object-contain">
+                    <img src="{{ asset('images/hiro-full.png') }}" alt="HIRO Logo" class="h-14 w-auto object-contain">
                 </div>
                 <p class="text-gray-600 mt-2 text-xs">
                     Period: <span class="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 text-[11px]">{{ $period->code }}</span>
@@ -672,7 +672,8 @@
                 <button type="button" onclick="closePayrollDetailModal()" class="text-gray-400 hover:text-white font-bold text-2xl px-2">&times;</button>
             </div>
 
-            <form action="{{ route('payroll.update-batch') }}" method="POST" id="modal_form_engine" class="flex flex-col flex-1 overflow-hidden">
+            <form action="{{ route('payroll.update-batch') }}"
+             method="POST" id="modal_form_engine" class="flex flex-col flex-1 overflow-hidden">
                 @csrf
                 <input type="hidden" name="employee_id" id="modal_form_employee_id" value="">
                 <input type="hidden" name="period_code" value="{{ $period->code }}">

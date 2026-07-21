@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\PayrollSummaryController;
+use App\Http\Controllers\YearEndReportController;
 // use App\Models\DatePeriod;
 // use App\Models\Employee;
 use App\Models\OtherDeductionLog;
@@ -29,6 +30,9 @@ Route::get('/login', function () {
 // })->name('account.activate');
 Route::middleware(['auth'])->group(function () {
 
+
+    Route::get('/reports/year-end/print', [YearEndReportController::class, 'printReport'])
+        ->name('reports.year-end.print');
 
     Route::get('/payslips/view/{id}', function ($id) {
         $datePeriod = DB::table('date_periods')

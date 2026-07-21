@@ -10,8 +10,8 @@ use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Earnings;
 use App\Models\Employee;
-use App\Models\Payroll;
-use App\Models\PayrollReport;
+// use App\Models\Payroll;
+// use App\Models\PayrollReport;
 use App\Models\PayrollSummaryReport;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
@@ -20,17 +20,18 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+// use Filament\Actions\DeleteAction;
+// use Filament\Actions\EditAction;
+// use Filament\Forms\Components\DatePicker;
+// use Filament\Forms\Components\Select;
+// use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+// use Filament\Schemas\Components\Section;
+// use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
@@ -334,18 +335,35 @@ class ThirteenthMonthResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
+                    // BulkAction::make('processYearEndReport')
+                    //     ->label('Process Reports')
+                    //     ->color('warning')
+                    //     ->icon('heroicon-m-cog')
+                    //     ->requiresConfirmation()
+                    //     ->action(function ($records) {
+                    //         $reptypes = session('session_reptype');
+                    //         Notification::make()
+                    //             ->title($reptypes === '13THMONTH' ? 'Processing 13th Month Reports...' : 'Processing Incentives Reports...')
+                    //             ->body('Selected records have been processed.')
+                    //             ->success()
+                    //             ->send();
+                    //     }),
                     BulkAction::make('processYearEndReport')
                         ->label('Process Reports')
                         ->color('warning')
                         ->icon('heroicon-m-cog')
                         ->requiresConfirmation()
-                        ->action(function ($records) {
-                            $reptypes = session('session_reptype');
-                            Notification::make()
-                                ->title($reptypes === '13THMONTH' ? 'Processing 13th Month Reports...' : 'Processing Incentives Reports...')
-                                ->body('Selected records have been processed.')
-                                ->success()
-                                ->send();
+                        ->openUrlInNewTab() // Still works with redirect()!
+                        ->action(function (BulkAction $action, Collection $records) {
+                            $ids = $records->map(fn($record) => $record->getKey())->implode(',');
+                            // For debugging: this will now run ONLY when you click the bulk action button
+                            // dd($ids); 
+                            // return redirect()->route('reports.year-end.print', ['ids' => $ids]);
+
+                            $url = route('reports.year-end.print', [
+                                'ids' => $ids
+                            ]);
+                            $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
                     BulkAction::make('printPayslip')
                         ->label('Print Payslip')

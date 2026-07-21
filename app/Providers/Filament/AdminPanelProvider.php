@@ -43,8 +43,8 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->brandLogo(asset('images/scdc.jpg'))
-            ->brandLogoHeight('3.5rem')
+            ->brandLogo(asset('images/hiro-logo.png'))
+            ->brandLogoHeight('5.5rem')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
@@ -71,9 +71,9 @@ class AdminPanelProvider extends PanelProvider
             ->darkmode(false)
             ->spa()
             ->sidebarCollapsibleOnDesktop()
-            //         ->renderHook(
-            //             \Filament\View\PanelsRenderHook::HEAD_END,
-            //             fn(): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString('
+            // ->renderHook(
+            //     \Filament\View\PanelsRenderHook::HEAD_END,
+            //     fn(): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString('
             // <style>
             //                 /* ==========================================================================
             //                 LOGIN PAGE CUSTOM STYLES (Applies cleanly now on login layouts)
@@ -130,7 +130,7 @@ class AdminPanelProvider extends PanelProvider
             //             }
             //         </style>
             //     ')
-            //         )
+            // )
             ->maxContentWidth('full')
             ->authMiddleware([
                 Authenticate::class,
