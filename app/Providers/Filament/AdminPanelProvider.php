@@ -18,6 +18,8 @@ use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\Facades\FilamentIcon;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -55,6 +57,12 @@ class AdminPanelProvider extends PanelProvider
                 AccountWidget::class,
                 FilamentInfoWidget::class,
             ])
+            ->bootUsing(function (Panel $panel) {
+                // Register default fallback icon globally
+                FilamentIcon::register([
+                    'panels::resources.pages.index-page.navigation-item' => Heroicon::OutlinedCog,
+                ]);
+            })
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

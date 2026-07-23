@@ -2,13 +2,7 @@
 
 namespace App\Filament\Resources\ActivityLogs;
 
-// use App\Filament\Resources\ActivityLogs\Pages\CreateActivityLog;
-// use App\Filament\Resources\ActivityLogs\Pages\EditActivityLog;
 use App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs;
-// use App\Filament\Resources\ActivityLogs\Pages\ViewActivityLog;
-// use App\Filament\Resources\ActivityLogs\Schemas\ActivityLogForm;
-// use App\Filament\Resources\ActivityLogs\Schemas\ActivityLogInfolist;
-// use App\Filament\Resources\ActivityLogs\Tables\ActivityLogsTable;
 use App\Models\ActivityLog;
 use App\Models\User;
 use BackedEnum;
@@ -32,6 +26,7 @@ class ActivityLogResource extends Resource
     protected static ?string $model = ActivityLog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    
 
     protected  static string|UnitEnum|null $navigationGroup = 'Activity';
     protected static ?string $recordTitleAttribute = 'User Activity Logs';

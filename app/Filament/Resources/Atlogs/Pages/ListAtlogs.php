@@ -142,8 +142,6 @@ class ListAtlogs extends ListRecords
                 ->action(function (array $data) {
                     $disk = 'local';
                     $filePath = Storage::disk($disk)->path($data['attlog_file']);
-
-                    // 2. Capture the selected project code from the form data
                     $projectCode = $data['project_code'];
 
                     if (!file_exists($filePath)) {
@@ -151,51 +149,88 @@ class ListAtlogs extends ListRecords
                         return;
                     }
 
-                    $handle = fopen($filePath, 'r');
+                    // 1. First pass: Parse and clean lines into memory fast
+                    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    if (empty($lines)) {
+                        Storage::disk($disk)->delete($data['attlog_file']);
+                        Notification::make()->title('File is empty')->warning()->send();
+                        return;
+                    }
+
+                    $rawRows = [];
+                    $userIds = [];
+                    $timestamps = [];
+
+                    foreach ($lines as $line) {
+                        $parts = explode("\t", trim($line));
+                        if (count($parts) >= 2) {
+                            $userId = trim($parts[0]);
+                            $recordedAt = Carbon::parse($parts[1])->toDateTimeString();
+
+                            $rawRows[] = [
+                                'user_id'           => $userId,
+                                'project_code'      => $projectCode,
+                                'recorded_at'       => $recordedAt,
+                                'status'            => (int) ($parts[2] ?? 0),
+                                'verification_mode' => (int) ($parts[3] ?? 0),
+                                'work_code'         => (int) ($parts[4] ?? 0),
+                                'reserved'          => (int) ($parts[5] ?? 0),
+                                'created_at'        => now(),
+                                'updated_at'        => now(),
+                            ];
+
+                            $userIds[$userId] = true;
+                            $timestamps[] = $recordedAt;
+                        }
+                    }
+
+                    if (empty($rawRows)) {
+                        Storage::disk($disk)->delete($data['attlog_file']);
+                        Notification::make()->title('No valid records found in file')->warning()->send();
+                        return;
+                    }
+
+                    // 2. Fetch existing records in 1 single DB query (O(1) Hash Map)
+                    $minDate = min($timestamps);
+                    $maxDate = max($timestamps);
+
+                    $existingKeys = Atlog::whereIn('user_id', array_keys($userIds))
+                        ->whereBetween('recorded_at', [$minDate, $maxDate])
+                        ->get(['user_id', 'recorded_at'])
+                        ->mapWithKeys(fn($item) => ["{$item->user_id}_{$item->recorded_at}" => true])
+                        ->toArray();
+
+                    // 3. Filter out duplicates instantly in memory
                     $batch = [];
                     $count = 0;
-                    $skippedCount = 0; // Track skipped duplicates
-                    DB::transaction(function () use ($handle, &$batch, &$count, &$skippedCount, $projectCode) {
-                        while (($line = fgets($handle)) !== false) {
-                            // Split by tab character
-                            $parts = explode("\t", trim($line));
-                            if (count($parts) >= 2) {
-                                $userId = trim($parts[0]);
-                                $recordedAt = Carbon::parse($parts[1]);
-                                // Validation: Skip row if user_id and recorded_at already exist
-                                $exists = Atlog::where('user_id', $userId)
-                                    ->where('recorded_at', $recordedAt)
-                                    ->exists();
-                                if ($exists) {
-                                    $skippedCount++;
-                                    continue; // Skip to the next iteration of the loop
-                                }
-                                $batch[] = [
-                                    'user_id'           => $userId,
-                                    'project_code'      => $projectCode, // 3. Assigned project_code here
-                                    'recorded_at'       => $recordedAt,
-                                    'status'            => (int) ($parts[2] ?? 0),
-                                    'verification_mode' => (int) ($parts[3] ?? 0),
-                                    'work_code'         => (int) ($parts[4] ?? 0),
-                                    'reserved'          => (int) ($parts[5] ?? 0),
-                                    'created_at'        => now(),
-                                    'updated_at'        => now(),
-                                ];
-                                $count++;
-                            }
-                            if (count($batch) >= 500) {
-                                Atlog::insert($batch);
-                                $batch = [];
-                            }
+                    $skippedCount = 0;
+
+                    foreach ($rawRows as $row) {
+                        $key = "{$row['user_id']}_{$row['recorded_at']}";
+
+                        if (isset($existingKeys[$key])) {
+                            $skippedCount++;
+                            continue;
                         }
-                        if (!empty($batch)) {
-                            Atlog::insert($batch);
-                        }
-                    });
-                    fclose($handle);
+
+                        // Prevent duplicate rows within the same uploaded file
+                        $existingKeys[$key] = true;
+                        $batch[] = $row;
+                        $count++;
+                    }
+
+                    // 4. Bulk insert in chunks of 1000
+                    if (!empty($batch)) {
+                        DB::transaction(function () use ($batch) {
+                            foreach (array_chunk($batch, 1000) as $chunk) {
+                                Atlog::insert($chunk);
+                            }
+                        });
+                    }
+
                     Storage::disk($disk)->delete($data['attlog_file']);
-                    // Create a descriptive success message
-                    // Log Batch Import Action
+
+                    // Log Activity & Send Notification
                     $activityLogMessage = "Imported raw biometric file to project: [{$projectCode}]. Added: {$count} records";
                     if ($skippedCount > 0) {
                         $activityLogMessage .= " | Skipped: {$skippedCount} duplicates";
@@ -209,14 +244,34 @@ class ListAtlogs extends ListRecords
                         'windows'   => request()->userAgent(),
                     ]);
 
-                    // Success Notification with custom styling
                     $bodyMessage = "Successfully imported <strong style='font-weight: 700;'>{$count}</strong> records.";
                     if ($skippedCount > 0) {
                         $bodyMessage .= "<br><span style='color: #d97706; font-weight: 500;'>Skipped {$skippedCount} duplicate rows.</span>";
                     }
+
                     Notification::make()
                         ->title('Import Completed')
-                        ->body(new HtmlString($bodyMessage)) // <-- Wrapped in HtmlString here
+                        ->body(new HtmlString($bodyMessage))
+                        ->success()
+                        ->send();
+                }),
+
+
+            Action::make('clearAllData')
+                ->label('Clear All Data')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Truncate Table')
+                ->modalDescription('Are you sure you want to delete ALL records? This action cannot be undone.')
+                ->modalSubmitActionLabel('Yes, delete everything')
+                ->action(function () {
+                    // Truncate table cleanly
+                    Atlog::truncate();
+
+                    Notification::make()
+                        ->title('Table Cleared')
+                        ->body('All biometric log records have been successfully deleted.')
                         ->success()
                         ->send();
                 }),

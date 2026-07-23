@@ -201,7 +201,7 @@ class EmployeeResource extends Resource
                             ->preload(),
                         Select::make('project_id')
                             ->label('Project')
-                            ->required()
+                            // ->required()
                             ->relationship('project', 'name')
                             ->searchable()
                             ->preload(),

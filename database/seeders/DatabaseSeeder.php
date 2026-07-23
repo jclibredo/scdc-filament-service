@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
         // Seed the relation directly right here
         UserPermission::create([
             'user_id' => $admin->id,
-            'role' => 'SUPERADMIN',
+            'module' => 'SUPERADMIN',
         ]);
     }
 }
