@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: filament_app
+    restart: unless-stopped
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - filament-network
+
+  webserver:
+    image: nginx:alpine
+    container_name: filament_webserver
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx:/etc/nginx/conf.d/
+    networks:
+      - filament-network
+
+  # db:
+  #   image: mysql:8.0
+  #   container_name: filament_db
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - dbdata:/var/lib/mysql
+  #   networks:
+  #     - filament-network
+
+networks:
+  filament-network:
+    driver: bridge
+
+volumes:
+  dbdata:
+    driver: local
