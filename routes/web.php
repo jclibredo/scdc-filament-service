@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('tabs');
+    return view('webpage');
 });
 
 // Route::get('/tabs', function () {
