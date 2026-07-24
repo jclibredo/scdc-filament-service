@@ -7,13 +7,18 @@ use App\Http\Controllers\YearEndReportController;
 // use App\Models\DatePeriod;
 // use App\Models\Employee;
 use App\Models\OtherDeductionLog;
-use Illuminate\Http\Request;
+// use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('tabs');
 });
+
+// Route::get('/tabs', function () {
+//     return view('tabs');
+// });
+
 Route::get('/login', function () {
     // Check if the user was trying to access an 'hci' path before hitting the login fallback
     if (request()->is('admin*') || str_contains(url()->previous(), '/admin')) {
