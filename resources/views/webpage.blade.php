@@ -17,12 +17,12 @@
             --dark-red: #7f1d1d;          /* Deep Crimson */
             --gold-accent: #d97706;        /* Imperial Gold */
             --gold-light: #f59e0b;       /* Bright Gold */
-            --porcelain-bg: rgba(250, 246, 240, 0.88); /* Semi-Transparent Warm Silk Ivory */
-            --card-bg: rgba(255, 255, 255, 0.85);      /* Semi-Transparent White Cards */
+            --porcelain-bg: rgba(249, 250, 240, 0.86); /* Clearer / Lighter Porcelain Overlay */
+            --card-bg: rgba(255, 255, 255, 0.2);      /* Highly Transparent Glass Card Background */
             --text-dark: #1c1917;
-            --text-muted: #57534e;
-            --border-gold: rgba(217, 119, 6, 0.3);
-            --radius-md: 10px;
+            --text-muted: #44403c;
+            --border-gold: rgba(217, 119, 6, 0.35);
+            --radius-md: 12px;
             --radius-lg: 16px;
             --header-height: 80px;
         }
@@ -40,7 +40,7 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--text-dark);
-            background: linear-gradient(135deg, rgba(24, 9, 9, 0.92), rgba(69, 10, 10, 0.88)), 
+            background: linear-gradient(135deg, rgba(30, 12, 12, 0.85), rgba(75, 15, 15, 0.80)), 
                         url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
             min-height: 100vh;
             padding-top: calc(var(--header-height) + 16px);
@@ -50,7 +50,7 @@
         }
 
         /* ------------------------------------
-           RESPONSIVE STICKY HEADER (TRANSPARENT GLASS)
+           RESPONSIVE STICKY HEADER
         ------------------------------------ */
         .site-header {
             position: fixed;
@@ -62,12 +62,12 @@
             justify-content: space-between;
             align-items: center;
             padding: 0 clamp(16px, 4vw, 60px);
-            background: rgba(250, 246, 240, 0.82); /* Semi-transparent Header */
+            background: rgba(250, 246, 240, 0.75); /* Transparent Header */
             border-bottom: 2px solid var(--gold-accent);
             z-index: 1000;
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .header-brand {
@@ -154,17 +154,17 @@
         }
 
         /* ------------------------------------
-           PAGE WRAPPER (SEMI-TRANSPARENT GLASS)
+           PAGE WRAPPER (CLEARER & SMOOTH)
         ------------------------------------ */
         .page-wrapper {
             max-width: 1400px;
             margin: 0 auto;
             background: var(--porcelain-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: var(--radius-lg);
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border-gold);
         }
 
@@ -221,8 +221,8 @@
             gap: 12px;
             margin-bottom: 24px;
             padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
             border: 2px solid var(--gold-accent);
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(217, 119, 6, 0.15);
@@ -364,19 +364,22 @@
             line-height: 1.6;
         }
 
+        /* 4-COLUMN RESPONSIVE GRID FOR ASSETS */
         .interactive-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: clamp(20px, 3vw, 32px);
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: clamp(18px, 2.5vw, 28px);
         }
 
+        /* MORE TRANSPARENT FROSTED GLASS CARDS */
         .interactive-card {
             background: var(--card-bg);
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-radius: var(--radius-md);
             overflow: hidden;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-            border: 1px solid var(--border-gold);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(217, 119, 6, 0.4);
             cursor: pointer;
             transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
             display: flex;
@@ -385,14 +388,14 @@
 
         .interactive-card:hover {
             transform: translateY(-8px);
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 18px 36px rgba(185, 28, 28, 0.2);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 18px 36px rgba(185, 28, 28, 0.22);
             border-color: var(--imperial-red);
         }
 
         .card-img-container {
             width: 100%;
-            height: 220px;
+            height: 200px;
             overflow: hidden;
             position: relative;
         }
@@ -410,14 +413,14 @@
 
         .card-badge {
             position: absolute;
-            top: 14px;
-            left: 14px;
+            top: 12px;
+            left: 12px;
             background: linear-gradient(135deg, var(--imperial-red), var(--dark-red));
             color: white;
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             font-weight: 700;
             text-transform: uppercase;
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 4px;
             letter-spacing: 0.5px;
             border: 1px solid var(--gold-light);
@@ -425,16 +428,16 @@
         }
 
         .card-content {
-            padding: 22px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
         }
 
         .card-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 10px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
             color: var(--dark-red);
             transition: color 0.2s;
         }
@@ -444,15 +447,15 @@
         }
 
         .card-desc {
-            font-size: 0.86rem;
+            font-size: 0.84rem;
             color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 18px;
+            line-height: 1.55;
+            margin-bottom: 16px;
         }
 
         .card-action {
             margin-top: auto;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--gold-accent);
             text-transform: uppercase;
@@ -466,7 +469,7 @@
         ------------------------------------ */
         .testimonials-section {
             border-top: 1px solid var(--border-gold);
-            background: rgba(243, 237, 226, 0.45);
+            background: rgba(243, 237, 226, 0.3);
         }
 
         .testimonials-header {
@@ -508,7 +511,7 @@
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(28, 9, 9, 0.85);
+            background: rgba(20, 7, 7, 0.82);
             backdrop-filter: blur(8px);
             z-index: 2000;
             display: flex;
@@ -617,7 +620,7 @@
                 top: var(--header-height);
                 left: 0;
                 width: 100%;
-                background: rgba(250, 246, 240, 0.92);
+                background: rgba(250, 246, 240, 0.94);
                 backdrop-filter: blur(16px);
                 flex-direction: column;
                 align-items: stretch;
@@ -664,7 +667,7 @@
 </head>
 <body>
 
-    <!-- RESPONSIVE STICKY HEADER (TRANSPARENT) -->
+    <!-- RESPONSIVE STICKY HEADER -->
     <header class="site-header">
         <a href="#" class="header-brand">
             <img src="{{ asset('images/scdc.jpg') }}" alt="SCDC Logo" class="logo-img">
@@ -674,7 +677,7 @@
             </div>
         </a>
 
-        <!-- HAMBURGER BUTTON (MOBILE ONLY) -->
+        <!-- HAMBURGER BUTTON (MOBILE) -->
         <button class="hamburger-btn" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle Navigation">
             ☰
         </button>
@@ -690,7 +693,7 @@
         </ul>
     </header>
 
-    <!-- PAGE WRAPPER (TRANSPARENT GLASS) -->
+    <!-- CLEARER PAGE WRAPPER -->
     <div class="page-wrapper">
 
         <!-- HERO SECTION -->
@@ -796,7 +799,7 @@
             </div>
         </section>
 
-        <!-- ASSETS & EQUIPMENT SECTION -->
+        <!-- COMPANY ASSETS SECTION (WITH SEPARATED CARDS FOR POWER TOOLS AND TRANSPORT VEHICLES) -->
         <section id="assets" class="assets-section">
             <h2 class="section-center-title">Company Assets</h2>
             <p class="section-subtitle-text">Our state-of-the-art power tools, specialized machinery, and dedicated transport fleet ensure rapid and reliable project execution.</p>
@@ -805,18 +808,18 @@
                 <!-- Asset Card 1: Power Tools -->
                 <div class="interactive-card" onclick="openModal(
                     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1000&q=80',
-                    'Heavy-Duty Power Tools & Machinery',
-                    'Equipment & Tools',
-                    'Our inventory includes industrial electric pipe threaders, hydraulic roll groovers, electro-hydraulic press tools, fused welding machinery, and high-precision core drills for heavy steel and copper piping.'
+                    'Heavy-Duty Site Power Tools',
+                    'Power Tools & Equipment',
+                    'Our heavy equipment inventory features high-torque electric pipe threaders, hydraulic roll groovers, electro-hydraulic press tools, electro-fusion welding machines, and diamond core drills designed for steel and copper piping.'
                 )">
                     <div class="card-img-container">
-                        <span class="card-badge">Machinery</span>
-                        <img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80" alt="Heavy Power Tools">
+                        <span class="card-badge">Power Tools</span>
+                        <img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80" alt="Industrial Power Tools">
                     </div>
                     <div class="card-content">
                         <h3 class="card-title">Industrial Power Tools</h3>
-                        <p class="card-desc">Electric pipe threaders, hydraulic groovers, and electro-hydraulic press tools.</p>
-                        <div class="card-action">View Inventory &rarr;</div>
+                        <p class="card-desc">Electric pipe threaders, hydraulic groovers, and electro-hydraulic press tools for on-site efficiency.</p>
+                        <div class="card-action">View Power Tools &rarr;</div>
                     </div>
                 </div>
 
@@ -824,26 +827,44 @@
                 <div class="interactive-card" onclick="openModal(
                     'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1000&q=80',
                     'Fleet & Transport Vehicles',
-                    'Logistics Fleet',
-                    'A dedicated fleet of heavy utility trucks, material hauling vans, and emergency response vehicles ensuring seamless logistics, prompt material delivery, and rapid field deployment across job sites.'
+                    'Transport & Logistics',
+                    'A company-owned transport fleet consisting of heavy utility trucks, material hauling vans, and mobile site service vehicles for rapid field deployment and safe material transport across job sites.'
                 )">
                     <div class="card-img-container">
                         <span class="card-badge">Vehicles</span>
                         <img src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80" alt="Fleet and Transport Vehicles">
                     </div>
                     <div class="card-content">
-                        <h3 class="card-title">Fleet & Logistics Vehicles</h3>
-                        <p class="card-desc">Material hauling trucks and mobile site service vans for rapid field deployment.</p>
+                        <h3 class="card-title">Transport Vehicles</h3>
+                        <p class="card-desc">Material hauling trucks, flatbeds, and mobile emergency service vans for rapid site deployment.</p>
                         <div class="card-action">View Fleet &rarr;</div>
                     </div>
                 </div>
 
-                <!-- Asset Card 3: Hydrostatic Testing Rig -->
+                <!-- Asset Card 3: Water Pipes & Control Valves -->
+                <div class="interactive-card" onclick="openModal(
+                    'https://images.unsplash.com/photo-1542013936693-884638332954?auto=format&fit=crop&w=1000&q=80',
+                    'Water Pipes & Control Valves',
+                    'Piping Systems',
+                    'A complete array of heavy-duty duct iron piping, seamless carbon steel lines, brass butterfly valves, gate valves, and pressure regulating assemblies tailored for commercial water distribution networks.'
+                )">
+                    <div class="card-img-container">
+                        <span class="card-badge">Piping Assets</span>
+                        <img src="https://images.unsplash.com/photo-1542013936693-884638332954?auto=format&fit=crop&w=600&q=80" alt="Water Pipes and Valves Inventory">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Water Pipes & Valves</h3>
+                        <p class="card-desc">Ductile iron piping, high-pressure valves, and certified backflow control assemblies.</p>
+                        <div class="card-action">View Catalog &rarr;</div>
+                    </div>
+                </div>
+
+                <!-- Asset Card 4: Testing & Calibration Rig -->
                 <div class="interactive-card" onclick="openModal(
                     'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=1000&q=80',
-                    'Hydrostatic & Calibration Rigs',
+                    'Hydrostatic Testing & Calibration Rigs',
                     'Testing Gear',
-                    'Portable diesel-powered hydrostatic pressure test pumps, digital pressure logging units, ultrasonic flow meters, and certified backflow test kits for strict quality assurance.'
+                    'Diesel-powered high-pressure hydrostatic testing rigs, calibrated digital logging gauges, and ultrasonic flow meters to guarantee leak-proof pipeline installation.'
                 )">
                     <div class="card-img-container">
                         <span class="card-badge">Testing Rig</span>
@@ -851,8 +872,8 @@
                     </div>
                     <div class="card-content">
                         <h3 class="card-title">Hydrostatic Testing Rigs</h3>
-                        <p class="card-desc">High-pressure testing rigs and calibrated digital gauges for pipeline compliance.</p>
-                        <div class="card-action">View Details &rarr;</div>
+                        <p class="card-desc">High-pressure testing rigs and calibrated digital gauges for strict pipeline compliance.</p>
+                        <div class="card-action">View Specs &rarr;</div>
                     </div>
                 </div>
             </div>
