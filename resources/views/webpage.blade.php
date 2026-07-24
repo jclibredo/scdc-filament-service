@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sincere Construction & Development Corporation | 真诚建设</title>
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,12 +14,18 @@
     <style>
         :root {
             /* Chinese Imperial Color Palette */
-            --imperial-red: #b91c1c;      /* Primary Red */
-            --dark-red: #7f1d1d;          /* Deep Crimson */
-            --gold-accent: #d97706;        /* Imperial Gold */
-            --gold-light: #f59e0b;       /* Bright Gold */
-            --porcelain-bg: rgba(249, 250, 240, 0.86); /* Clearer / Lighter Porcelain Overlay */
-            --card-bg: rgba(255, 255, 255, 0.2);      /* Highly Transparent Glass Card Background */
+            --imperial-red: #b91c1c;
+            /* Primary Red */
+            --dark-red: #7f1d1d;
+            /* Deep Crimson */
+            --gold-accent: #d97706;
+            /* Imperial Gold */
+            --gold-light: #f59e0b;
+            /* Bright Gold */
+            --porcelain-bg: rgba(249, 250, 240, 0.86);
+            /* Clearer / Lighter Porcelain Overlay */
+            --card-bg: rgba(255, 255, 255, 0.2);
+            /* Highly Transparent Glass Card Background */
             --text-dark: #1c1917;
             --text-muted: #44403c;
             --border-gold: rgba(217, 119, 6, 0.35);
@@ -40,8 +47,8 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--text-dark);
-            background: linear-gradient(135deg, rgba(30, 12, 12, 0.85), rgba(75, 15, 15, 0.80)), 
-                        url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
+            background: linear-gradient(135deg, rgba(184, 89, 89, 0.4), rgba(209, 138, 138, 0.24)),
+                url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
             min-height: 100vh;
             padding-top: calc(var(--header-height) + 16px);
             padding-bottom: 24px;
@@ -62,7 +69,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 0 clamp(16px, 4vw, 60px);
-            background: rgba(250, 246, 240, 0.75); /* Transparent Header */
+            background: rgba(250, 246, 240, 0.37);
+            /* Transparent Header */
             border-bottom: 2px solid var(--gold-accent);
             z-index: 1000;
             backdrop-filter: blur(16px);
@@ -75,6 +83,107 @@
             align-items: center;
             gap: 14px;
             text-decoration: none;
+        }
+
+        .contact-section {
+            padding: clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px);
+            border-top: 1px solid var(--border-gold);
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .contact-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            max-width: 1100px;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        /* Contact Info Card */
+        .contact-info {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-gold);
+        }
+
+        .contact-info h3 {
+            font-size: 1.35rem;
+            color: var(--dark-red);
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+
+        .contact-info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .contact-info-item {
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .contact-info-item strong {
+            color: var(--text-dark);
+        }
+
+        /* Contact Form Styling */
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-gold);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            box-sizing: border-box;
+            display: block;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-gold);
+            background: #ffffff;
+            font-family: inherit;
+            font-size: 0.92rem;
+            color: var(--text-dark);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--imperial-red);
+            box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
         }
 
         .logo-img {
@@ -169,7 +278,10 @@
         }
 
         /* Typography */
-        h1, h2, h3, .serif-title {
+        h1,
+        h2,
+        h3,
+        .serif-title {
             font-family: 'Playfair Display', serif;
             font-weight: 600;
             color: var(--text-dark);
@@ -268,7 +380,7 @@
             object-fit: cover;
             border-radius: 8px;
             border: 2px solid var(--gold-accent);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .hero-subtext {
@@ -343,7 +455,9 @@
         /* ------------------------------------
            3. EXPERTISE, ASSETS & PROJECTS GRID
         ------------------------------------ */
-        .services-section, .assets-section, .projects-section {
+        .services-section,
+        .assets-section,
+        .projects-section {
             padding: clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px);
             border-top: 1px solid var(--border-gold);
         }
@@ -665,6 +779,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- RESPONSIVE STICKY HEADER -->
@@ -681,7 +796,7 @@
         <button class="hamburger-btn" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle Navigation">
             ☰
         </button>
-        
+
         <!-- NAVIGATION LINKS WITH ASSETS TAB -->
         <ul class="nav-links" id="navLinks">
             <li><a href="#home" onclick="closeMenu()">Home</a></li>
@@ -699,7 +814,7 @@
         <!-- HERO SECTION -->
         <section id="home" class="hero-section">
             <div class="hero-left">
-                
+
                 <div class="hero-logo-box">
                     <img src="{{ asset('images/scdc.jpg') }}" alt="SCDC Corporate Logo" class="hero-logo-img">
                     <div class="hero-logo-text">
@@ -741,7 +856,7 @@
         <section id="expertise" class="services-section">
             <h2 class="section-center-title">Our Expertise</h2>
             <p class="section-subtitle-text">Specialized engineering services tailored to high-density commercial developments and industrial facilities.</p>
-            
+
             <div class="interactive-grid">
                 <!-- Card 1 -->
                 <div class="interactive-card" onclick="openModal(
@@ -961,6 +1076,38 @@
             </div>
         </section>
 
+        <!-- CONTACT US SECTION -->
+        <section id="contact" class="contact-section">
+            <h2 class="section-center-title">Contact Us</h2>
+            <p class="section-subtitle-text">Get in touch with our engineering team for inquiries, consultations, or project estimates.</p>
+
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h3>Sincere Construction & Development Corporation</h3>
+                    <p><strong>Address:</strong> Head Office, Metro Manila, Philippines</p>
+                    <p><strong>Email:</strong> info@sincereconstruction.com</p>
+                    <p><strong>Phone:</strong> +63 (2) 8123-4567</p>
+                    <p><strong>Hours:</strong> Mon - Sat: 8:00 AM - 5:00 PM</p>
+                </div>
+
+                <form class="contact-form" onsubmit="event.preventDefault(); alert('Thank you for contacting SCDC. We will get back to you shortly.');">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" placeholder="Your Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" placeholder="name@company.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Project Details / Message</label>
+                        <textarea id="message" rows="4" placeholder="How can SCDC assist with your project?" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="align-self: flex-start; border: none;">Send Message</button>
+                </form>
+            </div>
+        </section>
+
     </div>
 
     <!-- RESPONSIVE POPUP MODAL -->
@@ -984,7 +1131,7 @@
             const nav = document.getElementById('navLinks');
             const btn = document.getElementById('menuToggle');
             nav.classList.toggle('mobile-open');
-            
+
             if (nav.classList.contains('mobile-open')) {
                 btn.innerHTML = '✕';
             } else {
@@ -1008,7 +1155,7 @@
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalCategory').textContent = category;
             document.getElementById('modalDetails').textContent = details;
-            
+
             document.getElementById('infoModal').classList.add('active');
             document.body.style.overflow = 'hidden';
         }
@@ -1026,4 +1173,5 @@
     </script>
 
 </body>
+
 </html>
