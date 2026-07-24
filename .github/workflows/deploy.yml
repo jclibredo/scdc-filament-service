@@ -1,46 +1,45 @@
-name: Auto Deploy to Hostinger
+name: Deploy Laravel Filament to Hostinger
 
 on:
   push:
     branches:
-      - main # Change to 'master' if your default branch is master
+      - master
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH and Deploy to Hostinger
+      - name: Deploying to Hostinger via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          script_stop: true
           script: |
-            # 1. Navigate to target folder
-            cd ${{ secrets.TARGET_DIR }}
-
-            # 2. Put app in maintenance mode while updating
+            cd ~/domains/scdc-web-app.com/laravel-app
+            
+            # Put app in maintenance mode
             php artisan down || true
-
-            # 3. Pull latest code from GitHub
-            git pull origin main
-
-            # 4. Install PHP dependencies
-            composer install --no-dev --optimize-autoloader --no-interaction
-
-            # 5. Execute database migrations
+            
+            # Pull latest changes from master
+            git pull origin master
+            
+            # Install/update composer packages
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            
+            # Run database migrations
             php artisan migrate --force
-
-            # 6. Optimize Laravel and Filament caches
-            php artisan filament:upgrade
-            php artisan filament:optimize
+            
+            # Clear & recreate caches
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            php artisan storage:link
-
-            # 7. Bring application back online
+            php artisan filament:optimize
+            
+            # Restart queue worker
+            php artisan queue:restart
+            
+            # Bring app back online
             php artisan up
