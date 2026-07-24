@@ -18,28 +18,31 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            # Fix Git permission scope on Hostinger
+            git config --global --add safe.directory /home/u164809439/domains/scdc-web-app.com/laravel-app
+
             cd ~/domains/scdc-web-app.com/laravel-app
-            
+
             # Put app in maintenance mode
             php artisan down || true
-            
+
             # Pull latest changes from master
             git pull origin master
-            
+
             # Install/update composer packages
             composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-            
+
             # Run database migrations
             php artisan migrate --force
-            
+
             # Clear & recreate caches
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan filament:optimize
-            
+
             # Restart queue worker
             php artisan queue:restart
-            
+
             # Bring app back online
             php artisan up
