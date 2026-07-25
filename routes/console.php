@@ -3,11 +3,10 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-// Run queue worker gracefully every minute without overlapping
 Schedule::command('queue:work --stop-when-empty --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
-    
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
