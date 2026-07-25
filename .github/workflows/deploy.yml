@@ -1,5 +1,4 @@
 name: Deploy Laravel Filament to Hostinger
-
 on:
   push:
     branches:
@@ -11,43 +10,76 @@ jobs:
 
     steps:
       - name: Deploying to Hostinger via SSH
+
         uses: appleboy/ssh-action@v1.0.3
+
         with:
           host: ${{ secrets.SSH_HOST }}
+
           username: ${{ secrets.SSH_USER }}
+
           key: ${{ secrets.SSH_KEY }}
+
           port: ${{ secrets.SSH_PORT }}
+
           script: |
+
             # Mark directory safe for Git
+
             git config --global --add safe.directory /home/u164809439/domains/scdc-web-app.com/laravel-app
+
+
 
             cd ~/domains/scdc-web-app.com/laravel-app
 
+
+
             # Put app in maintenance mode
+
             php artisan down || true
 
+
+
             # Force reset local server changes & pull clean code from master
+
             git reset --hard HEAD
+
             git pull origin master
 
+
+
             # Install dependencies without post-install scripts (bypasses proc_open restriction)
+
             composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
 
-            # Run package discovery, publish Filament assets, and run migrations manually
+
+
+            # Run package discovery and migrations manually
+
             php artisan package:discover
-            php artisan filament:upgrade
-            php artisan storage:link || true
+
             php artisan migrate --force
 
+
+
             # Clear & recreate caches
+
             php artisan config:cache
+
             php artisan route:cache
+
             php artisan view:cache
-            php artisan event:cache
+
             php artisan filament:optimize
 
+
+
             # Restart queue worker
+
             php artisan queue:restart
 
+
+
             # Bring app back online
+
             php artisan up
