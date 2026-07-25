@@ -9,6 +9,6 @@ Artisan::command('inspire', function () {
 
 
 // Run queue worker gracefully every minute without overlapping
-Schedule::command('queue:work --stop-when-empty')
+Schedule::command('queue:work --stop-when-empty --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
