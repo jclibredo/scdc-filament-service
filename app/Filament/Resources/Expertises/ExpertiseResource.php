@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Expertises;
 
 use App\Filament\Resources\Expertises\Pages\ListExpertises;
 use App\Models\Expertise;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -22,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class ExpertiseResource extends Resource
