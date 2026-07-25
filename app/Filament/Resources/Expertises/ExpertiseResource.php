@@ -2,11 +2,7 @@
 
 namespace App\Filament\Resources\Expertises;
 
-// use App\Filament\Resources\Expertises\Pages\CreateExpertise;
-// use App\Filament\Resources\Expertises\Pages\EditExpertise;
 use App\Filament\Resources\Expertises\Pages\ListExpertises;
-// use App\Filament\Resources\Expertises\Schemas\ExpertiseForm;
-// use App\Filament\Resources\Expertises\Tables\ExpertisesTable;
 use App\Models\Expertise;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
