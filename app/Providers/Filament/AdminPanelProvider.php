@@ -107,6 +107,11 @@ class AdminPanelProvider extends PanelProvider
                     NavigationGroup::make()
                         ->label('User Management')
                         ->icon('heroicon-o-users'), // Group of users icon
+
+                    NavigationGroup::make()
+                        ->label('Page Management')
+                        ->icon('heroicon-o-globe-alt'), // Group of users icon
+                        
                     NavigationGroup::make()
                         ->label('Activity')
                         ->icon('heroicon-o-shield-check'),

@@ -85,6 +85,24 @@ class ProjectResource extends Resource
                             ->label('Name')
                             ->required(),
 
+                        TextInput::make('datecovered')
+                            ->label('Date Covered')
+                            ->placeholder('e.g., Jan 2026 - Dec 2026')
+                            ->extraInputAttributes([
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
+                        .toUpperCase().replace(/^\\s+/, '').slice(0, 50);",
+                                'maxlength' => 50,
+                            ]),
+
+                        TextInput::make('scope')
+                            ->label('Scope')
+                            ->placeholder('e.g., Full Civil Works')
+                            ->extraInputAttributes([
+                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
+                        .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
+                                'maxlength' => 100,
+                            ]),
+
                         Textarea::make('address')
                             ->label('Address')
                             ->extraInputAttributes([
@@ -95,6 +113,14 @@ class ProjectResource extends Resource
                             ])
                             ->rows(2)
                             ->columnSpanFull(), // Stretches the address field wide across its own row
+
+                        FileUpload::make('image')
+                            ->label('Project Image')
+                            ->image()
+                            ->disk('public')
+                            ->directory('projects')
+                            ->maxSize(2048) // 2MB limit
+                            ->columnSpanFull(),
 
                         Toggle::make('status')
                             ->label('Set project status')
@@ -123,6 +149,7 @@ class ProjectResource extends Resource
             ->columns([
                 TextColumn::make('project_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
+                TextColumn::make('image')->searchable()->sortable(),
                 TextColumn::make('address')->limit(30),
                 IconColumn::make('status')
                     ->boolean()
@@ -154,7 +181,7 @@ class ProjectResource extends Resource
                         // 👁️ Only visible if it has transactions AND is currently active
                         ->visible(fn($record) => TransactionCheckService::hasProjectTransactions($record) && ($record->status === true || $record->status == 1)),
                     EditAction::make()
-                        ->visible(fn($record) => !TransactionCheckService::hasProjectTransactions($record))
+                        // ->visible(fn($record) => !TransactionCheckService::hasProjectTransactions($record))
                         ->label('Update'),
                     DeleteAction::make()
                         ->visible(fn($record) => !TransactionCheckService::hasProjectTransactions($record))

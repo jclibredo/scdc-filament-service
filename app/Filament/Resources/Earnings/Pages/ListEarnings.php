@@ -49,6 +49,7 @@ class ListEarnings extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->icon('heroicon-m-plus-circle')
                 ->after(function ($record) {
                     // Resolve names for structured logs
                     $empName = $record->employee ? "{$record->employee->lastname}, {$record->employee->firstname}" : 'Unknown Employee';
@@ -61,8 +62,7 @@ class ListEarnings extends ListRecords
                         'ipaddress' => request()->ip(),
                         'windows'   => request()->userAgent(),
                     ]);
-                })
-                ->icon('heroicon-m-plus-circle'),
+                }),
 
 
         ];
