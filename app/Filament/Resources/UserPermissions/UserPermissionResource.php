@@ -60,7 +60,6 @@ class UserPermissionResource extends Resource
                     ])
                     ->columnSpanFull()
                     ->schema([
-                        // Select User via Relationship
                         Select::make('user_id')
                             // ->relationship('userDetails', 'name')
                             ->relationship(
