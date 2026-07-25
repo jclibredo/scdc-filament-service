@@ -67,7 +67,6 @@ class UserPermissionResource extends Resource
                                 name: 'userDetails',
                                 titleAttribute: 'name',
                                 modifyQueryUsing: fn($query) => $query->where('id', '!=', Auth::user()->id)
-                                    ->where('status', true)
                             )
                             ->searchable()
                             ->preload()
