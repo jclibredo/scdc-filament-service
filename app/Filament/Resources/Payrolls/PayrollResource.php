@@ -167,6 +167,10 @@ class PayrollResource extends Resource
                 if (! session('session_employeestatus') || ! session('session_employeetype')) {
                     return $query;
                 }
+                $project = session('session_project');
+                if ($project && $project !== 'ALL') {
+                    $query->where('projectid', $project);
+                }
                 $query->where('empstatus', session('session_employeestatus'))
                     ->where('employeetype', session('session_employeetype'));
                 $partnerSession = session('session_partners');

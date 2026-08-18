@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Payroll Processing Ledger Matrix</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
+    <script src="{{ asset('js/tailwindcss-browser-4.js') }}"></script>
     <style>
         /* Custom scrollbar adjustments for comfortable matrix navigation */
         .custom-scrollbar::-webkit-scrollbar {
@@ -673,7 +674,7 @@
             </div>
 
             <form action="{{ route('payroll.update-batch') }}"
-             method="POST" id="modal_form_engine" class="flex flex-col flex-1 overflow-hidden">
+                method="POST" id="modal_form_engine" class="flex flex-col flex-1 overflow-hidden">
                 @csrf
                 <input type="hidden" name="employee_id" id="modal_form_employee_id" value="">
                 <input type="hidden" name="period_code" value="{{ $period->code }}">

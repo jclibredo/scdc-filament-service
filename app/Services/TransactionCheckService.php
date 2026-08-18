@@ -82,8 +82,8 @@ class TransactionCheckService
             || DB::table('gov_deduction_logs')->where('date_period_id', $code)->exists()
             || DB::table('holiday_logs')->where('dateperiod_id', $code)->exists()
             || DB::table('other_deduction_logs')->where('date_period_id', $code)->exists()
-            || DB::table('payroll_reports')->where('dateperiod_id', $id)->exists()
-            || DB::table('payroll_summary_reports')->where('dateperiod_id', $id)->exists();
+            || DB::table('payroll_reports')->where('dateperiod_id', $id)->where('status', 2)->exists()
+            || DB::table('payroll_summary_reports')->where('dateperiod_id', $id)->where('status', 2)->exists();
     }
 
     /**

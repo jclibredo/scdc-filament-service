@@ -10,6 +10,7 @@ use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\GovDeduction;
 use App\Models\GovDeductionLog;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
@@ -91,6 +92,17 @@ class DatePeriodResource extends Resource
                             // 💡 Filament automatically ignores the current record when updating
                             ->unique(table: 'date_periods', column: 'code', ignoreRecord: true)
                             ->required(),
+
+                        Select::make('project_id')
+                            ->label('Project')
+                            ->required()
+                            ->options(function () {
+                                return [
+                                    'ALL' => 'All Projects',
+                                ] + Project::pluck('name', 'id')->toArray();
+                            })
+                            ->searchable()
+                            ->preload(),
                         Select::make('employeetype')
                             ->label('Employee Type')
                             ->options(function () {
@@ -392,6 +404,7 @@ class DatePeriodResource extends Resource
                             session(['session_partners' => $record->partners]);
                             session(['session_employeetype' => $record->employeetype]);
                             session(['session_employeestatus' => $record->category_id]);
+                            session(['session_project' => $record->projectid]);
 
                             // 1. Log transition to Payroll Processing
                             ActivityLog::create([
