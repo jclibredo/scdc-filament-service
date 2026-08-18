@@ -43,7 +43,7 @@ class ListDatePeriods extends ListRecords
                 ->outlined()
                 ->visible(
                     fn() =>
-                    session()->has('session_employeestatus') &&
+                        session()->has('session_employeestatus') &&
                         session()->has('session_employeetype') &&
                         session()->has('session_periodcode')
                 )
@@ -52,6 +52,8 @@ class ListDatePeriods extends ListRecords
                         'session_employeetype',
                         'session_employeestatus',
                         'session_periodcode',
+                        'session_partners',
+                        'session_project',
                     ]);
                     return redirect()->to(route('filament.admin.resources.date-periods.index'));
                 }),

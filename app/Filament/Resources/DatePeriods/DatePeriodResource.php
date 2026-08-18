@@ -93,13 +93,13 @@ class DatePeriodResource extends Resource
                             ->unique(table: 'date_periods', column: 'code', ignoreRecord: true)
                             ->required(),
 
-                        Select::make('project_id')
+                        Select::make('projectid')
                             ->label('Project')
                             ->required()
                             ->options(function () {
                                 return [
                                     'ALL' => 'All Projects',
-                                ] + Project::pluck('name', 'id')->toArray();
+                                ] + Project::pluck('name', 'project_code')->toArray();
                             })
                             ->searchable()
                             ->preload(),

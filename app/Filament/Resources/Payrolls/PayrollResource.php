@@ -169,7 +169,7 @@ class PayrollResource extends Resource
                 }
                 $project = session('session_project');
                 if ($project && $project !== 'ALL') {
-                    $query->where('projectid', $project);
+                    $query->where('project_id', $project);
                 }
                 $query->where('empstatus', session('session_employeestatus'))
                     ->where('employeetype', session('session_employeetype'));
@@ -218,6 +218,7 @@ class PayrollResource extends Resource
                         ->action(function (Action $action, Collection $records) {
                             // Generate your target bulk print URL
                             $periodcode = session('session_periodcode');
+                            $project = session('session_project') ?? 'ALL';
                             $ids = $records->pluck('id')->toArray();
                             $partnerss = session('session_partners') ?? 0;
                             $empids = $records->pluck('employeeid')->map(fn($id) => (int) $id)->toArray();
@@ -272,6 +273,7 @@ class PayrollResource extends Resource
                                 'ids' => $ids,
                                 'periodcode' => $periodcode,
                                 'expartners' => $partnerss,
+                                'project' => $project,
                             ]);
                             $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),

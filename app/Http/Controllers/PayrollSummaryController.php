@@ -821,8 +821,11 @@ class PayrollSummaryController extends Controller
             'govdeductionData.govDeduction'
         ];
 
-        // 2. Fetch primary employees, ordered by project name, then by employee lastname
+        // 2. Fetch primary employees, ordered by project name, then by employee lastname   projectid
         $loopData = Employee::whereIn('employees.id', $ids)
+            ->when($period->project_id && strtoupper($period->project_id) !== 'ALL', function ($query) use ($period) {
+                $query->where('employees.project_id', $period->project_id);
+            })
             ->leftJoin('projects', 'employees.project_id', '=', 'projects.project_code')
             ->select('employees.*')
             ->orderBy('projects.name', 'asc')
