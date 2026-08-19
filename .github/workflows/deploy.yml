@@ -86,8 +86,9 @@ jobs:
             # Put app in maintenance mode
             php artisan down || true
 
-            # Force reset local server changes & pull clean code from master
+            # Force reset tracked files AND remove untracked files (fixes cron.sh issue)
             git reset --hard HEAD
+            git clean -fd
             git pull origin master
 
             # 1. Clear old Filament & framework caches FIRST
@@ -104,20 +105,17 @@ jobs:
             php artisan migrate --force
 
             # 4. Build Frontend Assets (Vite/Tailwind)
-            # Hostinger requires building assets if you don't commit public/build
             if command -v npm &> /dev/null; then
               npm ci
               npm run build
             fi
 
             # 5. Rebuild framework & Filament caches
-            # NOTE: Use 'optimize' instead of caching views/routes individually to prevent routing conflicts
             php artisan config:cache
             php artisan event:cache
             php artisan filament:optimize
 
-            # 6. Flush Web Server OPcache (CLI opcache_reset DOES NOT clear FPM/Web OPcache)
-            # Touch index.php to invalidate Hostinger's OPcache for Web
+            # 6. Flush Web Server OPcache
             touch public/index.php
 
             # 7. Restart queue worker
