@@ -3,22 +3,17 @@
 namespace App\Filament\Resources\YearEndReports;
 
 use App\Filament\Resources\ThirteenthMonths\ThirteenthMonthResource;
-// use App\Filament\Resources\YearEndReports\Pages\CreateYearEndReport;
-// use App\Filament\Resources\YearEndReports\Pages\EditYearEndReport;
 use App\Filament\Resources\YearEndReports\Pages\ListYearEndReports;
 use App\Models\ActivityLog;
-// use App\Filament\Resources\YearEndReports\Schemas\YearEndReportForm;
-// use App\Filament\Resources\YearEndReports\Tables\YearEndReportsTable;
 use App\Models\Category;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\YearEndReport;
 use App\Services\TransactionCheckService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-// use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-// use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -32,9 +27,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-// use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-// use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -103,9 +96,9 @@ class YearEndReportResource extends Resource
                         Select::make('rep_type')
                             ->label('Resource Type')
                             ->options([
-                                'INCENTIVES' => 'Incentives',
-                                '13THMONTH'  => '13th Month Pay',
-                                'BONUS'      => 'Bonus',
+                                'INCENTIVES' => 'INCENTIVES',
+                                '13THMONTH'  => '13TH MONTH PAY',
+                                'BONUS'      => 'BONUS',
                             ])
                             ->required()
                             ->native(false),
@@ -161,10 +154,21 @@ class YearEndReportResource extends Resource
                             ->preload()
                             ->required(),
                         // 4. Project
+                        // Select::make('projectid')
+                        //     ->label('Project')
+                        //     ->helperText('Select the project associated with this report. If no project is selected, the report will include all projects.')
+                        //     ->relationship('projectData', 'name')
+                        //     ->searchable()
+                        //     ->preload(),
                         Select::make('projectid')
                             ->label('Project')
                             ->helperText('Select the project associated with this report. If no project is selected, the report will include all projects.')
-                            ->relationship('project', 'name')
+                            ->required()
+                            ->options(function () {
+                                return [
+                                    'ALL' => 'All Projects',
+                                ] + Project::pluck('name', 'project_code')->toArray();
+                            })
                             ->searchable()
                             ->preload(),
                         // 5. Partner (Subcontractor)
@@ -269,9 +273,9 @@ class YearEndReportResource extends Resource
                 TextColumn::make('rep_type')
                     ->label('Resource Type')
                     ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'INCENTIVES' => 'Incentives',
-                        '13THMONTH'  => '13th Month Pay',
-                        'BONUS'      => 'Bonus',
+                        'INCENTIVES' => 'INCENTIVES',
+                        '13THMONTH'  => '13TH MONTH PAY',
+                        'BONUS'      => 'BONUS',
                         default      => $state,
                     })
                     ->searchable()
@@ -289,7 +293,7 @@ class YearEndReportResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('project.name')
+                TextColumn::make('projectData.name')
                     ->label('Project')
                     ->placeholder('N/A')
                     ->searchable(),

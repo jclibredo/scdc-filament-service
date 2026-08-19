@@ -212,20 +212,6 @@ class DatePeriodResource extends Resource
                 if (!$user) {
                     return DatePeriod::whereRaw('1 = 0');
                 }
-                // if (
-                //     session('session_employeestatus')
-                //     && session('session_employeetype')
-                //     && session('session_periodcode')
-                // ) {
-                //     return DatePeriod::query()
-                //         ->where('status', true)
-                //         ->where('code', session('session_periodcode'))
-                //         ->where('category_id', session('session_employeestatus'))
-                //         ->where('employeetype', session('session_employeetype'));
-                // }
-                // return DatePeriod::query()
-                //     ->where('status', true);
-                // Start building the base query
                 // Check if we have a valid User model instance now
                 if (! $user instanceof User) {
                     return DatePeriod::whereRaw('1 = 0');

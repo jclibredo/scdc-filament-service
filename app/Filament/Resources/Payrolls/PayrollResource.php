@@ -10,8 +10,6 @@ use App\Models\Adjustment;
 use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Employee;
-// use App\Models\GovDeduction;
-// use App\Models\GovDeductionLog;
 use App\Models\OtherDeduction;
 use App\Models\OtherDeductionLog;
 use BackedEnum;
@@ -109,10 +107,10 @@ class PayrollResource extends Resource
                     <div style='
                         padding: 1rem; 
                         margin: 1rem 1rem 0 1rem; 
-                        border-left: 4px solid #d97706; 
+                        border-inline-start: 4px solid #d97706; 
                         background-color: rgba(241, 201, 71, 0.4); 
-                        border-top-right-radius: 0.75rem; 
-                        border-bottom-right-radius: 0.75rem; 
+                        border-start-end-radius: 0.75rem; 
+                        border-end-end-radius: 0.75rem; 
                         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
                     '>
                         <div style='
@@ -122,8 +120,8 @@ class PayrollResource extends Resource
                         '>
                             <div style='display: flex; align-items: center; gap: 0.5rem;'>
                                 <span style='
-                                    width: 0.5rem; 
-                                    height: 0.5rem; 
+                                    inline-size: 0.5rem; 
+                                    block-size: 0.5rem; 
                                     background-color: #f59e0b; 
                                     border-radius: 9999px;
                                 '></span>
@@ -338,13 +336,13 @@ class PayrollResource extends Resource
                                         ->content(new HtmlString("
                                             <div class='p-3 border border-danger-500 rounded-lg bg-danger-50 dark:bg-red-950/20 flex items-center gap-3'>
                                                 <div style='color: #dc2626; flex-shrink: 0; display: flex; align-items: center;'>
-                                                    <svg style='width: 1.25rem; height: 1.25rem;' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>
+                                                    <svg style='inline-size: 1.25rem; block-size: 1.25rem;' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'>
                                                         <path stroke-linecap='round' stroke-linejoin='round' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'></path>
                                                     </svg>
                                                 </div>
                                                 <div class='text-left'>
                                                     <h4 style='font-weight: 700; color: #991b1b; font-size: 0.85rem; tracking-tight: 0.025em; line-height: 1.25;'>Processing Failed</h4>
-                                                    <p style='font-size: 0.75rem; color: #b91c1c; line-height: 1.5; margin-top: 0.15rem;'>" . e($errorMessage) . "</p>
+                                                    <p style='font-size: 0.75rem; color: #b91c1c; line-height: 1.5; margin-block-start: 0.15rem;'>" . e($errorMessage) . "</p>
                                                 </div>
                                             </div>
                                         ")),
@@ -414,19 +412,19 @@ class PayrollResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    Action::make('view_timesheet')
-                        ->color('warning')
-                        ->icon('heroicon-m-calendar-days')
-                        ->label('Timesheet')
-                        ->action(function (Employee $record) {
-                            session([
-                                'session_employee_id' => $record->employeeid,
-                                'session_periodcode' => session('session_periodcode'),
-                                'session_employeetype' => $record->employeetype,
-                                'session_employeestatus' => $record->empstatus,
-                            ]);
-                            return redirect(AtlogResource::getUrl('index'));
-                        }),
+                    // Action::make('view_timesheet')
+                    //     ->color('warning')
+                    //     ->icon('heroicon-m-calendar-days')
+                    //     ->label('Timesheet')
+                    //     ->action(function (Employee $record) {
+                    //         session([
+                    //             'session_employee_id' => $record->employeeid,
+                    //             'session_periodcode' => session('session_periodcode'),
+                    //             'session_employeetype' => $record->employeetype,
+                    //             'session_employeestatus' => $record->empstatus,
+                    //         ]);
+                    //         return redirect(AtlogResource::getUrl('index'));
+                    //     }),
                     //OTHER. DEDUCTIONS
                     Action::make('other_contribution')
                         ->label('Other Deduction')

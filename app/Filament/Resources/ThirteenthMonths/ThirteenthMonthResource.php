@@ -10,8 +10,6 @@ use App\Models\Category;
 use App\Models\DatePeriod;
 use App\Models\Earnings;
 use App\Models\Employee;
-// use App\Models\Payroll;
-// use App\Models\PayrollReport;
 use App\Models\PayrollSummaryReport;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
@@ -20,15 +18,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-// use Filament\Actions\DeleteAction;
-// use Filament\Actions\EditAction;
-// use Filament\Forms\Components\DatePicker;
-// use Filament\Forms\Components\Select;
-// use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-// use Filament\Schemas\Components\Section;
-// use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
@@ -108,10 +99,10 @@ class ThirteenthMonthResource extends Resource
                     <div style='
                         padding: 1rem; 
                         margin: 1rem 1rem 0 1rem; 
-                        border-left: 4px solid #d97706; 
+                        border-inline-start: 4px solid #d97706; 
                         background-color: rgba(241, 201, 71, 0.4); 
-                        border-top-right-radius: 0.75rem; 
-                        border-bottom-right-radius: 0.75rem; 
+                        border-start-end-radius: 0.75rem; 
+                        border-end-end-radius: 0.75rem; 
                         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
                     '>
                         <div style='
@@ -121,8 +112,8 @@ class ThirteenthMonthResource extends Resource
                         '>
                             <div style='display: flex; align-items: center; gap: 0.5rem;'>
                                 <span style='
-                                    width: 0.5rem; 
-                                    height: 0.5rem; 
+                                    inline-size: 0.5rem; 
+                                    block-size: 0.5rem; 
                                     background-color: #f59e0b; 
                                     border-radius: 9999px;
                                 '></span>
@@ -173,9 +164,9 @@ class ThirteenthMonthResource extends Resource
                 if ($partnerSession && $partnerSession !== 'ALL') {
                     $query->where('partners', $partnerSession);
                 }
-                $sessionProject = session('session_projectid');
-                if ($sessionProject !== null) {
-                    $query->where('project_id', $sessionProject);
+                $project = session('session_projectid');
+                if ($project && $project !== 'ALL') {
+                    $query->where('project_id', $project);
                 }
                 return $query->orderBy('lastname');
             })
@@ -335,19 +326,6 @@ class ThirteenthMonthResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    // BulkAction::make('processYearEndReport')
-                    //     ->label('Process Reports')
-                    //     ->color('warning')
-                    //     ->icon('heroicon-m-cog')
-                    //     ->requiresConfirmation()
-                    //     ->action(function ($records) {
-                    //         $reptypes = session('session_reptype');
-                    //         Notification::make()
-                    //             ->title($reptypes === '13THMONTH' ? 'Processing 13th Month Reports...' : 'Processing Incentives Reports...')
-                    //             ->body('Selected records have been processed.')
-                    //             ->success()
-                    //             ->send();
-                    //     }),
                     BulkAction::make('processYearEndReport')
                         ->label('Process Reports')
                         ->color('warning')
@@ -359,7 +337,6 @@ class ThirteenthMonthResource extends Resource
                             // For debugging: this will now run ONLY when you click the bulk action button
                             // dd($ids); 
                             // return redirect()->route('reports.year-end.print', ['ids' => $ids]);
-
                             $url = route('reports.year-end.print', [
                                 'ids' => $ids
                             ]);
@@ -374,7 +351,6 @@ class ThirteenthMonthResource extends Resource
                             foreach ($records as $record) {
                                 $employeeId = $record->employee_id;
                                 $periodId   = $record->period_id;
-
                                 // Example: send to worker that prints PDF
                                 // PrintPayslipJob::dispatch($employeeId, $periodId);
                             }

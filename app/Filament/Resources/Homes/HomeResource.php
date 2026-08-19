@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\Expertises;
+namespace App\Filament\Resources\Homes;
 
-use App\Filament\Resources\Expertises\Pages\ListExpertises;
-use App\Models\Expertise;
+
+use App\Filament\Resources\Homes\Pages\ListHomes;
+use App\Models\Home;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -13,26 +14,24 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
-class ExpertiseResource extends Resource
+class HomeResource extends Resource
 {
-    protected static ?string $model = Expertise::class;
+    protected static ?string $model = Home::class;
+
     protected  static string|UnitEnum|null $navigationGroup = 'Page Management';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $pluralModelLabel = 'Home';
 
-    protected static ?string $recordTitleAttribute = 'Expertise';
     public static function shouldRegisterNavigation(): bool
     {
         $user = Auth::user();
@@ -48,56 +47,56 @@ class ExpertiseResource extends Resource
             ->whereIn('module', ['SUPERADMIN', 'CMS'])
             ->exists();
     }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                Section::make('Expertise Profile')
-                    ->columnSpanFull()
+                Section::make('Hero & Section Content')
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
-                    ->description('Specify technical core competencies, descriptive breakdown, and promotional media.')
-                    ->icon('heroicon-o-academic-cap')
-                    ->columns(2) // 2-column grid layout matching Project reference
+                    ->columnSpanFull()
                     ->schema([
-
-                        TextInput::make('title')
-                            ->label('Title')
-                            ->required()
-                            ->columnSpanFull()
-                            ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
-                                'maxlength' => 100,
-                            ]),
-
-                        Textarea::make('details')
-                            ->label('Details')
+                        Textarea::make('title')
+                            ->label('Section Title')
                             ->required()
                             ->rows(3)
-                            ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 500);",
-                                'maxlength' => 500,
-                            ])
+                            ->maxLength(255)
                             ->columnSpanFull(),
 
-                        FileUpload::make('image')
-                            ->label('Expertise Image')
-                            ->image()
-                            ->disk('public') // Saves directly to public storage disk
-                            ->directory('expertises') // Saved in storage/app/public/expertises
-                            ->maxSize(2048) // 2MB limit
+                        Textarea::make('description')
+                            ->label('Description')
+                            ->rows(3)
                             ->columnSpanFull(),
+                    ]),
 
-                        Toggle::make('status')
-                            ->label('Set status')
-                            ->default(true)
-                            ->inline(false)
-                            ->columnSpanFull(),
-
+                Section::make('Media Assets')
+                    ->extraAttributes([
+                        'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
+                    ->columnSpanFull()
+                    ->schema([
+                        FileUpload::make('bigimage')
+                            ->label('Main / Big Image')
+                            ->image()
+                            ->disk('public')
+                            ->directory('home/big')
+                            ->imageEditor()
+                            ->maxSize(10240) // 10MB
+                            ->helperText('Upload the primary hero banner image.'),
+
+                        FileUpload::make('smallimage')
+                            ->label('Small / Supporting Gallery Images')
+                            ->image()
+                            ->multiple()
+                            ->reorderable()
+                            ->disk('public')
+                            ->directory('home/gallery')
+                            ->maxFiles(10)
+                            ->maxSize(5120) // 5MB per file
+                            ->helperText('Upload up to 10 thumbnail/gallery images.'),
+                    ]),
             ]);
     }
 
@@ -108,24 +107,32 @@ class ExpertiseResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->columns([
-                ImageColumn::make('image')
+                ImageColumn::make('bigimage')
+                    ->label('Big Image')
                     ->disk('public')
                     ->square(),
 
                 TextColumn::make('title')
+                    ->label('Title')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('details')
-                    ->limit(50),
-
-                IconColumn::make('status')
-                    ->boolean(),
-
-                TextColumn::make('created_at')
-                    ->dateTime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->weight('bold'),
+
+                TextColumn::make('description')
+                    ->label('Description')
+                    ->html()
+                    ->limit(60),
+
+                ImageColumn::make('smallimage')
+                    ->label('Gallery')
+                    ->disk('public')
+                    ->stacked()
+                    ->limit(3)
+                    ->limitedRemainingText(),
+
+                TextColumn::make('updated_at')
+                    ->dateTime('M d, Y')
+                    ->sortable(),
             ])
             ->filters([
                 //
@@ -160,7 +167,9 @@ class ExpertiseResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListExpertises::route('/'),
+            'index' => ListHomes::route('/'),
+            // 'create' => CreateHome::route('/create'),
+            // 'edit' => EditHome::route('/{record}/edit'),
         ];
     }
 }

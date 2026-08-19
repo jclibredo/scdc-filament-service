@@ -3,16 +3,13 @@
 namespace App\Filament\Resources\Employees;
 
 use App\Filament\Resources\Earnings\EarningsResource;
-// use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\EmpSchedules\EmpScheduleResource;
 use App\Models\ActivityLog;
-// use App\Jobs\ProcessEmployeeCsv;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
 use App\Models\Project;
-// use App\Models\EmpSchedule;
 use App\Models\User;
 use App\Services\TransactionCheckService;
 use BackedEnum;
@@ -21,13 +18,11 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-// use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-// use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -192,8 +187,6 @@ class EmployeeResource extends Resource
                             ->required(
                                 fn(Get $get) => ($cat = Category::find($get('employeetype'))) && strtoupper($cat->name) === 'SUB-CON'
                             ),
-
-
                         Select::make('skill_id')
                             ->label('Skill')
                             ->relationship('skill', 'title')

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\Expertises;
+namespace App\Filament\Resources\AboutUs;
 
-use App\Filament\Resources\Expertises\Pages\ListExpertises;
-use App\Models\Expertise;
+use App\Filament\Resources\AboutUs\Pages\ListAboutUs;
+use App\Models\AboutUs;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -14,25 +14,27 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
-class ExpertiseResource extends Resource
+class AboutUsResource extends Resource
 {
-    protected static ?string $model = Expertise::class;
+    protected static ?string $model = AboutUs::class;
+
     protected  static string|UnitEnum|null $navigationGroup = 'Page Management';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Expertise';
+    // protected static ?string $recordTitleAttribute = 'AboutUs';
+    protected static ?string $pluralModelLabel = 'About-us';
+
     public static function shouldRegisterNavigation(): bool
     {
         $user = Auth::user();
@@ -48,56 +50,44 @@ class ExpertiseResource extends Resource
             ->whereIn('module', ['SUPERADMIN', 'CMS'])
             ->exists();
     }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                Section::make('Expertise Profile')
+                Section::make('Company Overview')
+                    ->description('Manage core details, vision, and mission statement.')
+                    ->columns(1)
                     ->columnSpanFull()
                     ->extraAttributes([
                         'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
                     ])
-                    ->description('Specify technical core competencies, descriptive breakdown, and promotional media.')
-                    ->icon('heroicon-o-academic-cap')
-                    ->columns(2) // 2-column grid layout matching Project reference
                     ->schema([
-
-                        TextInput::make('title')
-                            ->label('Title')
-                            ->required()
-                            ->columnSpanFull()
-                            ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 100);",
-                                'maxlength' => 100,
-                            ]),
-
-                        Textarea::make('details')
-                            ->label('Details')
+                        Textarea::make('company_details')
+                            ->label('Company Details')
                             ->required()
                             ->rows(3)
-                            ->extraInputAttributes([
-                                'oninput' => "this.value = this.value.replace(/[^A-Za-z0-9\\s.-]/g, '')
-                            .toUpperCase().replace(/^\\s+/, '').slice(0, 500);",
-                                'maxlength' => 500,
-                            ])
                             ->columnSpanFull(),
 
-                        FileUpload::make('image')
-                            ->label('Expertise Image')
+                        Textarea::make('mission')
+                            ->label('Mission Statement')
+                            ->rows(3)
+                            ->columnSpanFull(),
+
+                        Textarea::make('vision')
+                            ->rows(3)
+                            ->label('Vision Statement')
+                            ->columnSpanFull(),
+
+                        FileUpload::make('coverimage')
+                            ->label('Cover Image')
                             ->image()
-                            ->disk('public') // Saves directly to public storage disk
-                            ->directory('expertises') // Saved in storage/app/public/expertises
-                            ->maxSize(2048) // 2MB limit
+                            ->disk('public')
+                            ->directory('about-us')
+                            ->imageEditor()
+                            ->maxSize(5120) // 5MB
                             ->columnSpanFull(),
-
-                        Toggle::make('status')
-                            ->label('Set status')
-                            ->default(true)
-                            ->inline(false)
-                            ->columnSpanFull(),
-
-                    ])
+                    ]),
             ]);
     }
 
@@ -108,22 +98,27 @@ class ExpertiseResource extends Resource
                 'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
             ])
             ->columns([
-                ImageColumn::make('image')
+                ImageColumn::make('coverimage')
+                    ->label('Cover')
                     ->disk('public')
                     ->square(),
 
-                TextColumn::make('title')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('company_details')
+                    ->label('Details')
+                    ->html()
+                    ->limit(50)
+                    ->searchable(),
 
-                TextColumn::make('details')
-                    ->limit(50),
+                TextColumn::make('mission')
+                    ->label('Mission')
+                    ->limit(40),
 
-                IconColumn::make('status')
-                    ->boolean(),
+                TextColumn::make('vision')
+                    ->label('Vision')
+                    ->limit(40),
 
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->dateTime('M d, Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -160,7 +155,9 @@ class ExpertiseResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListExpertises::route('/'),
+            'index' => ListAboutUs::route('/'),
+            // 'create' => CreateAboutUs::route('/create'),
+            // 'edit' => EditAboutUs::route('/{record}/edit'),
         ];
     }
 }

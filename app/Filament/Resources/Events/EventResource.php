@@ -2,11 +2,7 @@
 
 namespace App\Filament\Resources\Events;
 
-// use App\Filament\Resources\Events\Pages\CreateEvent;
-// use App\Filament\Resources\Events\Pages\EditEvent;
 use App\Filament\Resources\Events\Pages\ListEvents;
-// use App\Filament\Resources\Events\Schemas\EventForm;
-// use App\Filament\Resources\Events\Tables\EventsTable;
 use App\Models\Event;
 use App\Models\User;
 use BackedEnum;
@@ -115,6 +111,9 @@ class EventResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->columns([
                 ImageColumn::make('image')
                     ->label('Images')

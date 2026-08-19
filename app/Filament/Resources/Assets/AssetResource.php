@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Assets;
 
-// use App\Filament\Resources\Assets\Pages\CreateAsset;
-// use App\Filament\Resources\Assets\Pages\EditAsset;
 use App\Filament\Resources\Assets\Pages\ListAssets;
 use App\Models\Asset;
 use App\Models\User;
@@ -106,6 +104,9 @@ class AssetResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes([
+                'style' => 'border: 2px solid #2d2380 !important; border-radius: 0.75rem;', // Deep Sapphire Blue
+            ])
             ->columns([
                 ImageColumn::make('image')
                     ->disk('public')

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Atlogs;
 
-// use App\Filament\Resources\Atlogs\Pages\EditAtlog;
 use App\Filament\Resources\Atlogs\Pages\ListAtlogs;
 use App\Models\ActivityLog;
 use App\Models\Atlog;
@@ -16,7 +15,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-// use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -244,10 +242,10 @@ class AtlogResource extends Resource
                         <div style='
                             padding: 1rem; 
                             margin: 1rem 1rem 0 1rem; 
-                            border-left: 4px solid #d97706; 
+                            border-inline-start: 4px solid #d97706; 
                             background-color: rgba(254, 243, 199, 0.4); 
-                            border-top-right-radius: 0.75rem; 
-                            border-bottom-right-radius: 0.75rem; 
+                            border-start-end-radius: 0.75rem; 
+                            border-end-end-radius: 0.75rem; 
                             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
                         '>
                             <div style='
@@ -257,8 +255,8 @@ class AtlogResource extends Resource
                             '>
                                 <div style='display: flex; align-items: center; gap: 0.5rem;'>
                                     <span style='
-                                        width: 0.5rem; 
-                                        height: 0.5rem; 
+                                        inline-size: 0.5rem; 
+                                        block-size: 0.5rem; 
                                         background-color: #f59e0b; 
                                         border-radius: 9999px;
                                     '></span>
@@ -471,8 +469,6 @@ class AtlogResource extends Resource
                     ->size('xs')
                     ->outlined(),
             ])
-            // ->bulkActions([
-            // ])
             ->defaultSort('recorded_at', 'desc');
     }
 

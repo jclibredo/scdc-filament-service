@@ -5,11 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Year-End Matrix Breakdown - {{ $period->code }}</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="{{ asset('js/tailwindcss-browser-4.js') }}"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
     <style>
         .custom-scrollbar::-webkit-scrollbar {
-            height: 8px;
-            width: 8px;
+            block-size: 8px;
+            inline-size: 8px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-track {

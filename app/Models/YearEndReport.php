@@ -63,7 +63,7 @@ class YearEndReport extends Model
         return $this->belongsTo(Category::class, 'emptype');
     }
 
-    public function project()
+    public function projectData()
     {
         return $this->belongsTo(Project::class, 'projectid', 'project_code');
     }

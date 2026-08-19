@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+    <div class="no-print" style="margin-block-end: 20px; text-align: end;">
         <button onclick="window.print()" style="padding: 8px 16px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
             Print Summary
         </button>
@@ -31,16 +31,16 @@
         </div>
     </div>
 
-    <h3 style="font-size: 14px; margin-bottom: 6px;">Timesheet & Attendance Logs (Daily View)
+    <h3 style="font-size: 14px; margin-block-end: 6px;">Timesheet & Attendance Logs (Daily View)
         <p style="margin: 2px 0 0 0; font-size: 11px; color: #475569;">
             <strong>Date Covered:</strong> {{ \Carbon\Carbon::parse($datePeriod->datefrom)->format('M d, Y') }}
             — {{ \Carbon\Carbon::parse($datePeriod->dateto)->format('M d, Y') }}
         </p>
     </h3>
-    <table id="timesheet-table" style="width: 100%; border-collapse: collapse; font-size: 11px; line-height: 1.2;">
+    <table id="timesheet-table" style="inline-size: 100%; border-collapse: collapse; font-size: 11px; line-height: 1.2;">
         <thead>
-            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: center;">
-                <th style="padding: 4px; text-align: left; width: 100px;">
+            <tr style="background-color: #f8fafc; border-block-end: 2px solid #e2e8f0; text-align: center;">
+                <th style="padding: 4px; text-align: start; inline-size: 100px;">
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span>Date</span>
                         <button type="button"
@@ -51,12 +51,12 @@
                         </button>
                     </div>
                 </th>
-                <th style="padding: 4px; text-align: left; width: 120px;">Pay Type</th>
-                <th style="padding: 4px; width: 65px;">Time In</th>
-                <th style="padding: 4px; width: 65px;">Break Out</th>
-                <th style="padding: 4px; width: 65px;">Break In</th>
+                <th style="padding: 4px; text-align: start; inline-size: 120px;">Pay Type</th>
+                <th style="padding: 4px; inline-size: 65px;">Time In</th>
+                <th style="padding: 4px; inline-size: 65px;">Break Out</th>
+                <th style="padding: 4px; inline-size: 65px;">Break In</th>
                 <th style="padding: 4px; width: 65px;">Time Out</th>
-                <th style="padding: 4px; text-align: right; width: 45px;">Hrs</th>
+                <th style="padding: 4px; text-align: end; width: 45px;">Hrs</th>
                 <th style="padding: 4px; text-align: right; width: 40px;">OT</th>
                 <th style="padding: 4px; text-align: right; width: 45px;">Late/UT</th>
                 <th style="padding: 4px; text-align: right; width: 75px;">Amount</th>

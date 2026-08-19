@@ -16,7 +16,6 @@ use App\Models\OtherDeductionLog;
 use App\Models\PayrollReport;
 use Carbon\Carbon;
 use Exception;
-// use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -64,6 +63,9 @@ class PayrollSummaryController extends Controller
         ];
         // 2. Fetch primary employees, ordered by project name, then by employee lastname
         $employees = Employee::whereIn('employees.employeeid', $employeeids)
+             ->when($period->project_id && strtoupper($period->project_id) !== 'ALL', function ($query) use ($period) {
+                $query->where('employees.project_id', $period->project_id);
+            })
             ->leftJoin('projects', 'employees.project_id', '=', 'projects.project_code')
             ->select('employees.*')
             ->orderBy('projects.name', 'asc')
@@ -186,60 +188,45 @@ class PayrollSummaryController extends Controller
                     if ($carbonIn->gt($schedInBoundary)) {
                         $lateMinutes = $schedInBoundary->diffInMinutes($carbonIn);
                     }
-
                     // Compute Undertime
                     if ($carbonOut->lt($schedOutBoundary)) {
                         $undertimeMinutes = $carbonOut->diffInMinutes($schedOutBoundary);
                     }
-
                     // Total deduction
                     $totalDeficitMinutes = $lateMinutes + $undertimeMinutes;
-
                     // Acquired Hours = 8hrs - (Late + Undertime)
                     $acquiredMinutes = max(0, 480 - $totalDeficitMinutes);
-
                     $workedHoursPart = floor($acquiredMinutes / 60);
                     $workedMinutesPart = $acquiredMinutes % 60;
-
                     $acquiredHours = (float)(
                         $workedHoursPart . '.' .
                         str_pad($workedMinutesPart, 2, '0', STR_PAD_LEFT)
                     );
-
                     // Late + Undertime (display)
                     $deficitHoursPart = floor($totalDeficitMinutes / 60);
                     $deficitMinutesPart = $totalDeficitMinutes % 60;
-
                     $lateUndertime = (float)(
                         $deficitHoursPart . '.' .
                         str_pad($deficitMinutesPart, 2, '0', STR_PAD_LEFT)
                     );
-
                     // Compute actual worked minutes (only for OT)
                     $grossMinutes = $carbonIn->diffInMinutes($carbonOut);
-
                     if ($grossMinutes > 300) {
                         $grossMinutes -= 60; // deduct lunch
                     }
-
                     // Standard shift minutes
                     $standardShiftMinutes = $schedInBoundary->diffInMinutes($schedOutBoundary);
-
                     if ($standardShiftMinutes > 300) {
                         $standardShiftMinutes -= 60;
                     }
-
                     // Overtime is only allowed when there's no late/undertime
                     if ($totalDeficitMinutes == 0) {
-
                         $rawOvertimeMinutes = $grossMinutes - $standardShiftMinutes;
-
                         if ($rawOvertimeMinutes >= 60) {
                             // Every 30 mins = 0.5 hour
                             $overtime = floor($rawOvertimeMinutes / 30) * 0.5;
                         }
                     }
-
                     $display = number_format($acquiredHours, 2);
                     $class = 'text-center';
                     $totalPeriodOvertime += $overtime;

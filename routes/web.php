@@ -4,20 +4,13 @@ use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\PayrollSummaryController;
 use App\Http\Controllers\YearEndReportController;
-// use App\Models\DatePeriod;
-// use App\Models\Employee;
 use App\Models\OtherDeductionLog;
-// use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('webpage');
 });
-
-// Route::get('/tabs', function () {
-//     return view('tabs');
-// });
 
 Route::get('/login', function () {
     // Check if the user was trying to access an 'hci' path before hitting the login fallback
@@ -27,18 +20,9 @@ Route::get('/login', function () {
     // Default fallback if context is unclear
     return redirect()->route('filament.admin.auth.login');
 })->name('login');
-// Route::get('/account/activate/{user}', function (Request $request, $user) {
-//     if (! $request->hasValidSignature()) {
-//         abort(401, 'This activation link has expired or is invalid.');
-//     }
-//     return 'Your account is successfully activated!';
-// })->name('account.activate');
 Route::middleware(['auth'])->group(function () {
-
-
     Route::get('/reports/year-end/print', [YearEndReportController::class, 'printReport'])
         ->name('reports.year-end.print');
-
     Route::get('/payslips/view/{id}', function ($id) {
         $datePeriod = DB::table('date_periods')
             ->where('id', $id)
@@ -77,11 +61,104 @@ Route::middleware(['auth'])->group(function () {
         ->name('attendance-logs.store-double');
     Route::delete('/attendance-logs/destroy-day', [AttendanceLogController::class, 'destroyDayRaw'])
         ->name('attendance-logs.destroy-day');
+
     Route::get('/payroll/process-sheet/{periodcode}/{expartners}', [PayrollSummaryController::class, 'showSheet'])
         ->name('payroll.process-sheet');
+
     Route::put('/attendance-logs/update-batch', [AttendanceLogController::class, 'updateBatch'])
         ->name('attendance-logs.update-batch');
     Route::post('/payroll/update-batch', [PayrollSummaryController::class, 'updateBatch'])->name('payroll.update-batch');
     // Add this line inside your routes/web.php file
     Route::get('/payroll/bulk-payslip', [PayrollSummaryController::class, 'printBulkPayslips'])->name('payroll.bulk-payslip');
+
+    Route::get('/skills/export-csv-template', function () {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="skills_template.csv"',
+        ];
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+            // Add header row
+            fputcsv($file, ['title', 'details']);
+            // Add sample row (optional)
+            fputcsv($file, ['Sample Skill Title', 'Sample skill details or description']);
+            fclose($file);
+        };
+        return response()->stream($callback, 200, $headers);
+    })->name('skills.export.csv');
+
+    Route::get('/projects/export-csv-template', function () {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="projects_template.csv"',
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+            // Add header row
+            fputcsv($file, ['project_code', 'name', 'datecovered', 'scope', 'address']);
+            // Add sample row
+            fputcsv($file, ['PRJ-001', 'BUILDING A PROJECT', 'JAN 2026 - DEC 2026', 'FULL CIVIL WORKS', '123 MAIN ST, QUEZON CITY']);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    })->name('projects.export.csv');
+
+    Route::get('/employees/export-csv-template', function () {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="employees_template.csv"',
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+
+            // CSV Header Columns
+            fputcsv($file, [
+                'employeeid',
+                'firstname',
+                'middlename',
+                'lastname',
+                'status',
+                'mobile',
+                'empstatus',
+                'email',
+                'birthdate',
+                'sex',
+                'address',
+                'datehired',
+                'dateseperated',
+                'employeetype',
+                'partners',
+                'skill',
+                'project',
+            ]);
+
+            // Sample Data Row
+            fputcsv($file, [
+                'EMP00001',
+                'JUAN',
+                'DELA',
+                'CRUZ',
+                '1',
+                '9123456789',
+                'REGULAR',
+                'juan.cruz@example.com',
+                '1990-01-15',
+                'Male',
+                '123 MAIN STREET, QUEZON CITY',
+                '2024-01-01',
+                '',
+                'SUB-CON',
+                'ABC CONTRACTING INC',
+                'CARPENTRY',
+                'PROJECT ALPHA',
+            ]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    })->name('employees.export.csv');
 });

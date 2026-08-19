@@ -15,14 +15,12 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-// use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
-// use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
 
 class UserPermissionResource extends Resource
