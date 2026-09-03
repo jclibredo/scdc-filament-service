@@ -39,6 +39,7 @@ class ClearSessionOutsideResources
             'filament.admin.resources.year-end-reports.*',
             'filament.admin.resources.thirteenth-months.*',
             'filament.admin.resources.thirteenth-month-logs.*',
+            'filament.admin.resources.incentive-bonuses.*',
         ];
 
         $isAllowed = false;

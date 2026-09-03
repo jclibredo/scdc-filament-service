@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\YearEndReports;
 
+use App\Filament\Resources\IncentiveBonuses\IncentiveBonusResource;
 use App\Filament\Resources\ThirteenthMonths\ThirteenthMonthResource;
 use App\Filament\Resources\YearEndReports\Pages\ListYearEndReports;
 use App\Models\ActivityLog;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -377,6 +379,7 @@ class YearEndReportResource extends Resource
                         ->color('warning')
                         ->icon('heroicon-m-arrow-right-circle')
                         ->action(function (YearEndReport $record) {
+
                             session([
                                 'session_yearendreportspid'  => $record->code,
                                 'session_partnersid'         => $record->partners,
@@ -385,7 +388,21 @@ class YearEndReportResource extends Resource
                                 'session_projectid'          => $record->projectid,
                                 'session_reptype'            => $record->rep_type,
                             ]);
-                            return redirect(ThirteenthMonthResource::getUrl('index'));
+                            // dd($record->rep_type);
+                            if (strtoupper($record->rep_type) === '13THMONTH') {
+                                return redirect(ThirteenthMonthResource::getUrl('index'));
+                            } elseif (strtoupper($record->rep_type) === 'INCENTIVES' || strtoupper($record->rep_type) === 'BONUS') {
+                                return redirect(IncentiveBonusResource::getUrl('index'));
+                            } else {
+                                // Handle other report types if needed
+                                Notification::make()
+                                    ->title('Report Type Not Implemented')
+                                    ->body('The selected report type is not yet implemented. Please contact the system administrator.')
+                                    ->danger()
+                                    ->send();
+                                // return redirect()->back()->withErrors(['report_type' => 'This report type is not yet implemented.']);
+                            }
+                            // return redirect(ThirteenthMonthResource::getUrl('index'));
                         }),
 
                 ])
