@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ThirteenthMonthLogs;
 
 use App\Filament\Resources\ThirteenthMonthLogs\Pages\ListThirteenthMonthLogs;
 use App\Models\Adjustment;
-use App\Models\DatePeriod;
 use App\Models\Employee;
 use App\Models\GovDeductionLog;
+use App\Models\OtherDeductionLog;
 use App\Models\ThirteenthMonth;
 use App\Models\YearEndReport;
 use App\Services\TransactionCheckService;
@@ -25,15 +25,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
-
-// use Illuminate\Support\HtmlString;
 
 class ThirteenthMonthLogsResource extends Resource
 {
@@ -231,20 +226,21 @@ class ThirteenthMonthLogsResource extends Resource
                 }
 
                 // 1. Fetch breakdown records
-                $adjustments = \App\Models\Adjustment::with('adjustmentName')
+                $adjustments = Adjustment::with('adjustmentName')
                     ->where('date_period_id', $yearendid)
                     ->where('employee_id', $sessionEmpId)->get();
 
-                $govDeductions = \App\Models\GovDeductionLog::with('govDeduction')
+                $govDeductions = GovDeductionLog::with('govDeduction')
                     ->where('date_period_id', $yearendid)
                     ->where('employee_id', $sessionEmpId)->get();
 
-                $otherDeductions = \App\Models\OtherDeductionLog::with('otherDeduction')
+                $otherDeductions = OtherDeductionLog::with('otherDeduction')
                     ->where('date_period_id', $yearendid)
                     ->where('employee_id', $sessionEmpId)->get();
-
+                // dd('YEAR END ID : '.$yearendid, ' EMP ID : '.$sessionEmpId, ' ADJUSTMENTS : '.$adjustments, ' GOV DEDUCTIONS : '.$govDeductions, ' OTHER DEDUCTIONS : '.$otherDeductions);
                 // 2. Compute the 13th Month Total Base (Sum of Earnings + Allowances from the main query, divided by 12)
-                $thirteenthMonthRecords = \App\Models\ThirteenthMonth::where('yearendrepid', $yearendid)->get();
+                $thirteenthMonthRecords = ThirteenthMonth::where('yearendrepid', $yearendid)->where('employeeid', $sessionEmpId)->get();
+                // dd('THIRTEENTH MONTH RECORDS : '.$thirteenthMonthRecords);
                 $totalEarningsAndAllowances = $thirteenthMonthRecords->sum('earnings') + $thirteenthMonthRecords->sum('allowance');
                 $total13thMonth = $totalEarningsAndAllowances / 12;
 
@@ -330,12 +326,12 @@ class ThirteenthMonthLogsResource extends Resource
                     ->button()
                     ->size('xs')
                     ->outlined(),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ]);
-        // ->bulkActions([
-        //     BulkActionGroup::make([
-        //         DeleteBulkAction::make(),
-        //     ]),
-        // ]);
     }
 
     public static function getRelations(): array

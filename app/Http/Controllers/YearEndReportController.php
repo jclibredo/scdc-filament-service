@@ -74,28 +74,23 @@ class YearEndReportController extends Controller
             ->whereIn('id', $selectedIds)
             ->where('status', true)
             ->where('datehired', '<=', $period->datefrom);
-        // dd($query->get());
+
         if (session('session_employeestatusid') && session('session_employeetypeid')) {
             $query->where('empstatus', session('session_employeestatusid'))
                 ->where('employeetype', session('session_employeetypeid'));
         }
-
         $partnerSession = session('session_partnersid');
         if ($partnerSession && $partnerSession !== 'ALL') {
             $query->where('partners', $partnerSession);
         }
-
         $sessionProject = session('session_projectid');
-        if ($sessionProject !== null) {
+        if ($sessionProject !== null && $sessionProject !== 'ALL') {
             $query->where('project_id', $sessionProject);
         }
-
-        // $employees = $query->with(['thirteenthMonths' => function ($q) {
-        //     $q->where('yearendcode', session('session_yearendreportspid'));
-        // }])->orderBy('lastname')->get();
+        // dd($query->get());
         $employees = $query->with([
             'thirteenthMonths' => function ($q) use ($periodCode) {
-                $q->where('yearendcode', $periodCode);
+                $q->where('yearendrepid', $periodCode);
             },
             'adjustmentData' => function ($q) use ($periodCode) {
                 $q->where('date_period_id', $periodCode)
@@ -111,9 +106,8 @@ class YearEndReportController extends Controller
         ])
             ->orderBy('lastname')
             ->get();
-
         // 4. Fetch all 13th month records for the period to build distinct sub-period columns
-        $allThirteenthRecords = ThirteenthMonth::where('yearendcode', $periodCode)->get();
+        $allThirteenthRecords = ThirteenthMonth::where('yearendrepid', $periodCode)->get();
 
         // 5. Structure Months and Cutoffs dynamically
         $monthsStructure = [];

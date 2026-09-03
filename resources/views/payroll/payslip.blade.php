@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bulk Employee Payslips</title>
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
     <script src="{{ asset('js/tailwindcss.js') }}"></script>
     <style>
         @media print {
@@ -24,7 +23,7 @@
             .print-page-wrapper {
                 page-break-after: always;
                 break-after: page;
-                height: 100vh;
+                block-size: 100vh;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
@@ -40,9 +39,9 @@
             .payslip-card {
                 border: 1.5px solid #000 !important;
                 box-shadow: none !important;
-                margin-bottom: 0 !important;
+                margin-block-end: 0 !important;
                 /* Lock height so 4 items fit perfectly into 100vh page heights */
-                height: 23vh !important;
+                block-size: 23vh !important;
             }
 
             .divide-black>*+* {
@@ -74,14 +73,14 @@
 
                 <div class="col-span-3 p-2.5 flex flex-col justify-between text-[10px] leading-tight">
                     <div>
-                        <!-- <p class="text-justify mb-2 text-gray-900">
-                            I acknowledge to have received from <strong class="font-bold">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</strong> The amount stated below and have no further claims for service rendered.
-                        </p> -->
                         <p class="text-justify mb-2 text-gray-900">
+                            I acknowledge to have received from <strong class="font-bold">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</strong> The amount stated below and have no further claims for service rendered.
+                        </p>
+                        <!-- <p class="text-justify mb-2 text-gray-900">
                             I acknowledge to have received from <strong class="font-bold">HIRO Premier JAPANESE YAKINIKU
 
                             </strong> The amount stated below and have no further claims for service rendered.
-                        </p>
+                        </p> -->
                         <div class="space-y-0.5 mt-2">
                             <div>Date Covered : <strong class="font-bold">{{ \Carbon\Carbon::parse($period->datefrom)->format('M d') }}
                                     - {{ \Carbon\Carbon::parse($period->dateto)->format('M d, Y') }}</strong></div>
@@ -100,8 +99,8 @@
 
                 <div class="col-span-9 flex flex-col justify-between">
                     <div class="p-2 text-center border-b border-black">
-                        <!-- <h1 class="text-sm font-extrabold tracking-wide uppercase">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</h1> -->
-                        <h1 class="text-sm font-extrabold tracking-wide uppercase">HIRO Premier JAPANESE YAKINIKU</h1>
+                        <h1 class="text-sm font-extrabold tracking-wide uppercase">SINCERE CONSTRUCTION & DEVELOPMENT CORP.</h1>
+                        <!-- <h1 class="text-sm font-extrabold tracking-wide uppercase">HIRO Premier JAPANESE YAKINIKU</h1> -->
                         <h2 class="text-xs font-bold tracking-wider uppercase">PAYSLIP</h2>
                         <div class="grid grid-cols-2 text-left mt-1.5 text-[10px] gap-y-0.5 font-medium">
                             <div class="truncate">Name : <span class="font-bold uppercase">
@@ -296,6 +295,8 @@
                                 $computedAbsent = ($employee->payrollSummaryData->sum('totalabsent') * ($dailyRate+$employee->dailyallowance));
                                 $computedLate = ($employee->payrollSummaryData->sum('lateundertime') * ($ratePerHour+ $employee->dailyallowanceratehour));
                                 $finalTotaldeduction =$employee->payrollSummaryData->sum('totaldeductionn') + $computedAbsent + $computedLate ;
+
+
                                 echo number_format($finalTotaldeduction, 2) ;
                                 @endphp
                             </span>

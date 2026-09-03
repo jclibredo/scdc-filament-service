@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Year-End Matrix Breakdown - {{ $period->code }}</title>
     <script src="{{ asset('js/tailwindcss-browser-4.js') }}"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
+    <!-- SheetJS CDN for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         .custom-scrollbar::-webkit-scrollbar {
             block-size: 8px;
@@ -31,7 +32,6 @@
 </head>
 
 <body class="bg-gray-100 p-4 font-sans text-xs">
-
     <!-- CONTROL BAR -->
     <div class="no-print mb-4 flex justify-between items-center bg-white p-3 rounded shadow border border-gray-200">
         <div>
@@ -42,6 +42,13 @@
             </p>
         </div>
         <div class="flex gap-2">
+            <!-- EXCEL EXPORT BUTTON -->
+            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs cursor-pointer flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm10-9h-2.5l-1.5 2.5L10.5 11H8l2.5 3.5L8 18h2.5l1.5-2.5 1.5 2.5H16l-2.5-3.5L16 11z" />
+                </svg>
+                Export Excel
+            </button>
             <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded text-xs cursor-pointer">
                 Print Report
             </button>
@@ -98,16 +105,14 @@
 
     <!-- MAIN MATRIX TABLE -->
     <div class="overflow-x-auto custom-scrollbar bg-white shadow rounded border border-gray-300">
-        <table class="w-full border-collapse border border-gray-300 text-center min-w-max">
+        <table id="matrixTable" class="w-full border-collapse border border-gray-300 text-center min-w-max">
             <thead>
-
                 <!-- HEADER ROW 1: MONTH NAMES -->
                 <tr class="bg-gray-100 text-gray-800 font-bold text-[11px]">
                     <th rowspan="3" class="border border-gray-300 p-2 min-w-[90px] bg-gray-100 sticky left-0 z-30">Employee ID</th>
                     <th rowspan="3" class="border border-gray-300 p-2 text-left min-w-[180px] bg-gray-100 sticky left-[90px] z-30">Employee Name</th>
                     <th rowspan="3" class="border border-gray-300 p-2 min-w-[120px] bg-gray-100 sticky left-[270px] z-30">Designation</th>
                     <th rowspan="3" class="border border-gray-300 p-2 min-w-[120px] bg-gray-100 sticky left-[390px] z-30">Project</th>
-
                     @foreach($monthsStructure as $mKey => $mInfo)
                     @php
                     $cutoffCount = count($mInfo['cutoffs']);
@@ -117,7 +122,6 @@
                         {{ $mInfo['name'] }}
                     </th>
                     @endforeach
-
                     <th rowspan="3" class="border border-gray-300 p-2 bg-emerald-100 text-emerald-900 font-bold min-w-[90px]">Total Earnings</th>
                     <th rowspan="3" class="border border-gray-300 p-2 bg-blue-100 text-blue-900 font-bold min-w-[90px]">Total Allowance</th>
                     <th rowspan="3" class="border border-gray-300 p-2 bg-purple-100 text-purple-900 font-bold min-w-[90px]">Adjustments</th>
@@ -125,7 +129,6 @@
                     <th rowspan="3" class="border border-gray-300 p-2 bg-orange-100 text-orange-900 font-bold min-w-[90px]">Other Deductions</th>
                     <th rowspan="3" class="border border-gray-300 p-2 bg-green-200 font-extrabold text-green-950 min-w-[100px]">Net Pay</th>
                 </tr>
-
                 <!-- HEADER ROW 2: DATE RANGES -->
                 <tr class="bg-gray-50 text-gray-700 font-semibold text-[10px]">
                     @foreach($monthsStructure as $mKey => $mInfo)
@@ -140,7 +143,6 @@
                     @endif
                     @endforeach
                 </tr>
-
                 <!-- HEADER ROW 3: EARNS / ALLOW SUB-COLUMNS -->
                 <tr class="bg-gray-100 text-gray-600 font-bold text-[9px] uppercase">
                     @foreach($monthsStructure as $mKey => $mInfo)
@@ -156,7 +158,6 @@
                     @endforeach
                 </tr>
             </thead>
-
             <!-- TABLE BODY -->
             <tbody class="divide-y divide-gray-200 font-mono text-[10px]">
                 @forelse($employees as $employee)
@@ -170,7 +171,6 @@
                 $empNetPay = ($thirteentmonth + $empTotalAdj) - ($empTotalGov + $empTotalOther);
                 @endphp
                 <tr class="hover:bg-gray-50 text-gray-800">
-
                     <!-- Sticky Employee Info Columns -->
                     <td class="border border-gray-300 p-1.5 font-sans font-semibold text-gray-700 bg-white sticky left-0 z-20">
                         {{ $employee->employeeid }}
@@ -184,7 +184,6 @@
                     <td class="border border-gray-300 p-1.5 font-sans text-gray-600 bg-white sticky left-[390px] z-20">
                         {{ $employee->project->name ?? '--' }}
                     </td>
-
                     <!-- Cutoff Earns & Allow Cells -->
                     @foreach($monthsStructure as $mKey => $mInfo)
                     @if(count($mInfo['cutoffs']) > 0)
@@ -192,18 +191,14 @@
                     @php
                     $rec = $employee->thirteenthMonths->first(function ($item) use ($cutoff) {
                     if (!$item->datestart) return false;
-
                     $itemStart = \Carbon\Carbon::parse($item->datestart)->startOfDay();
                     $itemEnd = $item->dateend
                     ? \Carbon\Carbon::parse($item->dateend)->endOfDay()
                     : $itemStart->copy()->endOfDay();
-
                     $cutoffStart = \Carbon\Carbon::parse($cutoff['datestart'])->startOfDay();
                     $cutoffEnd = \Carbon\Carbon::parse($cutoff['dateend'])->endOfDay();
-
                     return ($itemStart <= $cutoffEnd && $itemEnd>= $cutoffStart);
                         });
-
                         $earns = $rec ? (float) $rec->earnings : 0;
                         $allow = $rec ? (float) $rec->allowance : 0;
                         @endphp
@@ -219,7 +214,6 @@
                         <td class="border border-gray-300 p-1 text-right text-gray-300">0.00</td>
                         @endif
                         @endforeach
-
                         <!-- Summary Columns -->
                         <td class="border border-gray-300 p-1.5 bg-emerald-50/50 font-bold text-emerald-900 text-right">
                             {{ number_format($empTotalEarnings/12, 2) }}
@@ -246,7 +240,6 @@
                 </tr>
                 @endforelse
             </tbody>
-
             <!-- TABLE FOOTER (GRAND TOTALS) -->
             @if($employees->count() > 0)
             <tfoot class="bg-gray-100 font-mono text-[10px] text-gray-900 font-bold border-t-2 border-gray-400">
@@ -255,7 +248,6 @@
                     <td class="border border-gray-300 p-2 text-left font-sans sticky left-[90px] z-20 bg-gray-100">TOTALS</td>
                     <td class="border border-gray-300 p-2 font-sans sticky left-[270px] z-20 bg-gray-100">--</td>
                     <td class="border border-gray-300 p-2 font-sans sticky left-[390px] z-20 bg-gray-100">--</td>
-
                     <!-- Dynamic Monthly Column Totals -->
                     @foreach($monthsStructure as $mKey => $mInfo)
                     @if(count($mInfo['cutoffs']) > 0)
@@ -269,31 +261,23 @@
                     $itemEnd = $item->dateend
                     ? \Carbon\Carbon::parse($item->dateend)->endOfDay()
                     : $itemStart->copy()->endOfDay();
-
                     $cutoffStart = \Carbon\Carbon::parse($cutoff['datestart'])->startOfDay();
                     $cutoffEnd = \Carbon\Carbon::parse($cutoff['dateend'])->endOfDay();
-
                     return ($itemStart <= $cutoffEnd && $itemEnd>= $cutoffStart);
                         });
-
                         return $rec ? (float) $rec->earnings : 0;
                         });
-
                         $totAllow = $employees->sum(function($emp) use ($cutoff) {
                         $rec = $emp->thirteenthMonths->first(function ($item) use ($cutoff) {
                         if (!$item->datestart) return false;
-
                         $itemStart = \Carbon\Carbon::parse($item->datestart)->startOfDay();
                         $itemEnd = $item->dateend
                         ? \Carbon\Carbon::parse($item->dateend)->endOfDay()
                         : $itemStart->copy()->endOfDay();
-
                         $cutoffStart = \Carbon\Carbon::parse($cutoff['datestart'])->startOfDay();
                         $cutoffEnd = \Carbon\Carbon::parse($cutoff['dateend'])->endOfDay();
-
                         return ($itemStart <= $cutoffEnd && $itemEnd>= $cutoffStart);
                             });
-
                             return $rec ? (float) $rec->allowance : 0;
                             });
                             @endphp
@@ -305,7 +289,6 @@
                             <td class="border border-gray-300 p-1 text-right bg-blue-100/50">0.00</td>
                             @endif
                             @endforeach
-
                             <td class="border border-gray-300 p-1.5 bg-emerald-100 text-right">{{ number_format($grandTotalEarnings/12, 2) }}</td>
                             <td class="border border-gray-300 p-1.5 bg-blue-100 text-right">{{ number_format($grandTotalAllowance/12, 2) }}</td>
                             <td class="border border-gray-300 p-1.5 bg-purple-100 text-right">{{ number_format($grandTotalAdj, 2) }}</td>
@@ -318,6 +301,20 @@
         </table>
     </div>
 
+    <!-- JAVASCRIPT FOR EXCEL EXPORT -->
+    <script>
+        function exportToExcel() {
+            var table = document.getElementById("matrixTable");
+            // Generate worksheet from DOM table element (maintains row spans and col spans)
+            var wb = XLSX.utils.table_to_book(table, {
+                sheet: "Matrix Breakdown"
+            });
+            // Format filename based on period code
+            var filename = "13th_Month_Matrix_{{ $period->code }}.xlsx";
+            // Trigger Excel file download
+            XLSX.writeFile(wb, filename);
+        }
+    </script>
 </body>
 
 </html>

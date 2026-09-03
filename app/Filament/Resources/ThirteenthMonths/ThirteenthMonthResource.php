@@ -209,6 +209,7 @@ class ThirteenthMonthResource extends Resource
                         ->color('warning')
                         ->icon('heroicon-m-cog')
                         ->action(function (Employee $record) {
+                            
                             $yearendid      = session('session_yearendreportspid');
                             $partners       = session('session_partnersid');
                             $emptype        = session('session_employeetypeid');
