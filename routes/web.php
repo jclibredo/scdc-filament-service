@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
+use App\Http\Controllers\IncentiveBonusCSVController;
 use App\Http\Controllers\PayrollSummaryController;
 use App\Http\Controllers\YearEndReportController;
 use App\Models\OtherDeductionLog;
@@ -161,4 +162,10 @@ Route::middleware(['auth'])->group(function () {
 
         return response()->stream($callback, 200, $headers);
     })->name('employees.export.csv');
+
+    Route::get('/incentive-bonus/breakdown', [IncentiveBonusCSVController::class, 'showBreakdown'])
+        ->name('incentive-bonus.breakdown');
+
+    Route::get('/payroll/incentivebonuses-payslip', [PayrollSummaryController::class, 'printIncentiveBonusPayslips'])
+        ->name('payroll.incentivebonuses-payslip');
 });

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class Employee extends Model
@@ -29,6 +30,12 @@ class Employee extends Model
         'project_id',
         'partners'
     ];
+
+    public function incentiveBonus(): HasOne
+    {
+        // Adjust 'employeeid' and 'employeeid' if your foreign key / local key names differ
+        return $this->hasOne(IncentiveBonus::class, 'employeeid', 'employeeid');
+    }
 
     public function thirteenthMonths()
     {

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Payrolls;
 
-use App\Filament\Resources\Atlogs\AtlogResource;
 use App\Filament\Resources\Payrolls\Pages\CreatePayroll;
 use App\Filament\Resources\Payrolls\Pages\EditPayroll;
 use App\Filament\Resources\Payrolls\Pages\ListPayrolls;
@@ -308,7 +307,7 @@ class PayrollResource extends Resource
                                 || !empty($missingInEarnings)
                                 || !empty($missingSchedule)
                             ) {
-                                $missingBoth = array_intersect($missingInEarnings, $missingSchedule);
+                                // $missingBoth = array_intersect($missingInEarnings, $missingSchedule);
                                 $errorMessage = match (true) {
                                     empty($employeeIds) && !$periodcode => 'Both active session configurations and selected employees are missing.',
                                     empty($employeeIds) => 'No employees were selected. Please select at least one employee to process.',

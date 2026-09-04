@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Holidays;
 
-use App\Filament\Resources\Holidays\Pages\CreateHoliday;
-use App\Filament\Resources\Holidays\Pages\EditHoliday;
 use App\Filament\Resources\Holidays\Pages\ListHolidays;
 use App\Models\ActivityLog;
 use App\Models\Holiday;
@@ -13,7 +11,6 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;

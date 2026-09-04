@@ -87,7 +87,7 @@
                             <div>Empoyee ID : <strong class="font-bold">{{ $employee->employeeid }}</strong></div>
                             <div>Empoyee Status : <strong class="font-bold">{{ $employee->empStat?->name }}</strong></div>
                             <div>Net Pay : <strong class="font-bold">Php. {{ number_format($employee->payrollSummaryData->sum('totalnetpay'), 2) }}</strong></div>
-                            <div class="truncate">Project : <strong class="font-bold">BRIDGETOWN MALL</strong></div>
+                            <div class="truncate">Project : <strong class="font-bold">{{ $employee->project?->name }}</strong></div>
                         </div>
                     </div>
 

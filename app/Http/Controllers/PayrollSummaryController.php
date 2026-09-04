@@ -14,6 +14,7 @@ use App\Models\GovDeductionLog;
 use App\Models\Holiday;
 use App\Models\OtherDeductionLog;
 use App\Models\PayrollReport;
+use App\Models\YearEndReport;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
@@ -63,7 +64,7 @@ class PayrollSummaryController extends Controller
         ];
         // 2. Fetch primary employees, ordered by project name, then by employee lastname
         $employees = Employee::whereIn('employees.employeeid', $employeeids)
-             ->when($period->project_id && strtoupper($period->project_id) !== 'ALL', function ($query) use ($period) {
+            ->when($period->project_id && strtoupper($period->project_id) !== 'ALL', function ($query) use ($period) {
                 $query->where('employees.project_id', $period->project_id);
             })
             ->leftJoin('projects', 'employees.project_id', '=', 'projects.project_code')
@@ -876,5 +877,51 @@ class PayrollSummaryController extends Controller
             }
         }
         return view('payroll.payslip', compact('loopData', 'period'));
+    }
+
+    // public function printIncentiveBonusPayslips(Request $request)
+    // {
+
+    //     // Receive yearendid and employee IDs
+    //     $yearendid = $request->input('yearendid');
+    //     $employeeIds = $request->input('ids', []);
+
+    //     $period = YearEndReport::where('code', $yearendid)->firstOrFail();
+
+    //     $employees = Employee::query()
+    //         ->when(!empty($employeeIds), fn($q) => $q->whereIn('employeeid', (array) $employeeIds))
+    //         ->with([
+    //             'incentiveBonus' => fn($q) => $q->where('yearendrepid', $yearendid),
+    //             'adjustmentData' => fn($q) => $q->where('date_period_id', $yearendid),
+    //             'govdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+    //             'otherdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+    //             'project',
+    //         ])
+    //         ->get();
+
+    //     return view('payroll.bonusincentivepayslip', compact('employees', 'period'));
+    //     // return view('payroll.incentivebonus', compact('employees', 'period', 'yearendid'));
+    // }
+
+    public function printIncentiveBonusPayslips(Request $request)
+    {
+        $yearendid = $request->input('yearendid');
+        $employeeIds = $request->input('ids', []);
+
+        $period = YearEndReport::where('code', $yearendid)->firstOrFail();
+
+        $employees = Employee::query()
+            ->when(!empty($employeeIds), fn($q) => $q->whereIn('employeeid', (array) $employeeIds))
+            ->with([
+                'incentiveBonus' => fn($q) => $q->where('yearendrepid', $yearendid),
+                'adjustmentData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'govdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'otherdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'project',
+                'empStat',
+            ])
+            ->get();
+
+        return view('payroll.bonusincentivepayslip', compact('employees', 'period'));
     }
 }
