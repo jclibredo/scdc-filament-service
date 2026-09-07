@@ -14,8 +14,6 @@ use App\Models\Project;
 use App\Models\Skill;
 use App\Models\User;
 use App\Models\YearEndReport;
-// use Filament\Actions\Action;
-// use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 
 class TransactionCheckService
@@ -106,15 +104,9 @@ class TransactionCheckService
     {
         $id = $category->id;
 
-        return DB::table('employees')
-            ->where('employeetype', $id)
-            ->orWhere('empstatus', $id)
-            ->orWhere('partners', $id)
-            ->exists()
-            || DB::table('date_periods')
-            ->where('category_id', $id)
-            ->orWhere('employeetype', $id)
-            ->exists()
+        return DB::table('employees')->where('employeetype', $id)->orWhere('empstatus', $id)->orWhere('partners', $id)->exists()
+            || DB::table('date_periods')->where('category_id', $id)->orWhere('employeetype', $id)->exists()
+            || DB::table('adjustments')->where('adjustment_id', $id)->exists()
             || DB::table('earnings')->where('title', $id)->exists();
     }
 

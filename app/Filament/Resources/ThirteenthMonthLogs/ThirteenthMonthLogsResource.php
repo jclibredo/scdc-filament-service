@@ -154,7 +154,7 @@ class ThirteenthMonthLogsResource extends Resource
                         DatePicker::make('datestart')
                             ->label('Date Start')
                             ->dehydrated()
-                            ->live(onBlur: true)
+                            ->live()
                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                 // Automatically sync dateend with datestart if dateend is empty
                                 if ($state && empty($get('dateend'))) {

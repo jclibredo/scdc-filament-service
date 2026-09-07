@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Projects;
 
+use App\Filament\Resources\Projects\Pages\CreateProject;
+use App\Filament\Resources\Projects\Pages\EditProject;
 use App\Filament\Resources\Projects\Pages\ListProjects;
 use App\Models\Employee;
 use App\Models\Project;
@@ -22,6 +24,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
@@ -53,7 +56,6 @@ class ProjectResource extends Resource
     }
     public static function form(Schema $schema): Schema
     {
-        // return ProjectForm::configure($schema);
         return $schema
             ->schema([
                 Section::make('Project Profile')
@@ -113,13 +115,15 @@ class ProjectResource extends Resource
                             ])
                             ->rows(2)
                             ->columnSpanFull(), // Stretches the address field wide across its own row
-
                         FileUpload::make('image')
                             ->label('Project Image')
                             ->image()
                             ->disk('public')
                             ->directory('projects')
+                            ->visibility('public')
                             ->maxSize(2048) // 2MB limit
+                            ->imageEditor() // Optional: Allows users to crop/rotate
+                            ->previewable(true)
                             ->columnSpanFull(),
 
                         Toggle::make('status')
@@ -150,6 +154,14 @@ class ProjectResource extends Resource
                 TextColumn::make('project_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('image')->searchable()->sortable(),
+                // Render image thumbnail
+                // ImageColumn::make('image')
+                //     ->label('Image')
+                //     ->disk('public') // Matches your FileUpload disk
+                //     ->circular() // Optional: displays image as a circle (remove if rectangular preferred)
+                //     ->defaultImageUrl(url('/images/placeholder.png')), // Optional: fallback image
+
+
                 TextColumn::make('address')->limit(30),
                 IconColumn::make('status')
                     ->boolean()
@@ -254,8 +266,8 @@ class ProjectResource extends Resource
     {
         return [
             'index' => ListProjects::route('/'),
-            // 'create' => CreateProject::route('/create'),
-            // 'edit' => EditProject::route('/{record}/edit'),
+            'create' => CreateProject::route('/create'),
+            'edit' => EditProject::route('/{record}/edit'),
         ];
     }
 }

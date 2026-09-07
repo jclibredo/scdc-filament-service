@@ -520,8 +520,6 @@ class EmployeeResource extends Resource
                             }
                         })
                         ->label('Update'),
-                    // DeleteAction::make()
-                    //     ->label('Remove'),
                     DeleteAction::make()
                         ->label('Remove')
                         ->visible(fn(Employee $record) => !TransactionCheckService::hasEmployeeTransactions($record))

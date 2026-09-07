@@ -32,10 +32,7 @@ class CategoryResource extends Resource
     protected static ?string $model = Category::class;
 
     protected  static string|UnitEnum|null $navigationGroup = 'Utility Management';
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
-
-    // protected static ?string $recordTitleAttribute = 'Earnings Category';
     protected static ?string $navigationLabel = 'Categories';
     protected static ?string $pluralModelLabel = 'System Category Data';
     public static function shouldRegisterNavigation(): bool
@@ -79,7 +76,6 @@ class CategoryResource extends Resource
                                 'PAYROLL' => 'PAYROLL',
                                 'EARNINGS' => 'EARNINGS',
                                 'ADJUSTMENT' => 'ADJUSTMENT',
-                                'DEDUCTION' => 'DEDUCTION',
                                 'EMPLOYEE_STATUS' => 'EMPLOYEE STATUS',
                                 'EMPLOYEE_TYPE' => 'EMPLOYEE TYPE',
                                 'SUBCON' => 'SUB-CONTRACTOR DETAILS'
@@ -124,12 +120,10 @@ class CategoryResource extends Resource
                     ->where('status', true);
             })
             ->columns([
-
                 TextColumn::make('name')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-
                 TextColumn::make('cat')
                     ->label('Category Code')
                     ->badge()
@@ -140,11 +134,9 @@ class CategoryResource extends Resource
                     ->label('Status')
                     ->boolean() // Automatically turns true into a green check/circle and false into a red cross/circle
                     ->sortable(),
-
                 TextColumn::make('description')
                     ->label('Description')
                     ->limit(50),
-
                 TextColumn::make('created_at')
                     ->dateTime('M d, Y h:i A')
                     ->toggleable(isToggledHiddenByDefault: true),
