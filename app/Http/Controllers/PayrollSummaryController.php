@@ -924,4 +924,26 @@ class PayrollSummaryController extends Controller
 
         return view('payroll.bonusincentivepayslip', compact('employees', 'period'));
     }
+
+    public function printThirteenthMonthPayslips(Request $request)
+    {
+        $yearendid = $request->input('yearendid');
+        $employeeIds = $request->input('ids', []);
+
+        $period = YearEndReport::where('code', $yearendid)->firstOrFail();
+
+        $employees = Employee::query()
+            ->when(!empty($employeeIds), fn($q) => $q->whereIn('employeeid', (array) $employeeIds))
+            ->with([
+                'adjustmentData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'govdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'otherdeductionData' => fn($q) => $q->where('date_period_id', $yearendid),
+                'thirteenthMonth' => fn($q) => $q->where('yearendrepid', $yearendid),
+                'project',
+                'empStat',
+            ])
+            ->get();
+
+        return view('payroll.thirteenthmonthpayslip', compact('employees', 'period'));
+    }
 }

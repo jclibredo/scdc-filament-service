@@ -25,6 +25,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -92,19 +93,83 @@ class ThirteenthMonthLogsResource extends Resource
                             ->required(),
 
                         // 9. Date Start (maps to model 'datestart', nullable)
+                        // DatePicker::make('datestart')
+                        //     ->label('Date Start')
+                        //     ->dehydrated()
+                        //     ->live()
+                        //     ->minDate(function () {
+                        //         $yearEndCode = session('session_yearendreportspid');
+                        //         $report = YearEndReport::where('code', $yearEndCode)->first();
+                        //         return $report?->datefrom ? \Carbon\Carbon::parse($report->datefrom) : null;
+                        //     })
+                        //     ->maxDate(function () {
+                        //         $yearEndCode = session('session_yearendreportspid');
+                        //         $report = YearEndReport::where('code', $yearEndCode)->first();
+                        //         return $report?->dateto ? \Carbon\Carbon::parse($report->dateto) : null;
+                        //     })
+                        //     ->rules([
+                        //         function (Get $get, $record) {
+                        //             return function (string $attribute, $value, $fail) use ($get, $record) {
+                        //                 $yearEndCode = session('session_yearendreportspid');
+                        //                 $employeeId = session('session_empployeeid');
+
+                        //                 if (!$yearEndCode || !$value) {
+                        //                     return;
+                        //                 }
+
+                        //                 // 1. Duplicate & Overlap Check
+                        //                 $duplicateQuery = \App\Models\ThirteenthMonth::where('employeeid', $employeeId)
+                        //                     ->where('yearendrepid', $yearEndCode)
+                        //                     ->where(function ($query) use ($value) {
+                        //                         $query->whereDate('datestart', $value)
+                        //                             ->orWhereDate('dateend', $value);
+                        //                     });
+
+                        //                 if ($record) {
+                        //                     $duplicateQuery->where('id', '!=', $record->id);
+                        //                 }
+
+                        //                 if ($duplicateQuery->exists()) {
+                        //                     $fail("A 13th-month record already exists for this employee within this period configuration with that date.");
+                        //                 }
+                        //             };
+                        //         },
+                        //     ])
+                        //     ->nullable(),
+
+                        // 10. Date End (maps to model 'dateend', nullable)
+                        // DatePicker::make('dateend')
+                        //     ->label('Date End')
+                        //     ->after('datestart')
+                        //     ->dehydrated()
+                        //     ->nullable()
+                        //     ->disabled(fn(Get $get) => empty($get('datestart')))
+                        //     ->rules([
+                        //         // Optional: Ensures Date End is required if Date Start has been filled manually
+                        //         fn(Get $get): array => [
+                        //             'required_with:datestart'
+                        //         ],
+                        //     ]),
+
                         DatePicker::make('datestart')
                             ->label('Date Start')
                             ->dehydrated()
-                            ->live()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                // Automatically sync dateend with datestart if dateend is empty
+                                if ($state && empty($get('dateend'))) {
+                                    $set('dateend', $state);
+                                }
+                            })
                             ->minDate(function () {
                                 $yearEndCode = session('session_yearendreportspid');
                                 $report = YearEndReport::where('code', $yearEndCode)->first();
-                                return $report?->datefrom ? \Carbon\Carbon::parse($report->datefrom) : null;
+                                return $report?->datefrom ? Carbon::parse($report->datefrom) : null;
                             })
                             ->maxDate(function () {
                                 $yearEndCode = session('session_yearendreportspid');
                                 $report = YearEndReport::where('code', $yearEndCode)->first();
-                                return $report?->dateto ? \Carbon\Carbon::parse($report->dateto) : null;
+                                return $report?->dateto ? Carbon::parse($report->dateto) : null;
                             })
                             ->rules([
                                 function (Get $get, $record) {
@@ -116,8 +181,7 @@ class ThirteenthMonthLogsResource extends Resource
                                             return;
                                         }
 
-                                        // 1. Duplicate & Overlap Check
-                                        $duplicateQuery = \App\Models\ThirteenthMonth::where('employeeid', $employeeId)
+                                        $duplicateQuery = ThirteenthMonth::where('employeeid', $employeeId)
                                             ->where('yearendrepid', $yearEndCode)
                                             ->where(function ($query) use ($value) {
                                                 $query->whereDate('datestart', $value)
@@ -136,17 +200,16 @@ class ThirteenthMonthLogsResource extends Resource
                             ])
                             ->nullable(),
 
-                        // 10. Date End (maps to model 'dateend', nullable)
                         DatePicker::make('dateend')
                             ->label('Date End')
-                            ->after('datestart')
+                            ->afterOrEqual('datestart')
                             ->dehydrated()
                             ->nullable()
                             ->disabled(fn(Get $get) => empty($get('datestart')))
+                            ->minDate(fn(Get $get) => $get('datestart'))
                             ->rules([
-                                // Optional: Ensures Date End is required if Date Start has been filled manually
                                 fn(Get $get): array => [
-                                    'required_with:datestart'
+                                    'required_with:datestart',
                                 ],
                             ]),
                         Hidden::make('yearendrepid')

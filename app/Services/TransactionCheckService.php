@@ -44,7 +44,11 @@ class TransactionCheckService
     {
         $codeid = $yearendrep->code;
         // Returns true if they have entries inside the activity_logs table
-        return DB::table('thirteenth_months')->where('yearendcode', $codeid)->exists();
+        return DB::table('adjustments')->where('date_period_id', $codeid)->exists()
+            || DB::table('thirteenth_months')->where('yearendrepid', $codeid)->exists()
+            || DB::table('incentive_bonuses')->where('yearendrepid', $codeid)->exists()
+            || DB::table('gov_deduction_logs')->where('date_period_id', $codeid)->exists()
+            || DB::table('other_deduction_logs')->where('date_period_id', $codeid)->exists();
     }
 
     public static function hasEmployeeTransactions(Employee $employee): bool
@@ -85,6 +89,7 @@ class TransactionCheckService
             || DB::table('payroll_reports')->where('dateperiod_id', $id)->where('status', 2)->exists()
             || DB::table('payroll_summary_reports')->where('dateperiod_id', $id)->where('status', 2)->exists();
     }
+
 
     /**
      * Check if an Employee Schedule is attached to payrolls.

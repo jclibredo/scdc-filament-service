@@ -60,7 +60,6 @@ class YearEndReportResource extends Resource
                 'module',
                 [
                     'SUPERADMIN',
-                    // 'IMPORT',
                     'PAYROLLADMINWEEKLY',
                     'PAYROLLADMINMONTHLY',
                     'PAYROLLSUBCONWEEKLY',
@@ -155,13 +154,6 @@ class YearEndReportResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(),
-                        // 4. Project
-                        // Select::make('projectid')
-                        //     ->label('Project')
-                        //     ->helperText('Select the project associated with this report. If no project is selected, the report will include all projects.')
-                        //     ->relationship('projectData', 'name')
-                        //     ->searchable()
-                        //     ->preload(),
                         Select::make('projectid')
                             ->label('Project')
                             ->helperText('Select the project associated with this report. If no project is selected, the report will include all projects.')

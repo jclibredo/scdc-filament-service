@@ -29,7 +29,7 @@ use Illuminate\Support\HtmlString;
 class ThirteenthMonthResource extends Resource
 {
     protected static ?string $model = ThirteenthMonth::class;
-    protected static ?string $modelLabel = '13Month and Incentives Reports';
+    protected static ?string $modelLabel = '13MONTH REPORTS';
     public static function shouldRegisterNavigation(): bool
     {
         return false;
@@ -209,7 +209,7 @@ class ThirteenthMonthResource extends Resource
                         ->color('warning')
                         ->icon('heroicon-m-cog')
                         ->action(function (Employee $record) {
-                            
+
                             $yearendid      = session('session_yearendreportspid');
                             $partners       = session('session_partnersid');
                             $emptype        = session('session_employeetypeid');
@@ -331,7 +331,7 @@ class ThirteenthMonthResource extends Resource
                         ->label('Process Reports')
                         ->color('warning')
                         ->icon('heroicon-m-cog')
-                        ->requiresConfirmation()
+                        // ->requiresConfirmation()
                         ->openUrlInNewTab() // Still works with redirect()!
                         ->action(function (BulkAction $action, Collection $records) {
                             $ids = $records->map(fn($record) => $record->getKey())->implode(',');
@@ -346,20 +346,17 @@ class ThirteenthMonthResource extends Resource
                     BulkAction::make('printPayslip')
                         ->label('Print Payslip')
                         ->icon('heroicon-o-printer')
-                        ->requiresConfirmation()
+                        // ->requiresConfirmation()
                         ->color('success')
-                        ->action(function ($records) {
-                            foreach ($records as $record) {
-                                $employeeId = $record->employee_id;
-                                $periodId   = $record->period_id;
-                                // Example: send to worker that prints PDF
-                                // PrintPayslipJob::dispatch($employeeId, $periodId);
-                            }
-
-                            Notification::make()
-                                ->title('Payslips are being generated')
-                                ->success()
-                                ->send();
+                        ->action(function (Action $action, $livewire) {
+                            // Generate your target bulk print URL
+                            $employeeIds = $livewire->getFilteredTableQuery()->pluck('employeeid')->toArray();
+                            $yearendid     = session('session_yearendreportspid');
+                            $url = route('payroll.thirteenthmonth-payslip', [
+                                'yearendid' => $yearendid,
+                                'ids'       => $employeeIds,
+                            ]);
+                            $action->getLivewire()->js("window.open('{$url}', '_blank')");
                         }),
                 ])
                     ->button()

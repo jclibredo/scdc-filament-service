@@ -168,4 +168,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/payroll/incentivebonuses-payslip', [PayrollSummaryController::class, 'printIncentiveBonusPayslips'])
         ->name('payroll.incentivebonuses-payslip');
+
+    Route::get('/payroll/incentivebonuses-payslip', [PayrollSummaryController::class, 'printIncentiveBonusPayslips'])
+        ->name('payroll.incentivebonuses-payslip');
+        
+    Route::get('/payroll/thirteenthmonth-payslip', [PayrollSummaryController::class, 'printThirteenthMonthPayslips'])
+        ->name('payroll.thirteenthmonth-payslip');
 });
