@@ -51,7 +51,7 @@ class ProjectResource extends Resource
             return false;
         }
         return $user->userPermissions()
-            ->whereIn('module', ['SUPERADMIN', 'HR'])
+            ->whereIn('module', ['SUPERADMIN', 'HR', 'CMS'])
             ->exists();
     }
     public static function form(Schema $schema): Schema
