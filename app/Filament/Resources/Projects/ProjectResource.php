@@ -67,7 +67,6 @@ class ProjectResource extends Resource
                     ->icon('heroicon-o-building-office-2') // Optional: Sleek building/office icon
                     ->columns(2) // Sets up a clean, multi-column grid layout
                     ->schema([
-
                         TextInput::make('project_code')
                             ->extraInputAttributes([
                                 // Added 0-9 to the regex character validation layout to permit numeric inputs safely
@@ -153,13 +152,13 @@ class ProjectResource extends Resource
             ->columns([
                 TextColumn::make('project_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('image')->searchable()->sortable(),
+                // TextColumn::make('image')->searchable()->sortable(),
                 // Render image thumbnail
-                // ImageColumn::make('image')
-                //     ->label('Image')
-                //     ->disk('public') // Matches your FileUpload disk
-                //     ->circular() // Optional: displays image as a circle (remove if rectangular preferred)
-                //     ->defaultImageUrl(url('/images/placeholder.png')), // Optional: fallback image
+                ImageColumn::make('image')
+                    ->label('Image')
+                    ->disk('public') // Matches your FileUpload disk
+                    ->circular() // Optional: displays image as a circle (remove if rectangular preferred)
+                    ->defaultImageUrl(url('/images/placeholder.png')), // Optional: fallback image
 
 
                 TextColumn::make('address')->limit(30),
