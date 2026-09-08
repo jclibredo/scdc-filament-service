@@ -1,5 +1,6 @@
 <?php
-use Illuminate\Foundation\Inspiring;
+
+// use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -9,11 +10,6 @@ Schedule::call(function () {
         '--tries' => 3,
     ]);
 })
-->everyMinute()
-->withoutOverlapping();
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
-
-
+    ->name('process-queue-work') // <--- Add this line
+    ->everyMinute()
+    ->withoutOverlapping();
