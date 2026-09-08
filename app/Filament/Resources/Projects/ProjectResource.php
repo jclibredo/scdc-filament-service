@@ -119,12 +119,8 @@ class ProjectResource extends Resource
                             ->image()
                             ->disk('public')
                             ->directory('projects')
-                            ->visibility('public')
                             ->maxSize(2048) // 2MB limit
-                            ->imageEditor() // Optional: Allows users to crop/rotate
-                            ->previewable(true)
                             ->columnSpanFull(),
-
                         Toggle::make('status')
                             ->label('Set project status')
                             ->default(true)
@@ -155,12 +151,8 @@ class ProjectResource extends Resource
                 // TextColumn::make('image')->searchable()->sortable(),
                 // Render image thumbnail
                 ImageColumn::make('image')
-                    ->label('Image')
-                    ->disk('public') // Matches your FileUpload disk
-                    ->circular() // Optional: displays image as a circle (remove if rectangular preferred)
-                    ->defaultImageUrl(url('/images/placeholder.png')), // Optional: fallback image
-
-
+                    ->disk('public')
+                    ->square(),
                 TextColumn::make('address')->limit(30),
                 IconColumn::make('status')
                     ->boolean()
@@ -265,8 +257,8 @@ class ProjectResource extends Resource
     {
         return [
             'index' => ListProjects::route('/'),
-            'create' => CreateProject::route('/create'),
-            'edit' => EditProject::route('/{record}/edit'),
+            // 'create' => CreateProject::route('/create'),
+            // 'edit' => EditProject::route('/{record}/edit'),
         ];
     }
 }

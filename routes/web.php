@@ -3,15 +3,17 @@
 use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\IncentiveBonusCSVController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\PayrollSummaryController;
 use App\Http\Controllers\YearEndReportController;
 use App\Models\OtherDeductionLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('webpage');
-});
+// Route::get('/', function () {
+//     return view('webpage');
+// });
+Route::get('/', [PageController::class, 'index'])->name('home');
 
 Route::get('/login', function () {
     // Check if the user was trying to access an 'hci' path before hitting the login fallback
@@ -171,7 +173,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/payroll/incentivebonuses-payslip', [PayrollSummaryController::class, 'printIncentiveBonusPayslips'])
         ->name('payroll.incentivebonuses-payslip');
-        
+
     Route::get('/payroll/thirteenthmonth-payslip', [PayrollSummaryController::class, 'printThirteenthMonthPayslips'])
         ->name('payroll.thirteenthmonth-payslip');
 });

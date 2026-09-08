@@ -20,22 +20,26 @@ class Project extends Model
         'scope',
     ];
 
-    // protected static function booted(): void
-    // {
-    //     // 1. Delete old file when image is replaced or removed during an update
-    //     static::updating(function (Project $project) {
-    //         if ($project->isDirty('image') && $project->getOriginal('image')) {
-    //             Storage::disk('public')->delete($project->getOriginal('image'));
-    //         }
-    //     });
+    protected $casts = [ // Crucial for handling multiple file paths
+        'status' => 'boolean',
+    ];
 
-    //     // 2. Delete file when the entire project record is deleted
-    //     static::deleting(function (Project $project) {
-    //         if ($project->image) {
-    //             Storage::disk('public')->delete($project->image);
-    //         }
-    //     });
-    // }
+    protected static function booted(): void
+    {
+        // 1. Delete old file when image is replaced or removed during an update
+        static::updating(function (Project $project) {
+            if ($project->isDirty('image') && $project->getOriginal('image')) {
+                Storage::disk('public')->delete($project->getOriginal('image'));
+            }
+        });
+
+        // 2. Delete file when the entire project record is deleted
+        static::deleting(function (Project $project) {
+            if ($project->image) {
+                Storage::disk('public')->delete($project->image);
+            }
+        });
+    }
     // protected static function booted(): void
     // {
     //     static::updating(function (Project $project) {
