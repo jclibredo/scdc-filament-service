@@ -230,7 +230,14 @@
                     </div>
                 </div>
                 @empty
-                <p style="text-align: center; grid-column: 1 / -1;">No expertise items listed at the moment.</p>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f1f5f9; color: #475569; padding: 0.625rem 1.25rem; border-radius: 9999px; font-weight: 500; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        No expertise items listed at the moment.
+                    </span>
+                </div>
                 @endforelse
             </div>
         </section>
@@ -272,7 +279,14 @@
                     </div>
                 </div>
                 @empty
-                <p style="text-align: center; grid-column: 1 / -1;">No company assets available at the moment.</p>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f1f5f9; color: #475569; padding: 0.625rem 1.25rem; border-radius: 9999px; font-weight: 500; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        No company assets available at the moment.
+                    </span>
+                </div>
                 @endforelse
             </div>
         </section>
@@ -318,7 +332,14 @@
                     </div>
                 </div>
                 @empty
-                <p style="text-align: center; grid-column: 1 / -1;">No active events found.</p>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f1f5f9; color: #475569; padding: 0.625rem 1.25rem; border-radius: 9999px; font-weight: 500; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        No active events found.
+                    </span>
+                </div>
                 @endforelse
             </div>
         </section>
@@ -403,7 +424,15 @@
                     </div>
                 </div>
                 @empty
-                <p style="text-align: center; grid-column: 1 / -1;">No projects listed at the moment.</p>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f1f5f9; color: #475569; padding: 0.625rem 1.25rem; border-radius: 9999px; font-weight: 500; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        No projects listed at the moment.
+                    </span>
+                </div>
+
                 @endforelse
             </div>
         </section>
