@@ -8,7 +8,6 @@ use App\Models\Event;
 use App\Models\Expertise;
 use App\Models\Home;
 use App\Models\Project;
-use Illuminate\Http\Request;
 
 class PageController extends Controller
 {
