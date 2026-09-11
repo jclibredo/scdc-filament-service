@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\DeductionController;
+use App\Http\Controllers\FaceRecognitionController;
 use App\Http\Controllers\IncentiveBonusCSVController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PayrollSummaryController;
@@ -176,4 +177,19 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/payroll/thirteenthmonth-payslip', [PayrollSummaryController::class, 'printThirteenthMonthPayslips'])
         ->name('payroll.thirteenthmonth-payslip');
+
+    Route::get('/face-recognition/{employeeId}', [FaceRecognitionController::class, 'show'])
+        ->name('face.recognition');
+
+    // API routes matching the fetch calls in JS
+    Route::post('/face-identify', [FaceRecognitionController::class, 'identify']);
+    Route::post('/face-register', [FaceRecognitionController::class, 'register']);
+    Route::get('/face-profile/{employeeId}', [FaceRecognitionController::class, 'show']);
+
+    // Route to display the Blade view
+    Route::get('/face-recognition', function () {
+        return view('face-recognition'); // Make sure face-recognition.blade.php exists in resources/views
+    });
+
+    Route::post('/attendance-log', [FaceRecognitionController::class, 'logAttendance']);
 });

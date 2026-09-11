@@ -31,6 +31,11 @@ class Employee extends Model
         'partners'
     ];
 
+    public function facialProfile(): HasOne
+    {
+        return $this->hasOne(FacialProfile::class);
+    }
+
     public function incentiveBonus(): HasOne
     {
         // Adjust 'employeeid' and 'employeeid' if your foreign key / local key names differ

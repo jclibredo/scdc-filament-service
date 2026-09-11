@@ -283,6 +283,28 @@ class EmployeeResource extends Resource
             ->filtersFormWidth('2xl')
             ->actions([
                 ActionGroup::make([
+                    Action::make('faceRecognition')
+                        ->label('Face Recognition')
+                        ->icon('heroicon-o-camera')
+                        ->color('info')
+                        ->action(function (Employee $record, Action $action) {
+                            // 1. Log Activity
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Opened face recognition view for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
+                            // 2. Build URL matching route parameter {employeeId}
+                            $url = route('face.recognition', [
+                                'employeeId' => $record->employeeid,
+                            ]);
+
+                            // 3. Open in a new tab via Livewire JS dispatch
+                            $action->getLivewire()->js("window.open('{$url}', '_blank')");
+                        }),
                     Action::make('viewEarnings')
                         ->label('View Earnings')
                         ->icon('heroicon-o-banknotes')
