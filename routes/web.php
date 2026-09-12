@@ -192,3 +192,7 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/attendance-log', [FaceRecognitionController::class, 'logAttendance']);
 Route::get('/face-verify', [FaceRecognitionController::class, 'getVerify'])->name('face.verify');
 Route::post('/face-identify', [FaceRecognitionController::class, 'identify']);
+
+Route::get('/voice-to-text', function () {
+    return view('voice-to-text'); // ensure this matches your blade or html view name
+})->name('voice.to.text.show');

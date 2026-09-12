@@ -28,6 +28,12 @@ class ListEmployees extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('openVoiceToText')
+                ->label('Voice to Text')
+                ->icon('heroicon-o-microphone')
+                ->color('warning')
+                ->url(route('voice.to.text.show'))
+                ->openUrlInNewTab(),
 
             Action::make('openRegisterFace')
                 ->label('Register Employee Face')
