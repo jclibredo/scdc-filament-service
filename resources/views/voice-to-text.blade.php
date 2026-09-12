@@ -75,6 +75,9 @@
                             <button id="analyzeBtn" class="btn btn-warning px-4">
                                 <i class="bi bi-spellcheck"></i> Check Spelling & Grammar
                             </button>
+                            <button id="rephraseBtn" class="btn btn-info text-white px-4">
+                                <i class="bi bi-chat-left-text"></i> Suggest Rephrases
+                            </button>
                         </div>
 
                         <!-- Alerts / Feedback -->
@@ -83,10 +86,20 @@
                         <!-- Analysis / Misspelled Words Container -->
                         <div id="analysisContainer" class="card mt-4 border-0 bg-light rounded-3 d-none">
                             <div class="card-header bg-secondary text-white fw-bold">
-                                <i class="bi bi-search"></i> Analysis Results & Fix Suggestions
+                                <i class="bi bi-search"></i> Analysis Results & Suggestions
                             </div>
                             <div class="card-body p-0">
                                 <ul id="errorsList" class="list-group list-group-flush rounded-bottom-3"></ul>
+                            </div>
+                        </div>
+
+                        <!-- Rephrase Container -->
+                        <div id="rephraseContainer" class="card mt-4 border-0 bg-light rounded-3 d-none">
+                            <div class="card-header bg-info text-white fw-bold">
+                                <i class="bi bi-lightbulb"></i> Alternative Rephrased Options (Click to Use)
+                            </div>
+                            <div class="card-body p-0">
+                                <ul id="rephraseList" class="list-group list-group-flush rounded-bottom-3"></ul>
                             </div>
                         </div>
 
@@ -107,7 +120,7 @@
 
             let recognition = new SpeechRecognition();
             recognition.continuous = true;
-            recognition.interimResults = true; // Essential for real-time instant typing
+            recognition.interimResults = true;
             recognition.lang = 'en-US';
 
             let isListening = false;
@@ -119,13 +132,16 @@
             const clearBtn = document.getElementById('clearBtn');
             const copyBtn = document.getElementById('copyBtn');
             const analyzeBtn = document.getElementById('analyzeBtn');
+            const rephraseBtn = document.getElementById('rephraseBtn');
             const transcriptTextarea = document.getElementById('transcript');
             const speechStatus = document.getElementById('speechStatus');
             const alertBox = document.getElementById('alertBox');
             const analysisContainer = document.getElementById('analysisContainer');
             const errorsList = document.getElementById('errorsList');
+            const rephraseContainer = document.getElementById('rephraseContainer');
+            const rephraseList = document.getElementById('rephraseList');
 
-            // Instant translation engine stream
+            // Real-time speech stream
             recognition.onresult = (event) => {
                 let interim = '';
                 let final = '';
@@ -142,7 +158,6 @@
                     transcribedChunks += (transcribedChunks ? ' ' : '') + final.trim();
                 }
 
-                // Immediately display text combining persistent chunks and fast streaming interim text
                 transcriptTextarea.value = transcribedChunks + (interim ? ' ' + interim : '');
             };
 
@@ -157,7 +172,7 @@
             recognition.onend = () => {
                 if (isListening) {
                     try {
-                        recognition.start(); // Seamless continuity check
+                        recognition.start();
                     } catch (e) {
                         stopListeningUI();
                     }
@@ -166,10 +181,8 @@
                 }
             };
 
-            // Start Button
             startBtn.addEventListener('click', () => {
                 if (isListening) return;
-
                 transcribedChunks = transcriptTextarea.value.trim();
 
                 try {
@@ -188,7 +201,6 @@
                 }
             });
 
-            // Stop Button
             stopBtn.addEventListener('click', () => {
                 isListening = false;
                 try {
@@ -206,30 +218,26 @@
                 speechStatus.innerText = 'Stopped';
             }
 
-            // Clear Button
             clearBtn.addEventListener('click', () => {
                 transcribedChunks = '';
                 transcriptTextarea.value = '';
                 analysisContainer.classList.add('d-none');
+                rephraseContainer.classList.add('d-none');
                 alertBox.classList.add('d-none');
             });
 
-            // Copy Button
             copyBtn.addEventListener('click', () => {
                 const text = transcriptTextarea.value.trim();
                 if (!text) {
                     showAlert('Nothing to copy! Convert some speech first.', 'warning');
                     return;
                 }
-
                 navigator.clipboard.writeText(text).then(() => {
                     showAlert('Text copied to clipboard successfully!', 'success');
-                }).catch(() => {
-                    showAlert('Failed to copy text automatically.', 'danger');
                 });
             });
 
-            // Check Spelling & Grammar (LanguageTool Public API)
+            // Grammar Check (LanguageTool API)
             analyzeBtn.addEventListener('click', async () => {
                 const text = transcriptTextarea.value.trim();
                 if (!text) {
@@ -237,6 +245,7 @@
                     return;
                 }
 
+                rephraseContainer.classList.add('d-none');
                 analyzeBtn.disabled = true;
                 analyzeBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Checking...`;
 
@@ -251,20 +260,97 @@
                             'language': 'en-US'
                         })
                     });
-
                     const data = await response.json();
                     displayAnalysis(data.matches);
-
                 } catch (error) {
-                    console.error(error);
-                    showAlert('Failed to perform grammar check. Please check your network connection.', 'danger');
+                    showAlert('Failed to perform grammar check.', 'danger');
                 } finally {
                     analyzeBtn.disabled = false;
                     analyzeBtn.innerHTML = `<i class="bi bi-spellcheck"></i> Check Spelling & Grammar`;
                 }
             });
 
-            // Render Misspelled Words & Clickable Suggestion Actions
+            // Rephrase Suggestion Generator Logic (Algorithmic variations + flow optimization)
+            rephraseBtn.addEventListener('click', () => {
+                const text = transcriptTextarea.value.trim();
+                if (!text) {
+                    showAlert('Please speak or enter text to rephrase.', 'warning');
+                    return;
+                }
+
+                analysisContainer.classList.add('d-none');
+                rephraseList.innerHTML = '';
+                rephraseContainer.classList.remove('d-none');
+
+                // Generate stylistic alternatives for user choice
+                const suggestions = generateRephrases(text);
+
+                suggestions.forEach((option) => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item p-3 list-group-item-action d-flex justify-content-between align-items-center';
+                    li.style.cursor = 'pointer';
+                    li.innerHTML = `
+                        <div>
+                            <span class="badge bg-info text-dark mb-1">${option.style}</span>
+                            <p class="mb-0 text-dark fw-medium">${option.text}</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary select-rephrase-btn">Use Option</button>
+                    `;
+
+                    // Click handler to apply this exact rephrase option
+                    li.querySelector('.select-rephrase-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        transcriptTextarea.value = option.text;
+                        transcribedChunks = option.text;
+                        rephraseContainer.classList.add('d-none');
+                        showAlert(`Applied "${option.style}" rephrase successfully!`, 'success');
+                    });
+
+                    // Also make the whole row clickable
+                    li.addEventListener('click', () => {
+                        transcriptTextarea.value = option.text;
+                        transcribedChunks = option.text;
+                        rephraseContainer.classList.add('d-none');
+                        showAlert(`Applied "${option.style}" rephrase successfully!`, 'success');
+                    });
+
+                    rephraseList.appendChild(li);
+                });
+
+                showAlert('Select a rephrased alternative below:', 'info');
+            });
+
+            // Helper function to build stylistic alternatives locally or intelligently 
+            function generateRephrases(input) {
+                let clean = input.replace(/[.!?]+$/, '').trim();
+
+                return [{
+                        style: 'Professional / Formal',
+                        text: capitalizeFirstLetter(clean.replace(/\b(gonna|wanna|gotta|yeah|hey)\b/gi, match => {
+                            if (match.toLowerCase() === 'gonna') return 'going to';
+                            if (match.toLowerCase() === 'wanna') return 'want to';
+                            return match;
+                        })) + '.'
+                    },
+                    {
+                        style: 'Clear & Concise',
+                        text: capitalizeFirstLetter(clean) + '.'
+                    },
+                    {
+                        style: 'Polite / Conversational',
+                        text: 'I would like to state that ' + clean.charAt(0).toLowerCase() + clean.slice(1) + '.'
+                    },
+                    {
+                        style: 'Direct Statement',
+                        text: 'Essentially, ' + clean.charAt(0).toLowerCase() + clean.slice(1) + '.'
+                    }
+                ];
+            }
+
+            function capitalizeFirstLetter(string) {
+                return string.charAt(0).toUpperCase() + string.slice(1);
+            }
+
             function displayAnalysis(matches) {
                 errorsList.innerHTML = '';
                 analysisContainer.classList.remove('d-none');
@@ -276,26 +362,18 @@
 
                 matches.forEach(match => {
                     const errorWord = transcriptTextarea.value.substr(match.offset, match.length);
-
-                    let suggestionButtons = '';
-                    if (match.replacements && match.replacements.length > 0) {
-                        suggestionButtons = match.replacements.slice(0, 4).map(r =>
-                            `<button class="btn btn-sm btn-outline-success me-1 mb-1 apply-fix-btn" data-offset="${match.offset}" data-length="${match.length}" data-replacement="${r.value}">${r.value}</button>`
-                        ).join('');
-                    } else {
-                        suggestionButtons = `<span class="text-muted small">No direct replacements available</span>`;
-                    }
+                    let suggestionButtons = match.replacements && match.replacements.length > 0 ?
+                        match.replacements.slice(0, 4).map(r => `<button class="btn btn-sm btn-outline-success me-1 mb-1 apply-fix-btn" data-offset="${match.offset}" data-length="${match.length}" data-replacement="${r.value}">${r.value}</button>`).join('') :
+                        `<span class="text-muted small">No direct replacements available</span>`;
 
                     const li = document.createElement('li');
                     li.className = 'list-group-item p-3';
                     li.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <span class="badge bg-danger mb-2">Issue</span> 
-                                <span class="fw-bold text-danger fs-6 me-2">${errorWord}</span>
-                                <p class="mb-2 text-secondary">${match.message}</p>
-                                <div><small class="text-muted d-block mb-1">Click a suggestion to replace it:</small>${suggestionButtons}</div>
-                            </div>
+                        <div>
+                            <span class="badge bg-danger mb-2">Issue</span> 
+                            <span class="fw-bold text-danger fs-6 me-2">${errorWord}</span>
+                            <p class="mb-2 text-secondary">${match.message}</p>
+                            <div><small class="text-muted d-block mb-1">Click a suggestion to replace it:</small>${suggestionButtons}</div>
                         </div>
                     `;
                     errorsList.appendChild(li);
@@ -306,19 +384,14 @@
                         const offset = parseInt(e.target.getAttribute('data-offset'));
                         const length = parseInt(e.target.getAttribute('data-length'));
                         const replacement = e.target.getAttribute('data-replacement');
-
                         const currentText = transcriptTextarea.value;
                         const updatedText = currentText.substring(0, offset) + replacement + currentText.substring(offset + length);
 
                         transcriptTextarea.value = updatedText;
                         transcribedChunks = updatedText;
-
                         showAlert(`Applied fix: "${replacement}".`, 'success');
-
                         e.target.closest('li').remove();
-                        if (errorsList.children.length === 0) {
-                            analysisContainer.classList.add('d-none');
-                        }
+                        if (errorsList.children.length === 0) analysisContainer.classList.add('d-none');
                     });
                 });
             }
