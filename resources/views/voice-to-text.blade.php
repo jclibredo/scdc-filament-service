@@ -83,7 +83,7 @@
                         <!-- Analysis / Misspelled Words Container -->
                         <div id="analysisContainer" class="card mt-4 border-0 bg-light rounded-3 d-none">
                             <div class="card-header bg-secondary text-white fw-bold">
-                                <i class="bi bi-search"></i> Analysis Results
+                                <i class="bi bi-search"></i> Analysis Results & Fix Suggestions
                             </div>
                             <div class="card-body p-0">
                                 <ul id="errorsList" class="list-group list-group-flush rounded-bottom-3"></ul>
@@ -105,59 +105,13 @@
                 return;
             }
 
-            let recognition = null;
-            let finalTranscript = '';
+            let recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true; // Essential for real-time instant typing
+            recognition.lang = 'en-US';
+
             let isListening = false;
-
-            function initRecognition() {
-                if (recognition) {
-                    try {
-                        recognition.abort();
-                    } catch (e) {}
-                }
-
-                recognition = new SpeechRecognition();
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
-
-                recognition.onresult = (event) => {
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
-                    transcriptTextarea.value = finalTranscript + interimTranscript;
-                };
-
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                    isListening = false;
-                    stopListeningUI();
-
-                    if (event.error === 'network') {
-                        showAlert('Network Error: Chrome speech recognition requires an internet connection or must run locally via localhost/127.0.0.1 (not raw IP addresses or file://).', 'danger');
-                    } else {
-                        showAlert(`Speech error: ${event.error}`, 'danger');
-                    }
-                };
-
-                recognition.onend = () => {
-                    if (isListening) {
-                        try {
-                            recognition.start();
-                        } catch (e) {
-                            isListening = false;
-                            stopListeningUI();
-                        }
-                    } else {
-                        stopListeningUI();
-                    }
-                };
-            }
+            let transcribedChunks = '';
 
             // Element References
             const startBtn = document.getElementById('startBtn');
@@ -171,12 +125,52 @@
             const analysisContainer = document.getElementById('analysisContainer');
             const errorsList = document.getElementById('errorsList');
 
+            // Instant translation engine stream
+            recognition.onresult = (event) => {
+                let interim = '';
+                let final = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        final += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+
+                if (final) {
+                    transcribedChunks += (transcribedChunks ? ' ' : '') + final.trim();
+                }
+
+                // Immediately display text combining persistent chunks and fast streaming interim text
+                transcriptTextarea.value = transcribedChunks + (interim ? ' ' + interim : '');
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error !== 'aborted') {
+                    showAlert(`Speech error: ${event.error}`, 'danger');
+                }
+                stopListeningUI();
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    try {
+                        recognition.start(); // Seamless continuity check
+                    } catch (e) {
+                        stopListeningUI();
+                    }
+                } else {
+                    stopListeningUI();
+                }
+            };
+
             // Start Button
             startBtn.addEventListener('click', () => {
-                if (isListening) return; // Prevent double-start trigger
+                if (isListening) return;
 
-                initRecognition();
-                finalTranscript = transcriptTextarea.value ? transcriptTextarea.value + ' ' : '';
+                transcribedChunks = transcriptTextarea.value.trim();
 
                 try {
                     recognition.start();
@@ -189,7 +183,6 @@
                     showAlert('Microphone active. Start speaking...', 'info');
                 } catch (err) {
                     console.error("Start failed:", err);
-                    isListening = false;
                     stopListeningUI();
                     showAlert('Could not start microphone. Check browser permissions.', 'danger');
                 }
@@ -198,15 +191,14 @@
             // Stop Button
             stopBtn.addEventListener('click', () => {
                 isListening = false;
-                if (recognition) {
-                    try {
-                        recognition.stop();
-                    } catch (e) {}
-                }
+                try {
+                    recognition.stop();
+                } catch (e) {}
                 stopListeningUI();
             });
 
             function stopListeningUI() {
+                isListening = false;
                 startBtn.disabled = false;
                 startBtn.classList.remove('mic-pulse');
                 stopBtn.disabled = true;
@@ -216,7 +208,7 @@
 
             // Clear Button
             clearBtn.addEventListener('click', () => {
-                finalTranscript = '';
+                transcribedChunks = '';
                 transcriptTextarea.value = '';
                 analysisContainer.classList.add('d-none');
                 alertBox.classList.add('d-none');
@@ -272,7 +264,7 @@
                 }
             });
 
-            // Render Misspelled Words & Suggestions
+            // Render Misspelled Words & Clickable Suggestion Actions
             function displayAnalysis(matches) {
                 errorsList.innerHTML = '';
                 analysisContainer.classList.remove('d-none');
@@ -283,22 +275,51 @@
                 }
 
                 matches.forEach(match => {
-                    const errorWord = match.context.text.substr(match.context.offset, match.context.length);
-                    const suggestions = match.replacements.slice(0, 4).map(r => `<span class="badge bg-success me-1">${r.value}</span>`).join(' ');
+                    const errorWord = transcriptTextarea.value.substr(match.offset, match.length);
+
+                    let suggestionButtons = '';
+                    if (match.replacements && match.replacements.length > 0) {
+                        suggestionButtons = match.replacements.slice(0, 4).map(r =>
+                            `<button class="btn btn-sm btn-outline-success me-1 mb-1 apply-fix-btn" data-offset="${match.offset}" data-length="${match.length}" data-replacement="${r.value}">${r.value}</button>`
+                        ).join('');
+                    } else {
+                        suggestionButtons = `<span class="text-muted small">No direct replacements available</span>`;
+                    }
 
                     const li = document.createElement('li');
                     li.className = 'list-group-item p-3';
                     li.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <span class="badge bg-danger mb-2">Issue</span> 
-                        <span class="fw-bold text-danger fs-6 me-2">${errorWord}</span>
-                        <p class="mb-1 text-secondary">${match.message}</p>
-                        ${suggestions ? `<div class="mt-2"><small class="text-muted me-2">Suggestions:</small>${suggestions}</div>` : ''}
-                    </div>
-                </div>
-            `;
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge bg-danger mb-2">Issue</span> 
+                                <span class="fw-bold text-danger fs-6 me-2">${errorWord}</span>
+                                <p class="mb-2 text-secondary">${match.message}</p>
+                                <div><small class="text-muted d-block mb-1">Click a suggestion to replace it:</small>${suggestionButtons}</div>
+                            </div>
+                        </div>
+                    `;
                     errorsList.appendChild(li);
+                });
+
+                document.querySelectorAll('.apply-fix-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const offset = parseInt(e.target.getAttribute('data-offset'));
+                        const length = parseInt(e.target.getAttribute('data-length'));
+                        const replacement = e.target.getAttribute('data-replacement');
+
+                        const currentText = transcriptTextarea.value;
+                        const updatedText = currentText.substring(0, offset) + replacement + currentText.substring(offset + length);
+
+                        transcriptTextarea.value = updatedText;
+                        transcribedChunks = updatedText;
+
+                        showAlert(`Applied fix: "${replacement}".`, 'success');
+
+                        e.target.closest('li').remove();
+                        if (errorsList.children.length === 0) {
+                            analysisContainer.classList.add('d-none');
+                        }
+                    });
                 });
             }
 
