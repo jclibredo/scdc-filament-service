@@ -12,9 +12,9 @@ class FacialProfile extends Model
     protected $casts = [
         'face_descriptor' => 'array',
     ];
-
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        // Explicitly set 'employee_id' as foreign key and 'employeeid' as owner key
+        return $this->belongsTo(Employee::class, 'employee_id', 'employeeid');
     }
 }

@@ -1,0 +1,227 @@
+.registration-card {
+    max-inline-size: 680px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background: #1e293b;
+    border-radius: 12px;
+    color: #f8fafc;
+}
+
+.form-group {
+    margin-block-end: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-block-end: 0.5rem;
+    font-weight: 600;
+}
+
+.form-control {
+    inline-size: 100%;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.viewport-wrapper {
+    position: relative;
+    inline-size: 100%;
+    block-size: 400px;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#webcam,
+#captured-preview {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+}
+
+#captured-preview {
+    display: none;
+}
+
+.btn-container {
+    display: flex;
+    gap: 10px;
+    margin-block-start: 1rem;
+}
+
+.btn-reg {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-capture {
+    background: #0284c7;
+    color: white;
+}
+
+.btn-remove {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-save {
+    background: #16a34a;
+    color: white;
+}
+
+.btn-reg:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Viewport Relative Wrapper for Guidelines */
+.viewport-container {
+    position: relative;
+    inline-size: 100%;
+    max-inline-size: 640px;
+    margin: 0 auto;
+}
+
+/* Overlay Canvas for Bounding Box */
+#overlay-canvas {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Real-time Distance / Position Overlay Message */
+#guidance-overlay {
+    position: absolute;
+    inset-block-end: 20px;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 10;
+    transition: all 0.2s ease;
+    text-align: center;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#guidance-overlay i,
+#guidance-overlay svg {
+    inline-size: 18px;
+    block-size: 18px;
+}
+
+#guidance-overlay.status-ok {
+    background: rgba(16, 185, 129, 0.9);
+    border-color: #34d399;
+}
+
+#guidance-overlay.status-warn {
+    background: rgba(245, 158, 11, 0.9);
+    border-color: #fbbf24;
+}
+
+#guidance-overlay.status-danger {
+    background: rgba(239, 68, 68, 0.9);
+    border-color: #fca5a5;
+}
+
+/* Centered Smooth Fading Toast (Enlarged) */
+#toast-container {
+    position: fixed;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    inline-size: 300px;
+    block-size: 300px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    box-sizing: border-box;
+    text-align: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(16px);
+    box-shadow:
+        0 25px 35px -5px rgba(0, 0, 0, 0.4),
+        0 15px 15px -5px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    pointer-events: none;
+}
+
+#toast-container.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#toast-icon {
+    inline-size: 88px !important;
+    block-size: 88px !important;
+    margin-block-end: 16px;
+    stroke-width: 2;
+}
+
+#toast-message {
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #ffffff;
+    word-break: break-word;
+}
+
+/* Toast Themes */
+.toast-info {
+    background-color: rgba(30, 41, 59, 0.94);
+    color: #38bdf8;
+}
+.toast-info #toast-icon {
+    color: #38bdf8;
+}
+
+.toast-success {
+    background-color: rgba(6, 78, 59, 0.94);
+    color: #34d399;
+}
+.toast-success #toast-icon {
+    color: #34d399;
+}
+
+.toast-error {
+    background-color: rgba(127, 29, 29, 0.94);
+    color: #f87171;
+}
+.toast-error #toast-icon {
+    color: #f87171;
+}

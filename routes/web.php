@@ -182,14 +182,13 @@ Route::middleware(['auth'])->group(function () {
         ->name('face.recognition');
 
     // API routes matching the fetch calls in JS
-    Route::post('/face-identify', [FaceRecognitionController::class, 'identify']);
-    Route::post('/face-register', [FaceRecognitionController::class, 'register']);
-    Route::get('/face-profile/{employeeId}', [FaceRecognitionController::class, 'show']);
-
-    // Route to display the Blade view
-    Route::get('/face-recognition', function () {
-        return view('face-recognition'); // Make sure face-recognition.blade.php exists in resources/views
-    });
-
-    Route::post('/attendance-log', [FaceRecognitionController::class, 'logAttendance']);
+    // Route::post('/face-register', [FaceRecognitionController::class, 'register']);
+    // Route::get('/face-recognition', [FaceRecognitionController::class, 'show'])->name('face.recognition');
+    Route::post('/face-register', [FaceRecognitionController::class, 'store'])->name('face.register.store');
+    Route::get('/face-register', [FaceRecognitionController::class, 'show'])->name('face.register.show');
 });
+
+//ATTENDANCE USING FACE
+Route::post('/attendance-log', [FaceRecognitionController::class, 'logAttendance']);
+Route::get('/face-verify', [FaceRecognitionController::class, 'getVerify'])->name('face.verify');
+Route::post('/face-identify', [FaceRecognitionController::class, 'identify']);

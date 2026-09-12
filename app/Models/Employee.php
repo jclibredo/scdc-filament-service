@@ -33,7 +33,8 @@ class Employee extends Model
 
     public function facialProfile(): HasOne
     {
-        return $this->hasOne(FacialProfile::class);
+        // Explicitly set 'employee_id' as foreign key and 'employeeid' as local key
+        return $this->hasOne(FacialProfile::class, 'employee_id', 'employeeid');
     }
 
     public function incentiveBonus(): HasOne

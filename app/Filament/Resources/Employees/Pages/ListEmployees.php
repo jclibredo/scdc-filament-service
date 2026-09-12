@@ -29,6 +29,20 @@ class ListEmployees extends ListRecords
     {
         return [
 
+            Action::make('openRegisterFace')
+                ->label('Register Employee Face')
+                ->icon('heroicon-o-user-plus')
+                ->color('info')
+                ->url(route('face.register.show'))
+                ->openUrlInNewTab(),
+
+            Action::make('openKiosk')
+                ->label('Open Face Recognition')
+                ->icon('heroicon-o-camera')
+                ->color('success')
+                ->url(route('face.verify'))  // Use the named route for face recognition
+                ->openUrlInNewTab(),
+
             Action::make('importEmployeesCsvFormat')
                 ->label('Import .CSV File')
                 ->icon('heroicon-o-arrow-up-tray')
