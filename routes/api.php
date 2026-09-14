@@ -7,13 +7,17 @@ use Carbon\Carbon;
 use Exception;
 
 
-// Helper function to validate the Bearer token
-function verify_api_token(Request $request)
-{
-    $token = $request->bearerToken();
-    $expectedToken = config('services.cloud.token', env('CLOUD_API_TOKEN'));
 
-    return $token && hash_equals($expectedToken, $token);
+
+// Safe helper function declaration
+if (!function_exists('verify_api_token')) {
+    function verify_api_token(Request $request)
+    {
+        $token = $request->bearerToken();
+        $expectedToken = config('services.cloud.token', env('CLOUD_API_TOKEN'));
+
+        return $token && hash_equals($expectedToken, $token);
+    }
 }
 
 // --- ATTENDANCE LOGS ---
