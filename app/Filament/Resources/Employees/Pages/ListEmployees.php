@@ -6,14 +6,18 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Models\ActivityLog;
 use App\Models\Atlog;
 use App\Models\Category;
+use App\Models\DatePeriod;
+use App\Models\Earnings;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
+use App\Models\EmpSchedule;
 use App\Models\FacialProfile;
 use App\Models\GovDeduction;
 use App\Models\Holiday;
 use App\Models\OtherDeduction;
 use App\Models\Project;
 use App\Models\Skill;
+use App\Models\YearEndReport;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -255,7 +259,7 @@ class ListEmployees extends ListRecords
                                 $holidayCount++;
                             }
                         }
-                        if ($holidayCount > 0) $summary[] = "{$holidayCount} holidays";
+                        if ($holidayCount > 0) $summary[] = "{$holidayCount} payment rates";
 
                         // 7. Sync Other Deductions (🟢 Added)
                         $cloudOther = $response->json('other_deductions', []);
@@ -286,6 +290,206 @@ class ListEmployees extends ListRecords
                             }
                         }
                         if ($otherCount > 0) $summary[] = "{$otherCount} other deductions";
+
+                        // 8. Sync Employees
+                        $cloudEmployees = $response->json('employees', []);
+                        $empCount = 0;
+                        foreach ($cloudEmployees as $emp) {
+                            if (class_exists(Employee::class)) {
+                                $localEmp = Employee::where('employeeid', $emp['employeeid'])->first();
+
+                                $data = [
+                                    'firstname'     => Str::upper($emp['firstname'] ?? ''),
+                                    'middlename'    => Str::upper($emp['middlename'] ?? ''),
+                                    'lastname'      => Str::upper($emp['lastname'] ?? ''),
+                                    'status'        => $emp['status'] ?? true,
+                                    'empstatus'     => $emp['empstatus'] ?? null,
+                                    'mobile'        => $emp['mobile'] ?? null,
+                                    'email'         => $emp['email'] ?? null,
+                                    'birthdate'     => !empty($emp['birthdate']) ? Carbon::parse($emp['birthdate'])->format('Y-m-d') : null,
+                                    'sex'           => $emp['sex'] ?? null,
+                                    'address'       => $emp['address'] ?? null,
+                                    'datehired'     => !empty($emp['datehired']) ? Carbon::parse($emp['datehired'])->format('Y-m-d') : null,
+                                    'employeetype'  => $emp['employeetype'] ?? null,
+                                    'dateseperated' => !empty($emp['dateseperated']) ? Carbon::parse($emp['dateseperated'])->format('Y-m-d') : null,
+                                    'skill_id'      => $emp['skill_id'] ?? null,
+                                    'project_id'    => $emp['project_id'] ?? null,
+                                    'partners'      => $emp['partners'] ?? null,
+                                ];
+
+                                if (!$localEmp) {
+                                    Employee::create(array_merge(['employeeid' => $emp['employeeid']], $data));
+                                } else {
+                                    $localEmp->update($data);
+                                }
+                                $empCount++;
+                            }
+                        }
+                        if ($empCount > 0) $summary[] = "{$empCount} employees";
+
+                        // 9. Sync Employee Project Histories
+                        $cloudHistories = $response->json('employee_project_histories', []);
+                        $histCount = 0;
+                        foreach ($cloudHistories as $hist) {
+                            if (class_exists(EmployeeProjectHistory::class)) {
+                                $dateStarted = !empty($hist['datestarted']) ? Carbon::parse($hist['datestarted'])->format('Y-m-d') : null;
+                                $localHist = EmployeeProjectHistory::where('employeeid', $hist['employeeid'])
+                                    ->where('projectid', $hist['projectid'])
+                                    ->where('datestarted', $dateStarted)
+                                    ->first();
+
+                                $data = [
+                                    'employeetype'    => $hist['employeetype'] ?? null,
+                                    'employee_status' => $hist['employee_status'] ?? null,
+                                    'dateended'       => !empty($hist['dateended']) ? Carbon::parse($hist['dateended'])->format('Y-m-d') : null,
+                                    'status'          => $hist['status'] ?? true,
+                                ];
+
+                                if (!$localHist) {
+                                    EmployeeProjectHistory::create(array_merge([
+                                        'employeeid'  => $hist['employeeid'],
+                                        'projectid'   => $hist['projectid'],
+                                        'datestarted' => $dateStarted,
+                                    ], $data));
+                                } else {
+                                    $localHist->update($data);
+                                }
+                                $histCount++;
+                            }
+                        }
+                        if ($histCount > 0) $summary[] = "{$histCount} histories";
+
+                        // 10. Sync Earnings
+                        $cloudEarnings = $response->json('earnings', []);
+                        $earnCount = 0;
+                        foreach ($cloudEarnings as $earn) {
+                            if (class_exists(Earnings::class)) {
+                                $localEarn = Earnings::where('employee_id', $earn['employee_id'])
+                                    ->where('title', $earn['title'])
+                                    ->first();
+
+                                $data = [
+                                    'amount'    => $earn['amount'] ?? 0,
+                                    'status'    => $earn['status'] ?? true,
+                                    'hierarchy' => $earn['hierarchy'] ?? null,
+                                    'frequency' => $earn['frequency'] ?? null,
+                                ];
+
+                                if (!$localEarn) {
+                                    Earnings::create(array_merge([
+                                        'employee_id' => $earn['employee_id'],
+                                        'title'       => $earn['title'],
+                                    ], $data));
+                                } else {
+                                    $localEarn->update($data);
+                                }
+                                $earnCount++;
+                            }
+                        }
+                        if ($earnCount > 0) $summary[] = "{$earnCount} earnings";
+
+                        // 11. Sync Employee Schedules
+                        $cloudSchedules = $response->json('emp_schedule', []);
+                        $schedCount = 0;
+                        foreach ($cloudSchedules as $sched) {
+                            if (class_exists(EmpSchedule::class)) {
+                                $localSched = EmpSchedule::where('employeeid', $sched['employeeid'])->first();
+
+                                $data = [
+                                    'timein'       => $sched['timein'] ?? null,
+                                    'timeout'      => $sched['timeout'] ?? null,
+                                    'status'       => $sched['status'] ?? true,
+                                    'workingHours' => $sched['workingHours'] ?? null,
+                                ];
+
+                                if (!$localSched) {
+                                    EmpSchedule::create(array_merge(['employeeid' => $sched['employeeid']], $data));
+                                } else {
+                                    $localSched->update($data);
+                                }
+                                $schedCount++;
+                            }
+                        }
+                        if ($schedCount > 0) $summary[] = "{$schedCount} employee schedules";
+
+                        // 12. Sync Facial Profiles
+                        $cloudProfiles = $response->json('facial_profiles', []);
+                        $profileCount = 0;
+                        foreach ($cloudProfiles as $profile) {
+                            if (class_exists(FacialProfile::class)) {
+                                $localProfile = FacialProfile::where('employee_id', $profile['employee_id'])->first();
+                                $descriptor = is_string($profile['face_descriptor']) ? json_decode($profile['face_descriptor'], true) : $profile['face_descriptor'];
+
+                                if (!$localProfile) {
+                                    FacialProfile::create([
+                                        'employee_id'     => $profile['employee_id'],
+                                        'face_descriptor' => $descriptor,
+                                    ]);
+                                } else {
+                                    $localProfile->update([
+                                        'face_descriptor' => $descriptor,
+                                    ]);
+                                }
+                                $profileCount++;
+                            }
+                        }
+                        if ($profileCount > 0) $summary[] = "{$profileCount} facial profiles";
+
+                        // 13. Sync Date Periods
+                        $cloudPeriods = $response->json('date_periods', []);
+                        $periodCount = 0;
+                        foreach ($cloudPeriods as $period) {
+                            if (class_exists(DatePeriod::class)) {
+                                $localPeriod = DatePeriod::where('code', $period['code'])->first();
+
+                                $data = [
+                                    'employeetype'  => $period['employeetype'] ?? null,
+                                    'category_id'   => $period['category_id'] ?? null,
+                                    'datefrom'      => !empty($period['datefrom']) ? Carbon::parse($period['datefrom'])->format('Y-m-d') : null,
+                                    'dateto'        => !empty($period['dateto']) ? Carbon::parse($period['dateto'])->format('Y-m-d') : null,
+                                    'status'        => $period['status'] ?? true,
+                                    'overtime_rate' => $period['overtime_rate'] ?? 0,
+                                    'partners'      => $period['partners'] ?? null,
+                                    'projectid'     => $period['projectid'] ?? null,
+                                ];
+
+                                if (!$localPeriod) {
+                                    DatePeriod::create(array_merge(['code' => $period['code']], $data));
+                                } else {
+                                    $localPeriod->update($data);
+                                }
+                                $periodCount++;
+                            }
+                        }
+                        if ($periodCount > 0) $summary[] = "{$periodCount} date periods";
+
+                        // 14. Sync Year End Reports
+                        $cloudReports = $response->json('year_end_reports', []);
+                        $reportCount = 0;
+                        foreach ($cloudReports as $report) {
+                            if (class_exists(YearEndReport::class)) {
+                                $localReport = YearEndReport::where('code', $report['code'])->first();
+
+                                $data = [
+                                    'emptype'    => $report['emptype'] ?? null,
+                                    'empstatus'  => $report['empstatus'] ?? null,
+                                    'partners'   => $report['partners'] ?? null,
+                                    'projectid'  => $report['projectid'] ?? null,
+                                    'status'     => $report['status'] ?? true,
+                                    'datefrom'   => !empty($report['datefrom']) ? Carbon::parse($report['datefrom'])->format('Y-m-d') : null,
+                                    'dateto'     => !empty($report['dateto']) ? Carbon::parse($report['dateto'])->format('Y-m-d') : null,
+                                    'rep_type'   => $report['rep_type'] ?? null,
+                                ];
+
+                                if (!$localReport) {
+                                    YearEndReport::create(array_merge(['code' => $report['code']], $data));
+                                } else {
+                                    $localReport->update($data);
+                                }
+                                $reportCount++;
+                            }
+                        }
+                        if ($reportCount > 0) $summary[] = "{$reportCount} year-end reports";
 
                         $bodyMessage = empty($summary) ? 'No data found to download.' : 'Successfully downloaded: ' . implode(', ', $summary) . '.';
 
