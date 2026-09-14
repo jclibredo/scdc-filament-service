@@ -18,6 +18,8 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Section;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
@@ -28,18 +30,152 @@ class ListAtlogs extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            // Action::make('back_to_billing')
-            //     ->label('Back')
+            // 🔄 Bi-Directional Sync (Local <-> Cloud) Action (Visible ONLY in Local Environment)
+            // Action::make('syncBiDirectional')
+            //     ->label('Sync Local & Cloud (Two-Way)')
+            //     ->icon('heroicon-o-arrow-path-rounded-square')
             //     ->color('success')
-            //     ->icon('heroicon-m-arrow-left')
-            //     // ->visible(fn() => request()->query('type') === 'payroll')
-            //     ->url(function () {
-            //         return PayrollResource::getUrl('index');
-            //         // session()->forget(['type', 'session_employee_id']);
-            //         // return PayrollResource::getUrl('index', [
-            //         //     'session_employee_id' => $this->record?->user_id,
-            //         // ]);
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Two-Way Database Synchronization')
+            //     ->modalDescription('This will synchronize attendance logs between your local database and the cloud database (merging updates based on timestamps). Proceed?')
+            //     ->modalSubmitActionLabel('Yes, start two-way sync')
+            //     ->visible(fn() => app()->environment('local')) // 👈 Hidden automatically on production/live
+            //     ->action(function () {
+            //         try {
+            //             $pushedCount = 0;
+            //             $pulledCount = 0;
+            //             // 1. PUSH: Local -> Cloud
+            //             $localLogs = Atlog::all();
+            //             foreach ($localLogs as $local) {
+            //                 $cloudRecord = DB::connection('cloud')->table('atlogs')
+            //                     ->where('user_id', $local->user_id)
+            //                     ->where('recorded_at', $local->recorded_at)
+            //                     ->first();
+
+            //                 if (!$cloudRecord) {
+            //                     // Missing in cloud, insert it
+            //                     DB::connection('cloud')->table('atlogs')->insert([
+            //                         'user_id'           => $local->user_id,
+            //                         'project_code'      => $local->project_code,
+            //                         'recorded_at'       => $local->recorded_at,
+            //                         'status'            => $local->status,
+            //                         'verification_mode' => $local->verification_mode,
+            //                         'work_code'         => $local->work_code,
+            //                         'reserved'          => $local->reserved,
+            //                         'created_at'        => $local->created_at ?? now(),
+            //                         'updated_at'        => $local->updated_at ?? now(),
+            //                     ]);
+            //                     $pushedCount++;
+            //                 } elseif (isset($local->updated_at, $cloudRecord->updated_at) && strtotime($local->updated_at) > strtotime($cloudRecord->updated_at)) {
+            //                     // Local is newer than cloud, update cloud
+            //                     DB::connection('cloud')->table('atlogs')
+            //                         ->where('id', $cloudRecord->id) // or match user_id & recorded_at
+            //                         ->update([
+            //                             'project_code'      => $local->project_code,
+            //                             'status'            => $local->status,
+            //                             'verification_mode' => $local->verification_mode,
+            //                             'work_code'         => $local->work_code,
+            //                             'reserved'          => $local->reserved,
+            //                             'updated_at'        => $local->updated_at,
+            //                         ]);
+            //                     $pushedCount++;
+            //                 }
+            //             }
+
+            //             // 2. PULL: Cloud -> Local
+            //             $cloudLogs = DB::connection('cloud')->table('atlogs')->get();
+            //             foreach ($cloudLogs as $cloud) {
+            //                 $localRecord = Atlog::where('user_id', $cloud->user_id)
+            //                     ->where('recorded_at', $cloud->recorded_at)
+            //                     ->first();
+
+            //                 if (!$localRecord) {
+            //                     // Missing locally, create it
+            //                     Atlog::create([
+            //                         'user_id'           => $cloud->user_id,
+            //                         'project_code'      => $cloud->project_code,
+            //                         'recorded_at'       => $cloud->recorded_at,
+            //                         'status'            => $cloud->status,
+            //                         'verification_mode' => $cloud->verification_mode,
+            //                         'work_code'         => $cloud->work_code,
+            //                         'reserved'          => $cloud->reserved,
+            //                         'created_at'        => $cloud->created_at,
+            //                         'updated_at'        => $cloud->updated_at,
+            //                     ]);
+            //                     $pulledCount++;
+            //                 } elseif (isset($cloud->updated_at, $localRecord->updated_at) && strtotime($cloud->updated_at) > strtotime($localRecord->updated_at)) {
+            //                     // Cloud is newer than local, update local
+            //                     $localRecord->update([
+            //                         'project_code'      => $cloud->project_code,
+            //                         'status'            => $cloud->status,
+            //                         'verification_mode' => $cloud->verification_mode,
+            //                         'work_code'         => $cloud->work_code,
+            //                         'reserved'          => $cloud->reserved,
+            //                         'updated_at'        => $cloud->updated_at,
+            //                     ]);
+            //                     $pulledCount++;
+            //                 }
+            //             }
+
+            //             Notification::make()
+            //                 ->title("Sync Complete: Pushed {$pushedCount} to cloud, Pulled {$pulledCount} to local.")
+            //                 ->success()
+            //                 ->send();
+            //         } catch (\Exception $e) {
+            //             Log::error('Bi-directional sync failed: ' . $e->getMessage());
+
+            //             Notification::make()
+            //                 ->title('Sync failed: ' . $e->getMessage())
+            //                 ->danger()
+            //                 ->send();
+            //         }
             //     }),
+
+            Action::make('syncToCloud')
+                ->label('Sync Local to Cloud')
+                ->icon('heroicon-o-cloud-arrow-up')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Sync Local Attendance to Cloud')
+                ->modalDescription('This will securely push all local attendance logs to your cloud application via API. Proceed?')
+                ->modalSubmitActionLabel('Yes, start sync')
+                ->visible(fn() => app()->environment('local'))
+                ->action(function () {
+                    try {
+                        // Fetch local logs
+                        $localLogs = Atlog::all()->toArray();
+
+                        if (empty($localLogs)) {
+                            Notification::make()
+                                ->title('No local attendance logs found to sync.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        // Send data securely via HTTPS to your cloud app API using the .env variable
+                        $response = Http::timeout(30)->post(env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'), [
+                            'logs' => $localLogs
+                        ]);
+
+                        if ($response->successful()) {
+                            Notification::make()
+                                ->title('Cloud sync successful!')
+                                ->body($response->json('message', 'Records synchronized.'))
+                                ->success()
+                                ->send();
+                        } else {
+                            throw new \Exception('Cloud server returned error code: ' . $response->status());
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('API cloud sync failed: ' . $e->getMessage());
+
+                        Notification::make()
+                            ->title('Sync failed: ' . $e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
             Action::make('backaction')
                 ->label('Back')
                 ->color('success')

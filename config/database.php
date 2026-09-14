@@ -63,6 +63,21 @@ return [
             ]) : [],
         ],
 
+        'cloud' => [
+            'driver' => 'mysql',
+            'url' => env('DB_CLOUD_URL'),
+            'host' => env('DB_CLOUD_HOST', 'scdc-web-app.com'), // Change if your cloud host provides a specific remote IP/domain
+            'port' => env('DB_CLOUD_PORT', '3306'),
+            'database' => env('DB_CLOUD_DATABASE', 'u164809439_scdc_web_db'),
+            'username' => env('DB_CLOUD_USERNAME', 'u164809439_scdc_web_app'),
+            'password' => env('DB_CLOUD_PASSWORD', '1234JCuer!'), // Put your actual cloud database user password here
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
@@ -148,7 +163,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')) . '-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 

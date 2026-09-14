@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Models\ActivityLog;
+use App\Models\Atlog;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Filament\Support\Enums\Size;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
