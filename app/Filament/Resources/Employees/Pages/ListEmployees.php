@@ -525,6 +525,13 @@ class ListEmployees extends ListRecords
                             'gov_deductions'   => class_exists(GovDeduction::class) ? GovDeduction::all()->toArray() : [], // 🟢 Added
                             'holidays'         => class_exists(Holiday::class) ? Holiday::all()->toArray() : [], // 🟢 Added
                             'other_deductions' => class_exists(OtherDeduction::class) ? OtherDeduction::all()->toArray() : [], // 🟢 Added
+                            'employees'                  => class_exists(Employee::class) ? Employee::all()->toArray() : [],
+                            'employee_project_histories' => class_exists(EmployeeProjectHistory::class) ? EmployeeProjectHistory::all()->toArray() : [],
+                            'earnings'                   => class_exists(Earnings::class) ? Earnings::all()->toArray() : [],
+                            'emp_schedule'               => class_exists(EmpSchedule::class) ? EmpSchedule::all()->toArray() : [],
+                            'facial_profiles'            => class_exists(FacialProfile::class) ? FacialProfile::all()->toArray() : [],
+                            'date_periods'               => class_exists(DatePeriod::class) ? DatePeriod::all()->toArray() : [],
+                            'year_end_reports'           => class_exists(YearEndReport::class) ? YearEndReport::all()->toArray() : [],
                         ];
 
                         $pushUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills'], 'sync-all', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-all'));
