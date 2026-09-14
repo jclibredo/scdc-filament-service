@@ -18,10 +18,11 @@ function verify_api_token(Request $request)
 
 // Safe helper function declaration
 if (!function_exists('verify_api_token')) {
-    function verify_api_token(Request $request) {
+    function verify_api_token(Request $request)
+    {
         $token = $request->bearerToken();
         $expectedToken = config('services.cloud.token', env('CLOUD_API_TOKEN'));
-        
+
         return $token && hash_equals($expectedToken, $token);
     }
 }
@@ -94,19 +95,22 @@ Route::post('/sync-skills', function (Request $request) {
         }
         $syncedCount = 0;
         foreach ($skills as $skill) {
+            $createdAt = isset($skill['created_at']) ? Carbon::parse($skill['created_at'])->format('Y-m-d H:i:s') : now();
+            $updatedAt = isset($skill['updated_at']) ? Carbon::parse($skill['updated_at'])->format('Y-m-d H:i:s') : now();
+
             DB::table('skills')->updateOrInsert(
                 ['title' => $skill['title']],
                 [
                     'details'    => $skill['details'] ?? null,
                     'status'     => $skill['status'] ?? true,
-                    'created_at' => $skill['created_at'] ?? now(),
-                    'updated_at' => now()->format('Y-m-d H:i:s'),
+                    'created_at' => $createdAt,
+                    'updated_at' => $updatedAt,
                 ]
             );
             $syncedCount++;
         }
         return response()->json(['success' => true, 'message' => "Successfully synchronized {$syncedCount} skills."], 200);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
 });
@@ -137,6 +141,9 @@ Route::post('/sync-projects', function (Request $request) {
         }
         $syncedCount = 0;
         foreach ($projects as $project) {
+            $createdAt = isset($project['created_at']) ? Carbon::parse($project['created_at'])->format('Y-m-d H:i:s') : now();
+            $updatedAt = isset($project['updated_at']) ? Carbon::parse($project['updated_at'])->format('Y-m-d H:i:s') : now();
+
             DB::table('projects')->updateOrInsert(
                 ['project_code' => $project['project_code']],
                 [
@@ -144,16 +151,16 @@ Route::post('/sync-projects', function (Request $request) {
                     'datecovered'  => $project['datecovered'] ?? null,
                     'scope'        => $project['scope'] ?? null,
                     'address'      => $project['address'] ?? null,
-                    'image'        => $project['image'] ?? null, // Added missing image column
+                    'image'        => $project['image'] ?? null,
                     'status'       => $project['status'] ?? true,
-                    'created_at'   => $project['created_at'] ?? now(),
-                    'updated_at'   => now()->format('Y-m-d H:i:s'),
+                    'created_at'   => $createdAt,
+                    'updated_at'   => $updatedAt,
                 ]
             );
             $syncedCount++;
         }
         return response()->json(['success' => true, 'message' => "Successfully synchronized {$syncedCount} projects."], 200);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
 });
