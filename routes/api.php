@@ -73,29 +73,29 @@ Route::get('/fetch-cloud-attendance', function (Request $request) {
         ], 500);
     }
 });
-Route::get('/attendance-count', function () {
-    try {
-        $count = DB::table('attendance_logs')->count();
-        return response()->json(['success' => true, 'count' => $count], 200);
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'count' => 0], 500);
-    }
-});
-// 4. Metadata Route for Gap Analysis
-Route::get('/attendance-metadata', function (Request $request) {
-    try {
-        $metadata = DB::table('attendance_logs')
-            ->select('user_id', 'recorded_at', 'updated_at')
-            ->get();
+// Route::get('/attendance-count', function () {
+//     try {
+//         $count = DB::table('attendance_logs')->count();
+//         return response()->json(['success' => true, 'count' => $count], 200);
+//     } catch (\Exception $e) {
+//         return response()->json(['success' => false, 'count' => 0], 500);
+//     }
+// });
+// // 4. Metadata Route for Gap Analysis
+// Route::get('/attendance-metadata', function (Request $request) {
+//     try {
+//         $metadata = DB::table('attendance_logs')
+//             ->select('user_id', 'recorded_at', 'updated_at')
+//             ->get();
 
-        return response()->json([
-            'success' => true,
-            'metadata' => $metadata
-        ], 200);
-    } catch (Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to fetch metadata: ' . $e->getMessage()
-        ], 500);
-    }
-});
+//         return response()->json([
+//             'success' => true,
+//             'metadata' => $metadata
+//         ], 200);
+//     } catch (Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to fetch metadata: ' . $e->getMessage()
+//         ], 500);
+//     }
+// });

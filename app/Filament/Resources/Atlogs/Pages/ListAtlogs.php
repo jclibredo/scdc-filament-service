@@ -27,80 +27,17 @@ class ListAtlogs extends ListRecords
 {
     protected static string $resource = AtlogResource::class;
 
-
-    // 👇 1. Place the helper function right here in the class
-    protected function getSyncGaps(): array
-    {
-        try {
-            $localLogs = Atlog::all(['user_id', 'recorded_at', 'updated_at'])->keyBy(function ($item) {
-                return $item->user_id . '|' . Carbon::parse($item['recorded_at'])->format('Y-m-d H:i:s');
-            });
-
-            $metadataUrl = str_replace('sync-attendance', 'attendance-metadata', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/attendance-metadata'));
-
-            // Token header removed here
-            $response = Http::timeout(2)->get($metadataUrl);
-
-            if (!$response->successful()) {
-                return ['upload' => Atlog::count(), 'download' => 0, 'online' => false];
-            }
-
-            $cloudLogs = collect($response->json('metadata', []))->keyBy(function ($item) {
-                return $item['user_id'] . '|' . Carbon::parse($item['recorded_at'])->format('Y-m-d H:i:s');
-            });
-
-            $uploadCount = 0;
-            $downloadCount = 0;
-
-            foreach ($localLogs as $key => $local) {
-                if (!isset($cloudLogs[$key])) {
-                    $uploadCount++;
-                } else {
-                    $cloudUpdated = Carbon::parse($cloudLogs[$key]['updated_at']);
-                    $localUpdated = Carbon::parse($local->updated_at);
-
-                    if ($localUpdated->greaterThan($cloudUpdated)) {
-                        $uploadCount++;
-                    } elseif ($cloudUpdated->greaterThan($localUpdated)) {
-                        $downloadCount++;
-                    }
-                }
-            }
-
-            foreach ($cloudLogs as $key => $cloud) {
-                if (!isset($localLogs[$key])) {
-                    $downloadCount++;
-                }
-            }
-
-            return [
-                'upload' => $uploadCount,
-                'download' => $downloadCount,
-                'online' => true,
-            ];
-        } catch (\Exception $e) {
-            return ['upload' => Atlog::count(), 'download' => 0, 'online' => false];
-        }
-    }
     protected function getHeaderActions(): array
     {
         return [
             // 🔄 Bi-Directional Sync (Local <-> Cloud) Action (Visible ONLY in Local Environment)
             Action::make('syncToCloud')
-                ->badge(function () {
-                    return \App\Models\Atlog::count(); // Shows the number of local records
-                })
-                ->badgeColor(function () {
-                    $count = \App\Models\Atlog::count();
-                    // Change badge color depending on how many logs are queued up
-                    return $count > 0 ? 'warning' : 'gray';
-                })
                 ->label(function () {
-                    // Quick socket check to verify internet
+                    // Quick connection check (1 second timeout so it doesn't lag the UI)
                     $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
                     if ($hasInternet) {
                         fclose($hasInternet);
-                        return "Sync Local to Cloud";
+                        return 'Sync Local to Cloud';
                     }
                     return 'No Internet Connection';
                 })
@@ -201,25 +138,6 @@ class ListAtlogs extends ListRecords
                     }
                     return 'danger'; // 🔴 Red when offline
                 })
-                ->badge(function () {
-                    try {
-                        $countUrl = str_replace('sync-attendance', 'attendance-count', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/attendance-count'));
-                        $response = Http::timeout(1)->get($countUrl);
-                        return $response->successful() ? $response->json('count', 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                })
-                ->badgeColor(function () {
-                    try {
-                        $countUrl = str_replace('sync-attendance', 'attendance-count', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/attendance-count'));
-                        $response = Http::timeout(1)->get($countUrl);
-                        $count = $response->successful() ? $response->json('count', 0) : 0;
-                        return $count > 0 ? 'success' : 'gray';
-                    } catch (\Exception $e) {
-                        return 'gray';
-                    }
-                })
                 ->requiresConfirmation()
                 ->modalHeading('Pull Attendance from Cloud')
                 ->modalDescription('This will fetch cloud records and update your local database with newer or missing data. Proceed?')
@@ -230,7 +148,6 @@ class ListAtlogs extends ListRecords
                     if (!app()->environment('local')) {
                         return false;
                     }
-
                     // Second, perform a quick 1-second timeout socket check for internet
                     $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
                     if ($hasInternet) {
