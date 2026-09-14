@@ -14,6 +14,7 @@ use App\Models\Holiday;
 use App\Models\OtherDeduction;
 use App\Models\Project;
 use App\Models\Skill;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -186,7 +187,7 @@ class ListEmployees extends ListRecords
                         }
                         if ($catCount > 0) $summary[] = "{$catCount} categories";
 
-                        // 5. Sync Gov Deductions (🟢 Added)
+                        // 5. Sync Gov Deductions
                         $cloudGov = $response->json('gov_deductions', []);
                         $govCount = 0;
                         foreach ($cloudGov as $gov) {
@@ -196,11 +197,15 @@ class ListEmployees extends ListRecords
 
                                 $localGov = GovDeduction::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
 
+                                // Format dates safely
+                                $dateStarted = !empty($gov['date_started']) ? Carbon::parse($gov['date_started'])->format('Y-m-d') : null;
+                                $dateEnded   = !empty($gov['date_ended']) ? Carbon::parse($gov['date_ended'])->format('Y-m-d') : null;
+
                                 if (!$localGov) {
                                     GovDeduction::create([
                                         'title'        => Str::upper($title),
-                                        'date_started' => $gov['date_started'] ?? null,
-                                        'date_ended'   => $gov['date_ended'] ?? null,
+                                        'date_started' => $dateStarted,
+                                        'date_ended'   => $dateEnded,
                                         'amount'       => $gov['amount'] ?? 0,
                                         'status'       => $gov['status'] ?? true,
                                         'created_at'   => $gov['created_at'] ?? now(),
@@ -208,8 +213,8 @@ class ListEmployees extends ListRecords
                                     ]);
                                 } else {
                                     $localGov->update([
-                                        'date_started' => $gov['date_started'] ?? null,
-                                        'date_ended'   => $gov['date_ended'] ?? null,
+                                        'date_started' => $dateStarted,
+                                        'date_ended'   => $dateEnded,
                                         'amount'       => $gov['amount'] ?? 0,
                                         'status'       => $gov['status'] ?? true,
                                         'updated_at'   => $gov['updated_at'] ?? now(),

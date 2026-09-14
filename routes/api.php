@@ -156,7 +156,7 @@ Route::post('/sync-all', function (Request $request) {
             $summary[] = "{$catCount} categories";
         }
 
-        // 5. Sync Gov Deductions (🟢 Added)
+        // 5. Sync Gov Deductions
         $govDeductions = $request->input('gov_deductions', []);
         if (!empty($govDeductions)) {
             $govCount = 0;
@@ -164,11 +164,15 @@ Route::post('/sync-all', function (Request $request) {
                 $createdAt = isset($gov['created_at']) ? Carbon::parse($gov['created_at'])->format('Y-m-d H:i:s') : now();
                 $updatedAt = isset($gov['updated_at']) ? Carbon::parse($gov['updated_at'])->format('Y-m-d H:i:s') : now();
 
+                // Format dates safely for MySQL DATE columns
+                $dateStarted = !empty($gov['date_started']) ? Carbon::parse($gov['date_started'])->format('Y-m-d') : null;
+                $dateEnded   = !empty($gov['date_ended']) ? Carbon::parse($gov['date_ended'])->format('Y-m-d') : null;
+
                 DB::table('gov_deductions')->updateOrInsert(
                     ['title' => $gov['title']],
                     [
-                        'date_started' => $gov['date_started'] ?? null,
-                        'date_ended'   => $gov['date_ended'] ?? null,
+                        'date_started' => $dateStarted,
+                        'date_ended'   => $dateEnded,
                         'amount'       => $gov['amount'] ?? 0,
                         'status'       => $gov['status'] ?? true,
                         'created_at'   => $createdAt,
@@ -179,7 +183,6 @@ Route::post('/sync-all', function (Request $request) {
             }
             $summary[] = "{$govCount} gov deductions";
         }
-
         // 6. Sync Holidays (🟢 Added)
         $holidays = $request->input('holidays', []);
         if (!empty($holidays)) {
