@@ -49,6 +49,15 @@ Route::get('/fetch-all-cloud-data', function (Request $request) {
             'facial_profiles'         => DB::table('facial_profiles')->get(),
             'date_periods'            => DB::table('date_periods')->get(),
             'year_end_reports'        => DB::table('year_end_reports')->get(),
+            'activity_logs'        => DB::table('activity_logs')->get(),
+            'adjustments'          => DB::table('adjustments')->get(),
+            'gov_deduction_logs'   => DB::table('gov_deduction_logs')->get(),
+            'other_deduction_logs' => DB::table('other_deduction_logs')->get(),
+            'incentive_bonuses'    => DB::table('incentive_bonuses')->get(),
+            'thirteenth_months'    => DB::table('thirteenth_months')->get(),
+            'user_permissions'     => DB::table('user_permissions')->get(),
+            'payroll_reports'         => DB::table('payroll_reports')->get(),
+            'payroll_summary_reports' => DB::table('payroll_summary_reports')->get(),
         ], 200);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -240,8 +249,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($employees)) {
             $count = 0;
             foreach ($employees as $emp) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($emp['created_at']) ? Carbon::parse($emp['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($emp['updated_at']) ? Carbon::parse($emp['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('employees')->updateOrInsert(
                     ['employeeid' => $emp['employeeid']],
@@ -276,8 +285,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($histories)) {
             $count = 0;
             foreach ($histories as $hist) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($hist['created_at']) ? Carbon::parse($hist['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($hist['updated_at']) ? Carbon::parse($hist['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('employee_project_histories')->updateOrInsert(
                     ['employeeid' => $hist['employeeid'], 'projectid' => $hist['projectid'], 'datestarted' => !empty($hist['datestarted']) ? Carbon::parse($hist['datestarted'])->format('Y-m-d') : null],
@@ -300,8 +309,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($earnings)) {
             $count = 0;
             foreach ($earnings as $earn) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($earn['created_at']) ? Carbon::parse($earn['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($earn['updated_at']) ? Carbon::parse($earn['updated_at'])->format('Y-m-d H:i:s') : now();
                 DB::table('earnings')->updateOrInsert(
                     ['employee_id' => $earn['employee_id'], 'title' => $earn['title']],
                     [
@@ -323,8 +332,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($schedules)) {
             $count = 0;
             foreach ($schedules as $sched) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($sched['created_at']) ? Carbon::parse($sched['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($sched['updated_at']) ? Carbon::parse($sched['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('emp_schedule')->updateOrInsert(
                     ['employeeid' => $sched['employeeid']],
@@ -347,8 +356,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($profiles)) {
             $count = 0;
             foreach ($profiles as $profile) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($profile['created_at']) ? Carbon::parse($profile['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($profile['updated_at']) ? Carbon::parse($profile['updated_at'])->format('Y-m-d H:i:s') : now();
                 DB::table('facial_profiles')->updateOrInsert(
                     ['employee_id' => $profile['employee_id']],
                     [
@@ -367,8 +376,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($periods)) {
             $count = 0;
             foreach ($periods as $period) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($period['created_at']) ? Carbon::parse($period['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($period['updated_at']) ? Carbon::parse($period['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('date_periods')->updateOrInsert(
                     ['code' => $period['code']],
@@ -395,8 +404,8 @@ Route::post('/sync-all', function (Request $request) {
         if (!empty($reports)) {
             $count = 0;
             foreach ($reports as $report) {
-                $createdAt = isset($other['created_at']) ? Carbon::parse($other['created_at'])->format('Y-m-d H:i:s') : now();
-                $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt = isset($report['created_at']) ? Carbon::parse($report['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($report['updated_at']) ? Carbon::parse($report['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('year_end_reports')->updateOrInsert(
                     ['code' => $report['code']],
@@ -416,6 +425,225 @@ Route::post('/sync-all', function (Request $request) {
                 $count++;
             }
             $summary[] = "{$count} year-end reports";
+        }
+
+        // 15. Sync Activity Logs
+        $activityLogs = $request->input('activity_logs', []);
+        if (!empty($activityLogs)) {
+            $count = 0;
+            foreach ($activityLogs as $log) {
+                $createdAt = isset($log['created_at']) ? Carbon::parse($log['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($log['updated_at']) ? Carbon::parse($log['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('activity_logs')->updateOrInsert(
+                    ['user_id' => $log['user_id'], 'activity' => $log['activity'], 'created_at' => $createdAt],
+                    [
+                        'module'     => $log['module'] ?? null,
+                        'ipaddress'  => $log['ipaddress'] ?? null,
+                        'windows'    => $log['windows'] ?? null,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} activity logs";
+        }
+
+        // 16. Sync Adjustments
+        $adjustments = $request->input('adjustments', []);
+        if (!empty($adjustments)) {
+            $count = 0;
+            foreach ($adjustments as $adj) {
+                $createdAt = isset($adj['created_at']) ? Carbon::parse($adj['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($adj['updated_at']) ? Carbon::parse($adj['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('adjustments')->updateOrInsert(
+                    [
+                        'employee_id' => $adj['employee_id'],
+                        'date_period_id' => $adj['date_period_id'],
+                        'adjustment_id' => $adj['adjustment_id']
+                    ],
+                    [
+                        'amount'     => $adj['amount'] ?? 0,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} adjustments";
+        }
+
+        // 17. Sync Gov Deduction Logs
+        $govLogs = $request->input('gov_deduction_logs', []);
+        if (!empty($govLogs)) {
+            $count = 0;
+            foreach ($govLogs as $log) {
+                $createdAt = isset($log['created_at']) ? Carbon::parse($log['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($log['updated_at']) ? Carbon::parse($log['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('gov_deduction_logs')->updateOrInsert(
+                    [
+                        'gov_deduction_id' => $log['gov_deduction_id'],
+                        'employee_id' => $log['employee_id'],
+                        'date_period_id' => $log['date_period_id']
+                    ],
+                    [
+                        'amount'     => $log['amount'] ?? 0,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} gov deduction logs";
+        }
+
+        // 18. Sync Other Deduction Logs
+        $otherLogs = $request->input('other_deduction_logs', []);
+        if (!empty($otherLogs)) {
+            $count = 0;
+            foreach ($otherLogs as $log) {
+                $createdAt = isset($log['created_at']) ? Carbon::parse($log['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($log['updated_at']) ? Carbon::parse($log['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('other_deduction_logs')->updateOrInsert(
+                    ['other_deduction_id' => $log['other_deduction_id'], 'employee_id' => $log['employee_id'], 'date_period_id' => $log['date_period_id']],
+                    [
+                        'amount'     => $log['amount'] ?? 0,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} other deduction logs";
+        }
+
+        // 19. Sync Incentive Bonuses
+        $bonuses = $request->input('incentive_bonuses', []);
+        if (!empty($bonuses)) {
+            $count = 0;
+            foreach ($bonuses as $bonus) {
+                $createdAt = isset($bonus['created_at']) ? Carbon::parse($bonus['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($bonus['updated_at']) ? Carbon::parse($bonus['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('incentive_bonuses')->updateOrInsert(
+                    ['employeeid' => $bonus['employeeid'], 'yearendrepid' => $bonus['yearendrepid']],
+                    [
+                        'status'     => $bonus['status'] ?? true,
+                        'earnings'   => $bonus['earnings'] ?? 0,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} incentive bonuses";
+        }
+
+        // 20. Sync Thirteenth Months
+        $thirteenth = $request->input('thirteenth_months', []);
+        if (!empty($thirteenth)) {
+            $count = 0;
+            foreach ($thirteenth as $tm) {
+                $createdAt = isset($tm['created_at']) ? Carbon::parse($tm['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($tm['updated_at']) ? Carbon::parse($tm['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('thirteenth_months')->updateOrInsert(
+                    ['employeeid' => $tm['employeeid'], 'periodid' => $tm['periodid']],
+                    [
+                        'earnings'     => $tm['earnings'] ?? 0,
+                        'partners'     => $tm['partners'] ?? null,
+                        'yearendrepid' => $tm['yearendrepid'] ?? null,
+                        'project'      => $tm['project'] ?? null,
+                        'allowance'    => $tm['allowance'] ?? 0,
+                        'datestart'    => !empty($tm['datestart']) ? Carbon::parse($tm['datestart'])->format('Y-m-d') : null,
+                        'dateend'      => !empty($tm['dateend']) ? Carbon::parse($tm['dateend'])->format('Y-m-d') : null,
+                        'yearendcode'  => $tm['yearendcode'] ?? null,
+                        'status'       => $tm['status'] ?? true,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} thirteenth month records";
+        }
+
+        // 21. Sync User Permissions
+        $permissions = $request->input('user_permissions', []);
+        if (!empty($permissions)) {
+            $count = 0;
+            foreach ($permissions as $perm) {
+                $createdAt = isset($perm['created_at']) ? Carbon::parse($perm['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($perm['updated_at']) ? Carbon::parse($perm['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('user_permissions')->updateOrInsert(
+                    [
+                        'user_id' => $perm['user_id'],
+                        'module' => $perm['module']
+                    ],
+                    [
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} user permissions";
+        }
+
+        // 22. Sync Payroll Reports
+        $payrollReports = $request->input('payroll_reports', []);
+        if (!empty($payrollReports)) {
+            $count = 0;
+            foreach ($payrollReports as $report) {
+                $createdAt = isset($report['created_at']) ? Carbon::parse($report['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($report['updated_at']) ? Carbon::parse($report['updated_at'])->format('Y-m-d H:i:s') : now();
+                DB::table('payroll_reports')->updateOrInsert(
+                    [
+                        'dateperiod_id' => $report['dateperiod_id'],
+                        'employee_id' => $report['employee_id'],
+                        'date_entry' => !empty($report['date_entry']) ? Carbon::parse($report['date_entry'])->format('Y-m-d') : null
+                    ],
+                    [
+                        'paytype'        => $report['paytype'] ?? null,
+                        'overtime'       => $report['overtime'] ?? 0,
+                        'acquired_hours' => $report['acquired_hours'] ?? 0,
+                        'late_undertime' => $report['late_undertime'] ?? 0,
+                        'cat_id'         => $report['cat_id'] ?? null,
+                        'status'         => $report['status'] ?? true,
+                        'sched_id'       => $report['sched_id'] ?? null,
+                        'created_at'  => $createdAt,
+                        'updated_at'  => $updatedAt,
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} payroll reports";
+        }
+
+        // 23. Sync Payroll Summary Reports
+        $summaryReports = $request->input('payroll_summary_reports', []);
+        if (!empty($summaryReports)) {
+            $count = 0;
+            foreach ($summaryReports as $summaryReport) {
+                DB::table('payroll_summary_reports')->updateOrInsert(
+                    ['dateperiod_id' => $summaryReport['dateperiod_id'], 'employee_id' => $summaryReport['employee_id']],
+                    [
+                        'totalhours'      => $summaryReport['totalhours'] ?? 0,
+                        'totalovertime'   => $summaryReport['totalovertime'] ?? 0,
+                        'totalabsent'     => $summaryReport['totalabsent'] ?? 0,
+                        'lateundertime'   => $summaryReport['lateundertime'] ?? 0,
+                        'totaldeductionn' => $summaryReport['totaldeductionn'] ?? 0,
+                        'totalearnings'   => $summaryReport['totalearnings'] ?? 0,
+                        'totaladjustment' => $summaryReport['totaladjustment'] ?? 0,
+                        'totalnetpay'     => $summaryReport['totalnetpay'] ?? 0,
+                        'grosspay'        => $summaryReport['grosspay'] ?? 0,
+                        'status'          => $summaryReport['status'] ?? true,
+                        'required_hours'  => $summaryReport['required_hours'] ?? 0,
+                        'required_income' => $summaryReport['required_income'] ?? 0,
+                        'updated_at'      => now(),
+                    ]
+                );
+                $count++;
+            }
+            $summary[] = "{$count} payroll summary reports";
         }
 
         if (empty($summary)) {

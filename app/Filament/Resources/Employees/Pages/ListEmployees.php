@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Models\ActivityLog;
+use App\Models\Adjustment;
 use App\Models\Atlog;
 use App\Models\Category;
 use App\Models\DatePeriod;
@@ -13,10 +14,17 @@ use App\Models\EmployeeProjectHistory;
 use App\Models\EmpSchedule;
 use App\Models\FacialProfile;
 use App\Models\GovDeduction;
+use App\Models\GovDeductionLog;
 use App\Models\Holiday;
+use App\Models\IncentiveBonus;
 use App\Models\OtherDeduction;
+use App\Models\OtherDeductionLog;
+use App\Models\PayrollReport;
+use App\Models\PayrollSummaryReport;
 use App\Models\Project;
 use App\Models\Skill;
+use App\Models\ThirteenthMonth;
+use App\Models\UserPermission;
 use App\Models\YearEndReport;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -491,6 +499,246 @@ class ListEmployees extends ListRecords
                         }
                         if ($reportCount > 0) $summary[] = "{$reportCount} year-end reports";
 
+                        // 15. Sync Activity Logs
+                        $cloudActivity = $response->json('activity_logs', []);
+                        $actCount = 0;
+                        foreach ($cloudActivity as $act) {
+                            if (class_exists(ActivityLog::class)) {
+                                ActivityLog::firstOrCreate(
+                                    ['user_id' => $act['user_id'], 'activity' => $act['activity'], 'created_at' => $act['created_at'] ?? now()],
+                                    [
+                                        'module'    => $act['module'] ?? null,
+                                        'ipaddress' => $act['ipaddress'] ?? null,
+                                        'windows'   => $act['windows'] ?? null,
+                                    ]
+                                );
+                                $actCount++;
+                            }
+                        }
+                        if ($actCount > 0) $summary[] = "{$actCount} activity logs";
+
+                        // 16. Sync Adjustments
+                        $cloudAdj = $response->json('adjustments', []);
+                        $adjCount = 0;
+                        foreach ($cloudAdj as $adj) {
+                            if (class_exists(Adjustment::class)) {
+                                $localAdj = Adjustment::where('employee_id', $adj['employee_id'])
+                                    ->where('date_period_id', $adj['date_period_id'])
+                                    ->where('adjustment_id', $adj['adjustment_id'])
+                                    ->first();
+
+                                if (!$localAdj) {
+                                    Adjustment::create([
+                                        'employee_id'    => $adj['employee_id'],
+                                        'date_period_id' => $adj['date_period_id'],
+                                        'adjustment_id'  => $adj['adjustment_id'],
+                                        'amount'         => $adj['amount'] ?? 0,
+                                    ]);
+                                } else {
+                                    $localAdj->update(['amount' => $adj['amount'] ?? 0]);
+                                }
+                                $adjCount++;
+                            }
+                        }
+                        if ($adjCount > 0) $summary[] = "{$adjCount} adjustments";
+
+                        // 17. Sync Gov Deduction Logs
+                        $cloudGovLogs = $response->json('gov_deduction_logs', []);
+                        $govLogCount = 0;
+                        foreach ($cloudGovLogs as $log) {
+                            if (class_exists(GovDeductionLog::class)) {
+                                $localLog = GovDeductionLog::where('gov_deduction_id', $log['gov_deduction_id'])
+                                    ->where('employee_id', $log['employee_id'])
+                                    ->where('date_period_id', $log['date_period_id'])
+                                    ->first();
+
+                                if (!$localLog) {
+                                    GovDeductionLog::create([
+                                        'gov_deduction_id' => $log['gov_deduction_id'],
+                                        'employee_id'      => $log['employee_id'],
+                                        'date_period_id'   => $log['date_period_id'],
+                                        'amount'           => $log['amount'] ?? 0,
+                                    ]);
+                                } else {
+                                    $localLog->update(['amount' => $log['amount'] ?? 0]);
+                                }
+                                $govLogCount++;
+                            }
+                        }
+                        if ($govLogCount > 0) $summary[] = "{$govLogCount} gov deduction logs";
+
+                        // 18. Sync Other Deduction Logs
+                        $cloudOtherLogs = $response->json('other_deduction_logs', []);
+                        $otherLogCount = 0;
+                        foreach ($cloudOtherLogs as $log) {
+                            if (class_exists(OtherDeductionLog::class)) {
+                                $localLog = OtherDeductionLog::where('other_deduction_id', $log['other_deduction_id'])
+                                    ->where('employee_id', $log['employee_id'])
+                                    ->where('date_period_id', $log['date_period_id'])
+                                    ->first();
+
+                                if (!$localLog) {
+                                    OtherDeductionLog::create([
+                                        'other_deduction_id' => $log['other_deduction_id'],
+                                        'employee_id'        => $log['employee_id'],
+                                        'date_period_id'     => $log['date_period_id'],
+                                        'amount'             => $log['amount'] ?? 0,
+                                    ]);
+                                } else {
+                                    $localLog->update(['amount' => $log['amount'] ?? 0]);
+                                }
+                                $otherLogCount++;
+                            }
+                        }
+                        if ($otherLogCount > 0) $summary[] = "{$otherLogCount} other deduction logs";
+
+                        // 19. Sync Incentive Bonuses
+                        $cloudBonuses = $response->json('incentive_bonuses', []);
+                        $bonusCount = 0;
+                        foreach ($cloudBonuses as $bonus) {
+                            if (class_exists(IncentiveBonus::class)) {
+                                $localBonus = IncentiveBonus::where('employeeid', $bonus['employeeid'])
+                                    ->where('yearendrepid', $bonus['yearendrepid'])
+                                    ->first();
+
+                                $data = [
+                                    'status'   => $bonus['status'] ?? true,
+                                    'earnings' => $bonus['earnings'] ?? 0,
+                                ];
+
+                                if (!$localBonus) {
+                                    IncentiveBonus::create(array_merge([
+                                        'employeeid'   => $bonus['employeeid'],
+                                        'yearendrepid' => $bonus['yearendrepid'],
+                                    ], $data));
+                                } else {
+                                    $localBonus->update($data);
+                                }
+                                $bonusCount++;
+                            }
+                        }
+                        if ($bonusCount > 0) $summary[] = "{$bonusCount} incentive bonuses";
+
+                        // 20. Sync Thirteenth Months
+                        $cloudThirteenth = $response->json('thirteenth_months', []);
+                        $tmCount = 0;
+                        foreach ($cloudThirteenth as $tm) {
+                            if (class_exists(ThirteenthMonth::class)) {
+                                $localTm = ThirteenthMonth::where('employeeid', $tm['employeeid'])
+                                    ->where('periodid', $tm['periodid'])
+                                    ->first();
+
+                                $data = [
+                                    'earnings'     => $tm['earnings'] ?? 0,
+                                    'partners'     => $tm['partners'] ?? null,
+                                    'yearendrepid' => $tm['yearendrepid'] ?? null,
+                                    'project'      => $tm['project'] ?? null,
+                                    'allowance'    => $tm['allowance'] ?? 0,
+                                    'datestart'    => !empty($tm['datestart']) ? Carbon::parse($tm['datestart'])->format('Y-m-d') : null,
+                                    'dateend'      => !empty($tm['dateend']) ? Carbon::parse($tm['dateend'])->format('Y-m-d') : null,
+                                    'yearendcode'  => $tm['yearendcode'] ?? null,
+                                    'status'       => $tm['status'] ?? true,
+                                ];
+
+                                if (!$localTm) {
+                                    ThirteenthMonth::create(array_merge([
+                                        'employeeid' => $tm['employeeid'],
+                                        'periodid'   => $tm['periodid'],
+                                    ], $data));
+                                } else {
+                                    $localTm->update($data);
+                                }
+                                $tmCount++;
+                            }
+                        }
+                        if ($tmCount > 0) $summary[] = "{$tmCount} thirteenth month records";
+
+                        // 21. Sync User Permissions
+                        $cloudPermissions = $response->json('user_permissions', []);
+                        $permCount = 0;
+                        foreach ($cloudPermissions as $perm) {
+                            if (class_exists(UserPermission::class)) {
+                                UserPermission::firstOrCreate(
+                                    ['user_id' => $perm['user_id'], 'module' => $perm['module']]
+                                );
+                                $permCount++;
+                            }
+                        }
+                        if ($permCount > 0) $summary[] = "{$permCount} user permissions";
+
+                        // 22. Sync Payroll Reports
+                        $cloudPayrollReports = $response->json('payroll_reports', []);
+                        $prCount = 0;
+                        foreach ($cloudPayrollReports as $report) {
+                            if (class_exists(PayrollReport::class)) {
+                                $dateEntry = !empty($report['date_entry']) ? Carbon::parse($report['date_entry'])->format('Y-m-d') : null;
+
+                                $localReport = PayrollReport::where('dateperiod_id', $report['dateperiod_id'])
+                                    ->where('employee_id', $report['employee_id'])
+                                    ->where('date_entry', $dateEntry)
+                                    ->first();
+
+                                $data = [
+                                    'paytype'        => $report['paytype'] ?? null,
+                                    'overtime'       => $report['overtime'] ?? 0,
+                                    'acquired_hours' => $report['acquired_hours'] ?? 0,
+                                    'late_undertime' => $report['late_undertime'] ?? 0,
+                                    'cat_id'         => $report['cat_id'] ?? null,
+                                    'status'         => $report['status'] ?? true,
+                                    'sched_id'       => $report['sched_id'] ?? null,
+                                ];
+
+                                if (!$localReport) {
+                                    PayrollReport::create(array_merge([
+                                        'dateperiod_id' => $report['dateperiod_id'],
+                                        'employee_id'   => $report['employee_id'],
+                                        'date_entry'    => $dateEntry,
+                                    ], $data));
+                                } else {
+                                    $localReport->update($data);
+                                }
+                                $prCount++;
+                            }
+                        }
+                        if ($prCount > 0) $summary[] = "{$prCount} payroll reports";
+
+                        // 23. Sync Payroll Summary Reports
+                        $cloudSummaryReports = $response->json('payroll_summary_reports', []);
+                        $psrCount = 0;
+                        foreach ($cloudSummaryReports as $summaryReport) {
+                            if (class_exists(PayrollSummaryReport::class)) {
+                                $localSummary = PayrollSummaryReport::where('dateperiod_id', $summaryReport['dateperiod_id'])
+                                    ->where('employee_id', $summaryReport['employee_id'])
+                                    ->first();
+
+                                $data = [
+                                    'totalhours'      => $summaryReport['totalhours'] ?? 0,
+                                    'totalovertime'   => $summaryReport['totalovertime'] ?? 0,
+                                    'totalabsent'     => $summaryReport['totalabsent'] ?? 0,
+                                    'lateundertime'   => $summaryReport['lateundertime'] ?? 0,
+                                    'totaldeductionn' => $summaryReport['totaldeductionn'] ?? 0,
+                                    'totalearnings'   => $summaryReport['totalearnings'] ?? 0,
+                                    'totaladjustment' => $summaryReport['totaladjustment'] ?? 0,
+                                    'totalnetpay'     => $summaryReport['totalnetpay'] ?? 0,
+                                    'grosspay'        => $summaryReport['grosspay'] ?? 0,
+                                    'status'          => $summaryReport['status'] ?? true,
+                                    'required_hours'  => $summaryReport['required_hours'] ?? 0,
+                                    'required_income' => $summaryReport['required_income'] ?? 0,
+                                ];
+
+                                if (!$localSummary) {
+                                    PayrollSummaryReport::create(array_merge([
+                                        'dateperiod_id' => $summaryReport['dateperiod_id'],
+                                        'employee_id'   => $summaryReport['employee_id'],
+                                    ], $data));
+                                } else {
+                                    $localSummary->update($data);
+                                }
+                                $psrCount++;
+                            }
+                        }
+                        if ($psrCount > 0) $summary[] = "{$psrCount} payroll summary reports";
+
                         $bodyMessage = empty($summary) ? 'No data found to download.' : 'Successfully downloaded: ' . implode(', ', $summary) . '.';
 
                         Notification::make()
@@ -532,6 +780,15 @@ class ListEmployees extends ListRecords
                             'facial_profiles'            => class_exists(FacialProfile::class) ? FacialProfile::all()->toArray() : [],
                             'date_periods'               => class_exists(DatePeriod::class) ? DatePeriod::all()->toArray() : [],
                             'year_end_reports'           => class_exists(YearEndReport::class) ? YearEndReport::all()->toArray() : [],
+                            'activity_logs'        => class_exists(ActivityLog::class) ? ActivityLog::all()->toArray() : [],
+                            'adjustments'          => class_exists(Adjustment::class) ? Adjustment::all()->toArray() : [],
+                            'gov_deduction_logs'   => class_exists(GovDeductionLog::class) ? GovDeductionLog::all()->toArray() : [],
+                            'other_deduction_logs' => class_exists(OtherDeductionLog::class) ? OtherDeductionLog::all()->toArray() : [],
+                            'incentive_bonuses'    => class_exists(IncentiveBonus::class) ? IncentiveBonus::all()->toArray() : [],
+                            'thirteenth_months'    => class_exists(ThirteenthMonth::class) ? ThirteenthMonth::all()->toArray() : [],
+                            'user_permissions'     => class_exists(UserPermission::class) ? UserPermission::all()->toArray() : [],
+                            'payroll_reports'         => class_exists(PayrollReport::class) ? PayrollReport::all()->toArray() : [],
+                            'payroll_summary_reports' => class_exists(PayrollSummaryReport::class) ? PayrollSummaryReport::all()->toArray() : [],
                         ];
 
                         $pushUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills'], 'sync-all', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-all'));
