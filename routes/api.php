@@ -134,6 +134,7 @@ Route::post('/sync-projects', function (Request $request) {
                     'datecovered'  => $project['datecovered'] ?? null,
                     'scope'        => $project['scope'] ?? null,
                     'address'      => $project['address'] ?? null,
+                    'image'        => $project['image'] ?? null, // Added missing image column
                     'status'       => $project['status'] ?? true,
                     'created_at'   => $project['created_at'] ?? now(),
                     'updated_at'   => now()->format('Y-m-d H:i:s'),
