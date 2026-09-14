@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-// use Exception;
+use Illuminate\Support\Str;
 
 
 // Helper function to validate the Bearer token
@@ -110,12 +110,13 @@ Route::post('/sync-all', function (Request $request) {
                 $updatedAt = isset($skill['updated_at']) ? Carbon::parse($skill['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('skills')->updateOrInsert(
-                    ['title' => $skill['title']],
+                    ['id' => $skill['id']],
                     [
-                        'details'    => $skill['details'] ?? null,
-                        'status'     => $skill['status'] ?? true,
+                        'title' => Str::upper($skill['title']),
+                        'details' => $skill['details'] ?? null,
+                        'status' => $skill['status'] ?? true,
                         'created_at' => $createdAt,
-                        'updated_at' => $updatedAt,
+                        'updated_at' => $updatedAt
                     ]
                 );
                 $skillCount++;
@@ -156,15 +157,15 @@ Route::post('/sync-all', function (Request $request) {
             foreach ($categories as $category) {
                 $createdAt = isset($category['created_at']) ? Carbon::parse($category['created_at'])->format('Y-m-d H:i:s') : now();
                 $updatedAt = isset($category['updated_at']) ? Carbon::parse($category['updated_at'])->format('Y-m-d H:i:s') : now();
-
                 DB::table('categories')->updateOrInsert(
-                    ['cat' => $category['cat'] ?? $category['name']],
+                    ['id' => $category['id']],
                     [
-                        'name'        => $category['name'] ?? null,
+                        'cat' => $category['cat'] ?? null,
+                        'name' => Str::upper($category['name'] ?? ''),
                         'description' => $category['description'] ?? null,
-                        'status'      => $category['status'] ?? true,
-                        'created_at'  => $createdAt,
-                        'updated_at'  => $updatedAt,
+                        'status' => $category['status'] ?? true,
+                        'created_at' => $createdAt,
+                        'updated_at' => $updatedAt
                     ]
                 );
                 $catCount++;
@@ -185,8 +186,9 @@ Route::post('/sync-all', function (Request $request) {
                 $dateEnded   = !empty($gov['date_ended']) ? Carbon::parse($gov['date_ended'])->format('Y-m-d') : null;
 
                 DB::table('gov_deductions')->updateOrInsert(
-                    ['title' => $gov['title']],
+                    ['id' => $gov['id']],
                     [
+                        'title'        => Str::upper($gov['title']),
                         'date_started' => $dateStarted,
                         'date_ended'   => $dateEnded,
                         'amount'       => $gov['amount'] ?? 0,
@@ -208,8 +210,9 @@ Route::post('/sync-all', function (Request $request) {
                 $updatedAt = isset($holiday['updated_at']) ? Carbon::parse($holiday['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('holidays')->updateOrInsert(
-                    ['type' => $holiday['type']],
+                    ['id' => $holiday['id']],
                     [
+                        'type'       => Str::upper($holiday['type']),
                         'percentage' => $holiday['percentage'] ?? 0,
                         'details'    => $holiday['details'] ?? null,
                         'status'     => $holiday['status'] ?? true,
@@ -231,8 +234,9 @@ Route::post('/sync-all', function (Request $request) {
                 $updatedAt = isset($other['updated_at']) ? Carbon::parse($other['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('other_deductions')->updateOrInsert(
-                    ['title' => $other['title']],
+                    ['id' => $other['id']],
                     [
+                        'title'       => Str::upper($other['title']),
                         'description' => $other['description'] ?? null,
                         'status'      => $other['status'] ?? true,
                         'created_at'  => $createdAt,
@@ -378,20 +382,19 @@ Route::post('/sync-all', function (Request $request) {
             foreach ($periods as $period) {
                 $createdAt = isset($period['created_at']) ? Carbon::parse($period['created_at'])->format('Y-m-d H:i:s') : now();
                 $updatedAt = isset($period['updated_at']) ? Carbon::parse($period['updated_at'])->format('Y-m-d H:i:s') : now();
-
                 DB::table('date_periods')->updateOrInsert(
-                    ['code' => $period['code']],
+                    ['id' => $period['id']],
                     [
                         'employeetype'  => $period['employeetype'] ?? null,
                         'category_id'   => $period['category_id'] ?? null,
+                        'code'          => $period['code'] ?? null,
                         'datefrom'      => !empty($period['datefrom']) ? Carbon::parse($period['datefrom'])->format('Y-m-d') : null,
                         'dateto'        => !empty($period['dateto']) ? Carbon::parse($period['dateto'])->format('Y-m-d') : null,
                         'status'        => $period['status'] ?? true,
                         'overtime_rate' => $period['overtime_rate'] ?? 0,
                         'partners'      => $period['partners'] ?? null,
                         'projectid'     => $period['projectid'] ?? null,
-                        'created_at'  => $createdAt,
-                        'updated_at'  => $updatedAt,
+                        'updated_at'    => now(),
                     ]
                 );
                 $count++;
@@ -408,8 +411,9 @@ Route::post('/sync-all', function (Request $request) {
                 $updatedAt = isset($report['updated_at']) ? Carbon::parse($report['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('year_end_reports')->updateOrInsert(
-                    ['code' => $report['code']],
+                    ['id' => $report['id']],
                     [
+                        'code'       => $report['code'] ?? null,
                         'emptype'    => $report['emptype'] ?? null,
                         'empstatus'  => $report['empstatus'] ?? null,
                         'partners'   => $report['partners'] ?? null,
@@ -418,8 +422,7 @@ Route::post('/sync-all', function (Request $request) {
                         'datefrom'   => !empty($report['datefrom']) ? Carbon::parse($report['datefrom'])->format('Y-m-d') : null,
                         'dateto'     => !empty($report['dateto']) ? Carbon::parse($report['dateto'])->format('Y-m-d') : null,
                         'rep_type'   => $report['rep_type'] ?? null,
-                        'created_at'  => $createdAt,
-                        'updated_at'  => $updatedAt,
+                        'updated_at' => now(),
                     ]
                 );
                 $count++;

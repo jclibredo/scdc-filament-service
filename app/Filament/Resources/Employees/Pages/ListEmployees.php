@@ -104,26 +104,19 @@ class ListEmployees extends ListRecords
                         $skillCount = 0;
                         foreach ($cloudSkills as $cloudSkill) {
                             if (class_exists(Skill::class)) {
-                                $title = trim($cloudSkill['title']);
-                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
-
-                                $localSkill = Skill::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
-
+                                $localSkill = Skill::find($cloudSkill['id']);
                                 if (!$localSkill) {
-                                    Skill::create([
-                                        'title'      => Str::upper($title),
-                                        'details'    => $cloudSkill['details'] ?? null,
-                                        'status'     => $cloudSkill['status'] ?? true,
-                                        'created_at' => $cloudSkill['created_at'] ?? now(),
-                                        'updated_at' => $cloudSkill['updated_at'] ?? now(),
-                                    ]);
-                                } else {
-                                    $localSkill->update([
-                                        'details'    => $cloudSkill['details'] ?? null,
-                                        'status'     => $cloudSkill['status'] ?? true,
-                                        'updated_at' => $cloudSkill['updated_at'] ?? now(),
-                                    ]);
+                                    $localSkill = new Skill();
+                                    $localSkill->id = $cloudSkill['id'];
                                 }
+                                $localSkill->fill([
+                                    'title'      => Str::upper(trim($cloudSkill['title'])),
+                                    'details'    => $cloudSkill['details'] ?? null,
+                                    'status'     => $cloudSkill['status'] ?? true,
+                                    'created_at' => $cloudSkill['created_at'] ?? now(),
+                                    'updated_at' => $cloudSkill['updated_at'] ?? now(),
+                                ]);
+                                $localSkill->save();
                                 $skillCount++;
                             }
                         }
@@ -167,33 +160,25 @@ class ListEmployees extends ListRecords
                         }
                         if ($projectCount > 0) $summary[] = "{$projectCount} projects";
 
-                        // 4. Sync Categories (🟢 Added)
+                        // 4. Sync Categories
                         $cloudCategories = $response->json('categories', []);
                         $catCount = 0;
                         foreach ($cloudCategories as $cloudCategory) {
                             if (class_exists(Category::class)) {
-                                $catKey = trim($cloudCategory['cat'] ?? $cloudCategory['name']);
-                                $normalizedCat = Str::upper(preg_replace('/\s+/', '', $catKey));
-
-                                $localCategory = Category::whereRaw("UPPER(REPLACE(COALESCE(cat, name), ' ', '')) = ?", [$normalizedCat])->first();
-
+                                $localCategory = \App\Models\Category::find($cloudCategory['id']);
                                 if (!$localCategory) {
-                                    Category::create([
-                                        'cat'         => $cloudCategory['cat'] ?? null,
-                                        'name'        => Str::upper($cloudCategory['name'] ?? ''),
-                                        'description' => $cloudCategory['description'] ?? null,
-                                        'status'      => $cloudCategory['status'] ?? true,
-                                        'created_at'  => $cloudCategory['created_at'] ?? now(),
-                                        'updated_at'  => $cloudCategory['updated_at'] ?? now(),
-                                    ]);
-                                } else {
-                                    $localCategory->update([
-                                        'name'        => Str::upper($cloudCategory['name'] ?? ''),
-                                        'description' => $cloudCategory['description'] ?? null,
-                                        'status'      => $cloudCategory['status'] ?? true,
-                                        'updated_at'  => $cloudCategory['updated_at'] ?? now(),
-                                    ]);
+                                    $localCategory = new \App\Models\Category();
+                                    $localCategory->id = $cloudCategory['id'];
                                 }
+                                $localCategory->fill([
+                                    'cat'         => $cloudCategory['cat'] ?? null,
+                                    'name'        => Str::upper($cloudCategory['name'] ?? ''),
+                                    'description' => $cloudCategory['description'] ?? null,
+                                    'status'      => $cloudCategory['status'] ?? true,
+                                    'created_at'  => $cloudCategory['created_at'] ?? now(),
+                                    'updated_at'  => $cloudCategory['updated_at'] ?? now(),
+                                ]);
+                                $localCategory->save();
                                 $catCount++;
                             }
                         }
@@ -204,96 +189,68 @@ class ListEmployees extends ListRecords
                         $govCount = 0;
                         foreach ($cloudGov as $gov) {
                             if (class_exists(GovDeduction::class)) {
-                                $title = trim($gov['title']);
-                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
-
-                                $localGov = GovDeduction::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
-
-                                // Format dates safely
-                                $dateStarted = !empty($gov['date_started']) ? Carbon::parse($gov['date_started'])->format('Y-m-d') : null;
-                                $dateEnded   = !empty($gov['date_ended']) ? Carbon::parse($gov['date_ended'])->format('Y-m-d') : null;
-
+                                $localGov = GovDeduction::find($gov['id']);
                                 if (!$localGov) {
-                                    GovDeduction::create([
-                                        'title'        => Str::upper($title),
-                                        'date_started' => $dateStarted,
-                                        'date_ended'   => $dateEnded,
-                                        'amount'       => $gov['amount'] ?? 0,
-                                        'status'       => $gov['status'] ?? true,
-                                        'created_at'   => $gov['created_at'] ?? now(),
-                                        'updated_at'   => $gov['updated_at'] ?? now(),
-                                    ]);
-                                } else {
-                                    $localGov->update([
-                                        'date_started' => $dateStarted,
-                                        'date_ended'   => $dateEnded,
-                                        'amount'       => $gov['amount'] ?? 0,
-                                        'status'       => $gov['status'] ?? true,
-                                        'updated_at'   => $gov['updated_at'] ?? now(),
-                                    ]);
+                                    $localGov = new GovDeduction();
+                                    $localGov->id = $gov['id'];
                                 }
+                                $localGov->fill([
+                                    'title'        => Str::upper(trim($gov['title'])),
+                                    'date_started' => !empty($gov['date_started']) ? Carbon::parse($gov['date_started'])->format('Y-m-d') : null,
+                                    'date_ended'   => !empty($gov['date_ended']) ? Carbon::parse($gov['date_ended'])->format('Y-m-d') : null,
+                                    'amount'       => $gov['amount'] ?? 0,
+                                    'status'       => $gov['status'] ?? true,
+                                    'created_at'   => $gov['created_at'] ?? now(),
+                                    'updated_at'   => $gov['updated_at'] ?? now(),
+                                ]);
+                                $localGov->save();
                                 $govCount++;
                             }
                         }
                         if ($govCount > 0) $summary[] = "{$govCount} gov deductions";
 
-                        // 6. Sync Holidays (🟢 Added)
+                        // 6. Sync Holidays
                         $cloudHolidays = $response->json('holidays', []);
                         $holidayCount = 0;
                         foreach ($cloudHolidays as $holiday) {
                             if (class_exists(Holiday::class)) {
-                                $type = trim($holiday['type']);
-                                $normalizedType = Str::upper(preg_replace('/\s+/', '', $type));
-
-                                $localHoliday = Holiday::whereRaw("UPPER(REPLACE(type, ' ', '')) = ?", [$normalizedType])->first();
-
+                                $localHoliday = Holiday::find($holiday['id']);
                                 if (!$localHoliday) {
-                                    Holiday::create([
-                                        'type'       => Str::upper($type),
-                                        'percentage' => $holiday['percentage'] ?? 0,
-                                        'details'    => $holiday['details'] ?? null,
-                                        'status'     => $holiday['status'] ?? true,
-                                        'created_at' => $holiday['created_at'] ?? now(),
-                                        'updated_at' => $holiday['updated_at'] ?? now(),
-                                    ]);
-                                } else {
-                                    $localHoliday->update([
-                                        'percentage' => $holiday['percentage'] ?? 0,
-                                        'details'    => $holiday['details'] ?? null,
-                                        'status'     => $holiday['status'] ?? true,
-                                        'updated_at' => $holiday['updated_at'] ?? now(),
-                                    ]);
+                                    $localHoliday = new Holiday();
+                                    $localHoliday->id = $holiday['id'];
                                 }
+                                $localHoliday->fill([
+                                    'type'       => Str::upper(trim($holiday['type'])),
+                                    'percentage' => $holiday['percentage'] ?? 0,
+                                    'details'    => $holiday['details'] ?? null,
+                                    'status'     => $holiday['status'] ?? true,
+                                    'created_at' => $holiday['created_at'] ?? now(),
+                                    'updated_at' => $holiday['updated_at'] ?? now(),
+                                ]);
+                                $localHoliday->save();
                                 $holidayCount++;
                             }
                         }
-                        if ($holidayCount > 0) $summary[] = "{$holidayCount} payment rates";
+                        if ($holidayCount > 0) $summary[] = "{$holidayCount} holidays";
 
-                        // 7. Sync Other Deductions (🟢 Added)
+                        // 7. Sync Other Deductions
                         $cloudOther = $response->json('other_deductions', []);
                         $otherCount = 0;
                         foreach ($cloudOther as $other) {
                             if (class_exists(OtherDeduction::class)) {
-                                $title = trim($other['title']);
-                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
-
-                                $localOther = OtherDeduction::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
-
+                                $localOther = OtherDeduction::find($other['id']);
                                 if (!$localOther) {
-                                    OtherDeduction::create([
-                                        'title'       => Str::upper($title),
-                                        'description' => $other['description'] ?? null,
-                                        'status'      => $other['status'] ?? true,
-                                        'created_at'  => $other['created_at'] ?? now(),
-                                        'updated_at'  => $other['updated_at'] ?? now(),
-                                    ]);
-                                } else {
-                                    $localOther->update([
-                                        'description' => $other['description'] ?? null,
-                                        'status'      => $other['status'] ?? true,
-                                        'updated_at'  => $other['updated_at'] ?? now(),
-                                    ]);
+                                    $localOther = new OtherDeduction();
+                                    $localOther->id = $other['id'];
                                 }
+                                $localOther->fill([
+                                    'title'       => Str::upper(trim($other['title'])),
+                                    'description' => $other['description'] ?? null,
+                                    'status'      => $other['status'] ?? true,
+                                    'created_at'  => $other['created_at'] ?? now(),
+                                    'updated_at'  => $other['updated_at'] ?? now(),
+                                ]);
+                                $localOther->save();
                                 $otherCount++;
                             }
                         }
@@ -448,24 +405,23 @@ class ListEmployees extends ListRecords
                         $periodCount = 0;
                         foreach ($cloudPeriods as $period) {
                             if (class_exists(DatePeriod::class)) {
-                                $localPeriod = DatePeriod::where('code', $period['code'])->first();
-
-                                $data = [
+                                $localPeriod = DatePeriod::find($period['id']);
+                                if (!$localPeriod) {
+                                    $localPeriod = new DatePeriod();
+                                    $localPeriod->id = $period['id'];
+                                }
+                                $localPeriod->fill([
                                     'employeetype'  => $period['employeetype'] ?? null,
                                     'category_id'   => $period['category_id'] ?? null,
+                                    'code'          => $period['code'] ?? null,
                                     'datefrom'      => !empty($period['datefrom']) ? Carbon::parse($period['datefrom'])->format('Y-m-d') : null,
                                     'dateto'        => !empty($period['dateto']) ? Carbon::parse($period['dateto'])->format('Y-m-d') : null,
                                     'status'        => $period['status'] ?? true,
                                     'overtime_rate' => $period['overtime_rate'] ?? 0,
                                     'partners'      => $period['partners'] ?? null,
                                     'projectid'     => $period['projectid'] ?? null,
-                                ];
-
-                                if (!$localPeriod) {
-                                    DatePeriod::create(array_merge(['code' => $period['code']], $data));
-                                } else {
-                                    $localPeriod->update($data);
-                                }
+                                ]);
+                                $localPeriod->save();
                                 $periodCount++;
                             }
                         }
@@ -476,9 +432,13 @@ class ListEmployees extends ListRecords
                         $reportCount = 0;
                         foreach ($cloudReports as $report) {
                             if (class_exists(YearEndReport::class)) {
-                                $localReport = YearEndReport::where('code', $report['code'])->first();
-
-                                $data = [
+                                $localReport = YearEndReport::find($report['id']);
+                                if (!$localReport) {
+                                    $localReport = new YearEndReport();
+                                    $localReport->id = $report['id'];
+                                }
+                                $localReport->fill([
+                                    'code'       => $report['code'] ?? null,
                                     'emptype'    => $report['emptype'] ?? null,
                                     'empstatus'  => $report['empstatus'] ?? null,
                                     'partners'   => $report['partners'] ?? null,
@@ -487,13 +447,8 @@ class ListEmployees extends ListRecords
                                     'datefrom'   => !empty($report['datefrom']) ? Carbon::parse($report['datefrom'])->format('Y-m-d') : null,
                                     'dateto'     => !empty($report['dateto']) ? Carbon::parse($report['dateto'])->format('Y-m-d') : null,
                                     'rep_type'   => $report['rep_type'] ?? null,
-                                ];
-
-                                if (!$localReport) {
-                                    YearEndReport::create(array_merge(['code' => $report['code']], $data));
-                                } else {
-                                    $localReport->update($data);
-                                }
+                                ]);
+                                $localReport->save();
                                 $reportCount++;
                             }
                         }
