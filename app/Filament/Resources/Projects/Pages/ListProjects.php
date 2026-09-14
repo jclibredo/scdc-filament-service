@@ -30,6 +30,40 @@ class ListProjects extends ListRecords
 
         return [
             // Add these inside your header actions array:
+            // Action::make('syncProjectsToCloud')
+            //     ->label('Upload Projects to Cloud')
+            //     ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
+            //     ->color($isOnline ? 'success' : 'danger')
+            //     ->size('xs')
+            //     ->outlined()
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Upload Projects to Cloud')
+            //     ->modalDescription('This will push all local projects to the cloud database. Proceed?')
+            //     ->modalSubmitActionLabel('Yes, upload')
+            //     ->visible(fn() => app()->environment('local'))
+            //     ->action(function () {
+            //         try {
+            //             $projects = Project::all()->toArray();
+            //             if (empty($projects)) {
+            //                 Notification::make()->title('No local projects found to upload.')->warning()->send();
+            //                 return;
+            //             }
+            //             // $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
+            //             // $response = Http::timeout(30)->post($pushUrl, ['projects' => $projects]);
+            //             $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
+            //             $response = Http::withToken(env('CLOUD_API_TOKEN'))
+            //                 ->timeout(30)
+            //                 ->post($pushUrl, ['projects' => $projects]);
+            //             if ($response->successful()) {
+            //                 Notification::make()->title('Projects uploaded successfully!')->success()->send();
+            //             } else {
+            //                 throw new \Exception('Cloud server error: ' . $response->status());
+            //             }
+            //         } catch (\Exception $e) {
+            //             Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
+            //         }
+            //     }),
+            // Inside your header actions array:
             Action::make('syncProjectsToCloud')
                 ->label('Upload Projects to Cloud')
                 ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
@@ -48,16 +82,17 @@ class ListProjects extends ListRecords
                             Notification::make()->title('No local projects found to upload.')->warning()->send();
                             return;
                         }
-                        // $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
-                        // $response = Http::timeout(30)->post($pushUrl, ['projects' => $projects]);
+
                         $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
                         $response = Http::withToken(env('CLOUD_API_TOKEN'))
                             ->timeout(30)
                             ->post($pushUrl, ['projects' => $projects]);
+
                         if ($response->successful()) {
                             Notification::make()->title('Projects uploaded successfully!')->success()->send();
                         } else {
-                            throw new \Exception('Cloud server error: ' . $response->status());
+                            $errorMsg = $response->json('message') ?? ('Cloud server error: ' . $response->status());
+                            throw new \Exception($errorMsg);
                         }
                     } catch (\Exception $e) {
                         Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
