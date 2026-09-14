@@ -9,6 +9,9 @@ use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
 use App\Models\FacialProfile;
+use App\Models\GovDeduction;
+use App\Models\Holiday;
+use App\Models\OtherDeduction;
 use App\Models\Project;
 use App\Models\Skill;
 use Filament\Actions\Action;
@@ -20,9 +23,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Filament\Support\Enums\Size;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -42,7 +43,6 @@ class ListEmployees extends ListRecords
         }
 
         return [
-
             Action::make('pullAllFromCloud')
                 ->label('Download All from Cloud')
                 ->icon('heroicon-o-cloud-arrow-down')
@@ -57,17 +57,13 @@ class ListEmployees extends ListRecords
                 ->action(function () {
                     try {
                         $token = env('CLOUD_API_TOKEN');
-                        $pullUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills', 'sync-all'], 'fetch-all-cloud-data', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-all-cloud-data'));
-
+                        $pullUrl = 'https://scdc-web-app.com/api/fetch-all-cloud-data';
                         $response = Http::withToken($token)->timeout(60)->get($pullUrl);
-
                         if (!$response->successful()) {
                             $errorMsg = $response->json('message') ?? ('Cloud server error: ' . $response->status());
                             throw new \Exception($errorMsg);
                         }
-
                         $summary = [];
-
                         // 1. Sync Attendance Logs
                         $cloudLogs = $response->json('logs', []);
                         $logCount = 0;
@@ -158,6 +154,134 @@ class ListEmployees extends ListRecords
                         }
                         if ($projectCount > 0) $summary[] = "{$projectCount} projects";
 
+                        // 4. Sync Categories (🟢 Added)
+                        $cloudCategories = $response->json('categories', []);
+                        $catCount = 0;
+                        foreach ($cloudCategories as $cloudCategory) {
+                            if (class_exists(Category::class)) {
+                                $catKey = trim($cloudCategory['cat'] ?? $cloudCategory['name']);
+                                $normalizedCat = Str::upper(preg_replace('/\s+/', '', $catKey));
+
+                                $localCategory = Category::whereRaw("UPPER(REPLACE(COALESCE(cat, name), ' ', '')) = ?", [$normalizedCat])->first();
+
+                                if (!$localCategory) {
+                                    Category::create([
+                                        'cat'         => $cloudCategory['cat'] ?? null,
+                                        'name'        => Str::upper($cloudCategory['name'] ?? ''),
+                                        'description' => $cloudCategory['description'] ?? null,
+                                        'status'      => $cloudCategory['status'] ?? true,
+                                        'created_at'  => $cloudCategory['created_at'] ?? now(),
+                                        'updated_at'  => $cloudCategory['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localCategory->update([
+                                        'name'        => Str::upper($cloudCategory['name'] ?? ''),
+                                        'description' => $cloudCategory['description'] ?? null,
+                                        'status'      => $cloudCategory['status'] ?? true,
+                                        'updated_at'  => $cloudCategory['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $catCount++;
+                            }
+                        }
+                        if ($catCount > 0) $summary[] = "{$catCount} categories";
+
+                        // 5. Sync Gov Deductions (🟢 Added)
+                        $cloudGov = $response->json('gov_deductions', []);
+                        $govCount = 0;
+                        foreach ($cloudGov as $gov) {
+                            if (class_exists(GovDeduction::class)) {
+                                $title = trim($gov['title']);
+                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
+
+                                $localGov = GovDeduction::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
+
+                                if (!$localGov) {
+                                    GovDeduction::create([
+                                        'title'        => Str::upper($title),
+                                        'date_started' => $gov['date_started'] ?? null,
+                                        'date_ended'   => $gov['date_ended'] ?? null,
+                                        'amount'       => $gov['amount'] ?? 0,
+                                        'status'       => $gov['status'] ?? true,
+                                        'created_at'   => $gov['created_at'] ?? now(),
+                                        'updated_at'   => $gov['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localGov->update([
+                                        'date_started' => $gov['date_started'] ?? null,
+                                        'date_ended'   => $gov['date_ended'] ?? null,
+                                        'amount'       => $gov['amount'] ?? 0,
+                                        'status'       => $gov['status'] ?? true,
+                                        'updated_at'   => $gov['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $govCount++;
+                            }
+                        }
+                        if ($govCount > 0) $summary[] = "{$govCount} gov deductions";
+
+                        // 6. Sync Holidays (🟢 Added)
+                        $cloudHolidays = $response->json('holidays', []);
+                        $holidayCount = 0;
+                        foreach ($cloudHolidays as $holiday) {
+                            if (class_exists(Holiday::class)) {
+                                $type = trim($holiday['type']);
+                                $normalizedType = Str::upper(preg_replace('/\s+/', '', $type));
+
+                                $localHoliday = Holiday::whereRaw("UPPER(REPLACE(type, ' ', '')) = ?", [$normalizedType])->first();
+
+                                if (!$localHoliday) {
+                                    Holiday::create([
+                                        'type'       => Str::upper($type),
+                                        'percentage' => $holiday['percentage'] ?? 0,
+                                        'details'    => $holiday['details'] ?? null,
+                                        'status'     => $holiday['status'] ?? true,
+                                        'created_at' => $holiday['created_at'] ?? now(),
+                                        'updated_at' => $holiday['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localHoliday->update([
+                                        'percentage' => $holiday['percentage'] ?? 0,
+                                        'details'    => $holiday['details'] ?? null,
+                                        'status'     => $holiday['status'] ?? true,
+                                        'updated_at' => $holiday['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $holidayCount++;
+                            }
+                        }
+                        if ($holidayCount > 0) $summary[] = "{$holidayCount} holidays";
+
+                        // 7. Sync Other Deductions (🟢 Added)
+                        $cloudOther = $response->json('other_deductions', []);
+                        $otherCount = 0;
+                        foreach ($cloudOther as $other) {
+                            if (class_exists(OtherDeduction::class)) {
+                                $title = trim($other['title']);
+                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
+
+                                $localOther = OtherDeduction::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
+
+                                if (!$localOther) {
+                                    OtherDeduction::create([
+                                        'title'       => Str::upper($title),
+                                        'description' => $other['description'] ?? null,
+                                        'status'      => $other['status'] ?? true,
+                                        'created_at'  => $other['created_at'] ?? now(),
+                                        'updated_at'  => $other['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localOther->update([
+                                        'description' => $other['description'] ?? null,
+                                        'status'      => $other['status'] ?? true,
+                                        'updated_at'  => $other['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $otherCount++;
+                            }
+                        }
+                        if ($otherCount > 0) $summary[] = "{$otherCount} other deductions";
+
                         $bodyMessage = empty($summary) ? 'No data found to download.' : 'Successfully downloaded: ' . implode(', ', $summary) . '.';
 
                         Notification::make()
@@ -188,6 +312,10 @@ class ListEmployees extends ListRecords
                             'logs'     => class_exists(Atlog::class) ? Atlog::all()->toArray() : [],
                             'skills'   => class_exists(Skill::class) ? Skill::all()->toArray() : [],
                             'projects' => class_exists(Project::class) ? Project::all()->toArray() : [],
+                            'categories' => class_exists(Category::class) ? Category::all()->toArray() : [],
+                            'gov_deductions'   => class_exists(GovDeduction::class) ? GovDeduction::all()->toArray() : [], // 🟢 Added
+                            'holidays'         => class_exists(Holiday::class) ? Holiday::all()->toArray() : [], // 🟢 Added
+                            'other_deductions' => class_exists(OtherDeduction::class) ? OtherDeduction::all()->toArray() : [], // 🟢 Added
                         ];
 
                         $pushUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills'], 'sync-all', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-all'));

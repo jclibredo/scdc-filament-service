@@ -31,206 +31,199 @@ class ListAtlogs extends ListRecords
     {
         return [
             // 🔄 Bi-Directional Sync (Local <-> Cloud) Action (Visible ONLY in Local Environment)
-            Action::make('syncToCloud')
-                ->label(function () {
-                    // Quick connection check (1 second timeout so it doesn't lag the UI)
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'Sync Local to Cloud';
-                    }
-                    return 'No Internet Connection';
-                })
-                ->icon(function () {
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'heroicon-o-cloud-arrow-up'; // Green state icon
-                    }
-                    return 'heroicon-o-x-mark'; // ❌ Red state icon for no internet
-                })
-                ->color(function () {
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'success'; // 🟢 Green when online
-                    }
-                    return 'danger'; // 🔴 Red when offline
-                })
-                ->requiresConfirmation()
-                ->modalHeading('Sync Local Attendance to Cloud')
-                ->modalDescription('This will securely push all local attendance logs to your cloud application via API. Proceed?')
-                ->modalSubmitActionLabel('Yes, start sync')
-                // ->visible(fn() => app()->environment('local'))
-                ->visible(function () {
-                    // First, check if it's the local environment
-                    if (!app()->environment('local')) {
-                        return false;
-                    }
-                    // Second, perform a quick 1-second timeout socket check for internet
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return true; // Visible when local AND online
-                    }
+            // Action::make('syncToCloud')
+            //     ->label(function () {
+            //         // Quick connection check (1 second timeout so it doesn't lag the UI)
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'Sync Local to Cloud';
+            //         }
+            //         return 'No Internet Connection';
+            //     })
+            //     ->icon(function () {
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'heroicon-o-cloud-arrow-up'; // Green state icon
+            //         }
+            //         return 'heroicon-o-x-mark'; // ❌ Red state icon for no internet
+            //     })
+            //     ->color(function () {
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'success'; // 🟢 Green when online
+            //         }
+            //         return 'danger'; // 🔴 Red when offline
+            //     })
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Sync Local Attendance to Cloud')
+            //     ->modalDescription('This will securely push all local attendance logs to your cloud application via API. Proceed?')
+            //     ->modalSubmitActionLabel('Yes, start sync')
+            //     // ->visible(fn() => app()->environment('local'))
+            //     ->visible(function () {
+            //         // First, check if it's the local environment
+            //         if (!app()->environment('local')) {
+            //             return false;
+            //         }
+            //         // Second, perform a quick 1-second timeout socket check for internet
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return true; // Visible when local AND online
+            //         }
 
-                    return false; // Hidden when offline
-                })
-                ->action(function () {
-                    try {
-                        // Fetch local logs
-                        $localLogs = Atlog::all()->toArray();
+            //         return false; // Hidden when offline
+            //     })
+            //     ->action(function () {
+            //         try {
+            //             // Fetch local logs
+            //             $localLogs = Atlog::all()->toArray();
+            //             if (empty($localLogs)) {
+            //                 Notification::make()
+            //                     ->title('No local attendance logs found to sync.')
+            //                     ->warning()
+            //                     ->send();
+            //                 return;
+            //             }
+            //             // --- UPLOAD ACTION ---
+            //             $pushUrl = str_replace('sync-attendance', 'sync-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'));
+            //             $response = Http::withToken(env('CLOUD_API_TOKEN'))
+            //                 ->timeout(30)
+            //                 ->post($pushUrl, ['logs' => $localLogs]);
+            //             if ($response->successful()) {
+            //                 Notification::make()
+            //                     ->title('Cloud sync successful!')
+            //                     ->body($response->json('message', 'Records synchronized.'))
+            //                     ->success()
+            //                     ->send();
+            //             } else {
+            //                 throw new \Exception('Cloud server returned error code: ' . $response->status());
+            //             }
+            //         } catch (\Exception $e) {
+            //             Log::error('API cloud sync failed: ' . $e->getMessage());
 
-                        if (empty($localLogs)) {
-                            Notification::make()
-                                ->title('No local attendance logs found to sync.')
-                                ->warning()
-                                ->send();
-                            return;
-                        }
+            //             Notification::make()
+            //                 ->title('Sync failed: ' . $e->getMessage())
+            //                 ->danger()
+            //                 ->send();
+            //         }
+            //     }),
+            // Action::make('pullFromCloud')
+            //     ->label(function () {
+            //         // Quick connection check (1 second timeout so it doesn't lag the UI)
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'Pull Cloud to Local';
+            //         }
+            //         return 'No Internet Connection';
+            //     })
+            //     ->icon(function () {
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'heroicon-o-cloud-arrow-down'; // Green state icon
+            //         }
+            //         return 'heroicon-o-x-mark'; // ❌ Red state icon for no internet
+            //     })
+            //     ->color(function () {
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return 'info'; // 🟢 Green when online
+            //         }
+            //         return 'danger'; // 🔴 Red when offline
+            //     })
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Pull Attendance from Cloud')
+            //     ->modalDescription('This will fetch cloud records and update your local database with newer or missing data. Proceed?')
+            //     ->modalSubmitActionLabel('Yes, pull data')
+            //     // ->visible(fn() => app()->environment('local'))
+            //     ->visible(function () {
+            //         // First, check if it's the local environment
+            //         if (!app()->environment('local')) {
+            //             return false;
+            //         }
+            //         // Second, perform a quick 1-second timeout socket check for internet
+            //         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+            //         if ($hasInternet) {
+            //             fclose($hasInternet);
+            //             return true; // Visible when local AND online
+            //         }
 
-                        // --- UPLOAD ACTION ---
-                        $pushUrl = str_replace('sync-attendance', 'sync-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'));
-                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
-                            ->timeout(30)
-                            ->post($pushUrl, ['logs' => $localLogs]);
+            //         return false; // Hidden when offline
+            //     })
+            //     ->action(function () {
+            //         try {
+            //             // Request cloud logs via HTTP GET
+            //             // $apiUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
+            //             // $response = Http::timeout(30)->get($apiUrl);
+            //             // --- DOWNLOAD ACTION ---
+            //             $pullUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
+            //             $response = Http::withToken(env('CLOUD_API_TOKEN'))
+            //                 ->timeout(30)
+            //                 ->get($pullUrl);
 
-                        // Send data securely via HTTPS to your cloud app API using the .env variable
-                        // $response = Http::timeout(30)->post(env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'), [
-                        //     'logs' => $localLogs
-                        // ]);
-                        if ($response->successful()) {
-                            Notification::make()
-                                ->title('Cloud sync successful!')
-                                ->body($response->json('message', 'Records synchronized.'))
-                                ->success()
-                                ->send();
-                        } else {
-                            throw new \Exception('Cloud server returned error code: ' . $response->status());
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('API cloud sync failed: ' . $e->getMessage());
+            //             if (!$response->successful()) {
+            //                 throw new \Exception('Cloud server returned error code: ' . $response->status());
+            //             }
 
-                        Notification::make()
-                            ->title('Sync failed: ' . $e->getMessage())
-                            ->danger()
-                            ->send();
-                    }
-                }),
-            Action::make('pullFromCloud')
-                ->label(function () {
-                    // Quick connection check (1 second timeout so it doesn't lag the UI)
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'Pull Cloud to Local';
-                    }
-                    return 'No Internet Connection';
-                })
-                ->icon(function () {
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'heroicon-o-cloud-arrow-down'; // Green state icon
-                    }
-                    return 'heroicon-o-x-mark'; // ❌ Red state icon for no internet
-                })
-                ->color(function () {
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return 'info'; // 🟢 Green when online
-                    }
-                    return 'danger'; // 🔴 Red when offline
-                })
-                ->requiresConfirmation()
-                ->modalHeading('Pull Attendance from Cloud')
-                ->modalDescription('This will fetch cloud records and update your local database with newer or missing data. Proceed?')
-                ->modalSubmitActionLabel('Yes, pull data')
-                // ->visible(fn() => app()->environment('local'))
-                ->visible(function () {
-                    // First, check if it's the local environment
-                    if (!app()->environment('local')) {
-                        return false;
-                    }
-                    // Second, perform a quick 1-second timeout socket check for internet
-                    $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-                    if ($hasInternet) {
-                        fclose($hasInternet);
-                        return true; // Visible when local AND online
-                    }
+            //             $cloudLogs = $response->json('logs', []);
+            //             $pulledCount = 0;
 
-                    return false; // Hidden when offline
-                })
-                ->action(function () {
-                    try {
-                        // Request cloud logs via HTTP GET
-                        // $apiUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
-                        // $response = Http::timeout(30)->get($apiUrl);
-                        // --- DOWNLOAD ACTION ---
-                        $pullUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
-                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
-                            ->timeout(30)
-                            ->get($pullUrl);
+            //             foreach ($cloudLogs as $cloudLog) {
+            //                 $recordedAt = Carbon::parse($cloudLog['recorded_at'])->format('Y-m-d H:i:s');
+            //                 $cloudUpdated = isset($cloudLog['updated_at']) ? Carbon::parse($cloudLog['updated_at']) : null;
 
-                        if (!$response->successful()) {
-                            throw new \Exception('Cloud server returned error code: ' . $response->status());
-                        }
+            //                 // Check if record exists locally
+            //                 $localLog = Atlog::where('user_id', $cloudLog['user_id'])
+            //                     ->where('recorded_at', $recordedAt)
+            //                     ->first();
 
-                        $cloudLogs = $response->json('logs', []);
-                        $pulledCount = 0;
+            //                 if (!$localLog) {
+            //                     // Missing locally, insert it
+            //                     Atlog::create([
+            //                         'user_id'           => $cloudLog['user_id'],
+            //                         'project_code'      => $cloudLog['project_code'] ?? 0,
+            //                         'recorded_at'       => $recordedAt,
+            //                         'status'            => $cloudLog['status'],
+            //                         'verification_mode' => $cloudLog['verification_mode'],
+            //                         'work_code'         => $cloudLog['work_code'] ?? 0,
+            //                         'reserved'          => $cloudLog['reserved'] ?? 0,
+            //                         'created_at'        => $cloudLog['created_at'],
+            //                         'updated_at'        => $cloudLog['updated_at'] ?? now(),
+            //                     ]);
+            //                     $pulledCount++;
+            //                 } elseif ($cloudUpdated && $cloudUpdated->greaterThan(Carbon::parse($localLog->updated_at))) {
+            //                     // Cloud is newer than local, update local record
+            //                     $localLog->update([
+            //                         'project_code'      => $cloudLog['project_code'] ?? 0,
+            //                         'status'            => $cloudLog['status'],
+            //                         'verification_mode' => $cloudLog['verification_mode'],
+            //                         'work_code'         => $cloudLog['work_code'] ?? 0,
+            //                         'reserved'          => $cloudLog['reserved'] ?? 0,
+            //                         'updated_at'        => $cloudLog['updated_at'],
+            //                     ]);
+            //                     $pulledCount++;
+            //                 }
+            //             }
 
-                        foreach ($cloudLogs as $cloudLog) {
-                            $recordedAt = Carbon::parse($cloudLog['recorded_at'])->format('Y-m-d H:i:s');
-                            $cloudUpdated = isset($cloudLog['updated_at']) ? Carbon::parse($cloudLog['updated_at']) : null;
+            //             Notification::make()
+            //                 ->title('Reverse sync successful!')
+            //                 ->body("Successfully updated local database with {$pulledCount} records from the cloud.")
+            //                 ->success()
+            //                 ->send();
+            //         } catch (\Exception $e) {
+            //             Log::error('API pull from cloud failed: ' . $e->getMessage());
 
-                            // Check if record exists locally
-                            $localLog = Atlog::where('user_id', $cloudLog['user_id'])
-                                ->where('recorded_at', $recordedAt)
-                                ->first();
-
-                            if (!$localLog) {
-                                // Missing locally, insert it
-                                Atlog::create([
-                                    'user_id'           => $cloudLog['user_id'],
-                                    'project_code'      => $cloudLog['project_code'] ?? 0,
-                                    'recorded_at'       => $recordedAt,
-                                    'status'            => $cloudLog['status'],
-                                    'verification_mode' => $cloudLog['verification_mode'],
-                                    'work_code'         => $cloudLog['work_code'] ?? 0,
-                                    'reserved'          => $cloudLog['reserved'] ?? 0,
-                                    'created_at'        => $cloudLog['created_at'],
-                                    'updated_at'        => $cloudLog['updated_at'] ?? now(),
-                                ]);
-                                $pulledCount++;
-                            } elseif ($cloudUpdated && $cloudUpdated->greaterThan(Carbon::parse($localLog->updated_at))) {
-                                // Cloud is newer than local, update local record
-                                $localLog->update([
-                                    'project_code'      => $cloudLog['project_code'] ?? 0,
-                                    'status'            => $cloudLog['status'],
-                                    'verification_mode' => $cloudLog['verification_mode'],
-                                    'work_code'         => $cloudLog['work_code'] ?? 0,
-                                    'reserved'          => $cloudLog['reserved'] ?? 0,
-                                    'updated_at'        => $cloudLog['updated_at'],
-                                ]);
-                                $pulledCount++;
-                            }
-                        }
-
-                        Notification::make()
-                            ->title('Reverse sync successful!')
-                            ->body("Successfully updated local database with {$pulledCount} records from the cloud.")
-                            ->success()
-                            ->send();
-                    } catch (\Exception $e) {
-                        Log::error('API pull from cloud failed: ' . $e->getMessage());
-
-                        Notification::make()
-                            ->title('Pull failed: ' . $e->getMessage())
-                            ->danger()
-                            ->send();
-                    }
-                }),
+            //             Notification::make()
+            //                 ->title('Pull failed: ' . $e->getMessage())
+            //                 ->danger()
+            //                 ->send();
+            //         }
+            //     }),
             Action::make('backaction')
                 ->label('Back')
                 ->color('success')

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Skills\Pages;
 use App\Filament\Resources\Skills\SkillResource;
 use App\Models\ActivityLog;
 use App\Models\Skill;
-// use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -25,115 +24,115 @@ class ListSkills extends ListRecords
     protected function getHeaderActions(): array
     {
         // Simple connectivity check for the upload button state
-        $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
-        if ($hasInternet) {
-            fclose($hasInternet);
-            $isOnline = true;
-        } else {
-            $isOnline = false;
-        }
+        // $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+        // if ($hasInternet) {
+        //     fclose($hasInternet);
+        //     $isOnline = true;
+        // } else {
+        //     $isOnline = false;
+        // }
         return [
 
-            // 2. Simple Upload (Local Skills to Cloud)
-            Action::make('syncSkillsToCloud')
-                ->label('Upload Skills to Cloud')
-                ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
-                ->color($isOnline ? 'success' : 'danger')
-                ->size(Size::ExtraSmall)
-                ->requiresConfirmation()
-                ->modalHeading('Upload Skills to Cloud')
-                ->modalDescription('This will push all local skills to the cloud database. Proceed?')
-                ->modalSubmitActionLabel('Yes, upload')
-                ->visible(fn() => app()->environment('local'))
-                ->action(function () {
-                    try {
-                        $skills = Skill::all()->toArray();
-                        if (empty($skills)) {
-                            Notification::make()->title('No local skills found to upload.')->warning()->send();
-                            return;
-                        }
-                        // // --- UPLOAD ACTION ---
-                        $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
-                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
-                            ->timeout(30)
-                            ->post($pushUrl, ['skills' => $skills]); // or ['skills' => $skills]
+            // // 2. Simple Upload (Local Skills to Cloud)
+            // Action::make('syncSkillsToCloud')
+            //     ->label('Upload Skills to Cloud')
+            //     ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
+            //     ->color($isOnline ? 'success' : 'danger')
+            //     ->size(Size::ExtraSmall)
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Upload Skills to Cloud')
+            //     ->modalDescription('This will push all local skills to the cloud database. Proceed?')
+            //     ->modalSubmitActionLabel('Yes, upload')
+            //     ->visible(fn() => app()->environment('local'))
+            //     ->action(function () {
+            //         try {
+            //             $skills = Skill::all()->toArray();
+            //             if (empty($skills)) {
+            //                 Notification::make()->title('No local skills found to upload.')->warning()->send();
+            //                 return;
+            //             }
+            //             // // --- UPLOAD ACTION ---
+            //             $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
+            //             $response = Http::withToken(env('CLOUD_API_TOKEN'))
+            //                 ->timeout(30)
+            //                 ->post($pushUrl, ['skills' => $skills]); // or ['skills' => $skills]
 
-                        if ($response->successful()) {
-                            Notification::make()->title('Skills uploaded successfully!')->success()->send();
-                        } else {
-                            throw new \Exception('Cloud server error: ' . $response->status());
-                        }
-                    } catch (\Exception $e) {
-                        Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
-                    }
-                }),
+            //             if ($response->successful()) {
+            //                 Notification::make()->title('Skills uploaded successfully!')->success()->send();
+            //             } else {
+            //                 throw new \Exception('Cloud server error: ' . $response->status());
+            //             }
+            //         } catch (\Exception $e) {
+            //             Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
+            //         }
+            //     }),
 
-            // 3. Simple Download (Cloud Skills to Local)
-            Action::make('pullSkillsFromCloud')
-                ->label('Download Skills from Cloud')
-                ->icon('heroicon-o-cloud-arrow-down')
-                ->color('info')
-                ->size(Size::ExtraSmall)
-                ->requiresConfirmation()
-                ->modalHeading('Download Skills from Cloud')
-                ->modalDescription('This will download and merge all cloud skills into your local database. Proceed?')
-                ->modalSubmitActionLabel('Yes, download')
-                ->visible(fn() => app()->environment('local') && $isOnline)
-                ->action(function () {
-                    try {
-                        // $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
-                        // $response = Http::timeout(30)->get($pullUrl);
+            // // 3. Simple Download (Cloud Skills to Local)
+            // Action::make('pullSkillsFromCloud')
+            //     ->label('Download Skills from Cloud')
+            //     ->icon('heroicon-o-cloud-arrow-down')
+            //     ->color('info')
+            //     ->size(Size::ExtraSmall)
+            //     ->requiresConfirmation()
+            //     ->modalHeading('Download Skills from Cloud')
+            //     ->modalDescription('This will download and merge all cloud skills into your local database. Proceed?')
+            //     ->modalSubmitActionLabel('Yes, download')
+            //     ->visible(fn() => app()->environment('local') && $isOnline)
+            //     ->action(function () {
+            //         try {
+            //             // $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
+            //             // $response = Http::timeout(30)->get($pullUrl);
 
-                        // --- DOWNLOAD ACTION ---
-                        $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
-                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
-                            ->timeout(30)
-                            ->get($pullUrl);
+            //             // --- DOWNLOAD ACTION ---
+            //             $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
+            //             $response = Http::withToken(env('CLOUD_API_TOKEN'))
+            //                 ->timeout(30)
+            //                 ->get($pullUrl);
 
 
-                        if (!$response->successful()) {
-                            throw new \Exception('Cloud server error: ' . $response->status());
-                        }
+            //             if (!$response->successful()) {
+            //                 throw new \Exception('Cloud server error: ' . $response->status());
+            //             }
 
-                        $cloudSkills = $response->json('skills', []);
-                        $downloadedCount = 0;
+            //             $cloudSkills = $response->json('skills', []);
+            //             $downloadedCount = 0;
 
-                        foreach ($cloudSkills as $cloudSkill) {
-                            $title = trim($cloudSkill['title']);
-                            $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
+            //             foreach ($cloudSkills as $cloudSkill) {
+            //                 $title = trim($cloudSkill['title']);
+            //                 $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
 
-                            // Find local skill ignoring spacing/casing differences
-                            $localSkill = Skill::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
+            //                 // Find local skill ignoring spacing/casing differences
+            //                 $localSkill = Skill::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
 
-                            if (!$localSkill) {
-                                Skill::create([
-                                    'title'      => Str::upper($title),
-                                    'details'    => $cloudSkill['details'] ?? null,
-                                    'status'     => $cloudSkill['status'] ?? true,
-                                    'created_at' => $cloudSkill['created_at'] ?? now(),
-                                    'updated_at' => $cloudSkill['updated_at'] ?? now(),
-                                ]);
-                                $downloadedCount++;
-                            } else {
-                                // Update local record with cloud data
-                                $localSkill->update([
-                                    'details'    => $cloudSkill['details'] ?? null,
-                                    'status'     => $cloudSkill['status'] ?? true,
-                                    'updated_at' => $cloudSkill['updated_at'] ?? now(),
-                                ]);
-                                $downloadedCount++;
-                            }
-                        }
+            //                 if (!$localSkill) {
+            //                     Skill::create([
+            //                         'title'      => Str::upper($title),
+            //                         'details'    => $cloudSkill['details'] ?? null,
+            //                         'status'     => $cloudSkill['status'] ?? true,
+            //                         'created_at' => $cloudSkill['created_at'] ?? now(),
+            //                         'updated_at' => $cloudSkill['updated_at'] ?? now(),
+            //                     ]);
+            //                     $downloadedCount++;
+            //                 } else {
+            //                     // Update local record with cloud data
+            //                     $localSkill->update([
+            //                         'details'    => $cloudSkill['details'] ?? null,
+            //                         'status'     => $cloudSkill['status'] ?? true,
+            //                         'updated_at' => $cloudSkill['updated_at'] ?? now(),
+            //                     ]);
+            //                     $downloadedCount++;
+            //                 }
+            //             }
 
-                        Notification::make()
-                            ->title('Download successful!')
-                            ->body("Successfully synchronized {$downloadedCount} skills from the cloud.")
-                            ->success()
-                            ->send();
-                    } catch (\Exception $e) {
-                        Notification::make()->title('Download failed: ' . $e->getMessage())->danger()->send();
-                    }
-                }),
+            //             Notification::make()
+            //                 ->title('Download successful!')
+            //                 ->body("Successfully synchronized {$downloadedCount} skills from the cloud.")
+            //                 ->success()
+            //                 ->send();
+            //         } catch (\Exception $e) {
+            //             Notification::make()->title('Download failed: ' . $e->getMessage())->danger()->send();
+            //         }
+            //     }),
 
             Action::make('importSkillsCsvFormat')
                 ->label('Import .CSV File')
