@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Skills\Pages;
 use App\Filament\Resources\Skills\SkillResource;
 use App\Models\ActivityLog;
 use App\Models\Skill;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Filament\Support\Enums\Size;
+use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ListSkills extends ListRecords
@@ -22,86 +24,111 @@ class ListSkills extends ListRecords
 
     protected function getHeaderActions(): array
     {
+
+        // Simple connectivity check for the upload button state
+        $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+        if ($hasInternet) {
+            fclose($hasInternet);
+            $isOnline = true;
+        } else {
+            $isOnline = false;
+        }
+
         return [
 
-            // Action::make('importSkillsCsvFormat')
-            //     ->label('Import .CSV File')
-            //     ->icon('heroicon-o-arrow-up-tray')
-            //     ->color('success')
-            //     ->size(Size::ExtraSmall)
-            //     ->outlined()
-            //     ->form([
-            //         FileUpload::make('dat_file')
-            //             ->label('Select CSV File')
-            //             ->required()
-            //             ->storeFiles(false)
-            //             ->disk('public') // Explicitly set storage disk
-            //             ->directory('imports')
-            //             ->acceptedFileTypes([
-            //                 'text/csv',
-            //                 'text/plain',
-            //                 'application/csv',
-            //                 'text/comma-separated-values',
-            //             ])
-            //             ->maxSize(10240) // 10 MB
-            //             ->helperText('Please upload a .CSV file containing "title" and "details" headers.'),
-            //     ])
-            //     ->action(function (array $data) {
-            //         // 1. Get uploaded file path from storage
-            //         $filePath = Storage::disk('public')->path($data['dat_file']);
-            //         if (! file_exists($filePath)) {
-            //             Notification::make()
-            //                 ->title('File not found!')
-            //                 ->danger()
-            //                 ->send();
-            //             return;
-            //         }
-            //         // 2. Open and parse CSV file
-            //         $file = fopen($filePath, 'r');
-            //         $header = fgetcsv($file);
-            //         // Sanitize headers to lower case (e.g. "Title" -> "title")
-            //         $header = array_map(fn($h) => strtolower(trim($h)), $header);
-            //         $importedCount = 0;
-            //         while (($row = fgetcsv($file)) !== false) {
-            //             // Skip empty rows
-            //             if (empty(array_filter($row))) {
-            //                 continue;
-            //             }
-            //             // Combine header with current row data
-            //             $rowData = array_combine($header, $row);
-            //             $title = Str::upper(trim($rowData['title'] ?? ''));
-            //             $details = Str::upper(trim($rowData['details'] ?? ''));
-            //             if (! empty($title)) {
-            //                 // 3. Create or Update Skill model entry
-            //                 Skill::updateOrCreate(
-            //                     ['title' => $title],
-            //                     [
-            //                         'details' => $details,
-            //                         'status' => true, // default status to active
-            //                     ]
-            //                 );
-            //                 $importedCount++;
-            //             }
-            //         }
-            //         fclose($file);
-            //         // Optional: Clean up uploaded temp file
-            //         Storage::disk('public')->delete($data['dat_file']);
 
-            //         // Log User Activity
-            //         ActivityLog::create([
-            //             'user_id'   => Auth::id() ?? 'System',
-            //             'activity'  => "Uploaded CSV file to import/update {$importedCount} skills",
-            //             'module'    => 'Skill Management',
-            //             'ipaddress' => request()->ip(),
-            //             'windows'   => request()->userAgent(),
-            //         ]);
-            //         // 4. Send success notification using Filament Notification
-            //         Notification::make()
-            //             ->title('CSV Import Completed')
-            //             ->body("Successfully imported {$importedCount} skills.")
-            //             ->success()
-            //             ->send();
-            //     }),
+            // 2. Simple Upload (Local Skills to Cloud)
+            Action::make('syncSkillsToCloud')
+                ->label('Upload Skills to Cloud')
+                ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
+                ->color($isOnline ? 'success' : 'danger')
+                ->size(Size::ExtraSmall)
+                ->requiresConfirmation()
+                ->modalHeading('Upload Skills to Cloud')
+                ->modalDescription('This will push all local skills to the cloud database. Proceed?')
+                ->modalSubmitActionLabel('Yes, upload')
+                ->visible(fn() => app()->environment('local'))
+                ->action(function () {
+                    try {
+                        $skills = Skill::all()->toArray();
+                        if (empty($skills)) {
+                            Notification::make()->title('No local skills found to upload.')->warning()->send();
+                            return;
+                        }
+
+                        $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
+                        $response = Http::timeout(30)->post($pushUrl, ['skills' => $skills]);
+
+                        if ($response->successful()) {
+                            Notification::make()->title('Skills uploaded successfully!')->success()->send();
+                        } else {
+                            throw new \Exception('Cloud server error: ' . $response->status());
+                        }
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
+
+            // 3. Simple Download (Cloud Skills to Local)
+            Action::make('pullSkillsFromCloud')
+                ->label('Download Skills from Cloud')
+                ->icon('heroicon-o-cloud-arrow-down')
+                ->color('info')
+                ->size(Size::ExtraSmall)
+                ->requiresConfirmation()
+                ->modalHeading('Download Skills from Cloud')
+                ->modalDescription('This will download and merge all cloud skills into your local database. Proceed?')
+                ->modalSubmitActionLabel('Yes, download')
+                ->visible(fn() => app()->environment('local') && $isOnline)
+                ->action(function () {
+                    try {
+                        $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
+                        $response = Http::timeout(30)->get($pullUrl);
+
+                        if (!$response->successful()) {
+                            throw new \Exception('Cloud server error: ' . $response->status());
+                        }
+
+                        $cloudSkills = $response->json('skills', []);
+                        $downloadedCount = 0;
+
+                        foreach ($cloudSkills as $cloudSkill) {
+                            $title = trim($cloudSkill['title']);
+                            $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
+
+                            // Find local skill ignoring spacing/casing differences
+                            $localSkill = Skill::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
+
+                            if (!$localSkill) {
+                                Skill::create([
+                                    'title'      => Str::upper($title),
+                                    'details'    => $cloudSkill['details'] ?? null,
+                                    'status'     => $cloudSkill['status'] ?? true,
+                                    'created_at' => $cloudSkill['created_at'] ?? now(),
+                                    'updated_at' => $cloudSkill['updated_at'] ?? now(),
+                                ]);
+                                $downloadedCount++;
+                            } else {
+                                // Update local record with cloud data
+                                $localSkill->update([
+                                    'details'    => $cloudSkill['details'] ?? null,
+                                    'status'     => $cloudSkill['status'] ?? true,
+                                    'updated_at' => $cloudSkill['updated_at'] ?? now(),
+                                ]);
+                                $downloadedCount++;
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('Download successful!')
+                            ->body("Successfully synchronized {$downloadedCount} skills from the cloud.")
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Download failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
+
             Action::make('importSkillsCsvFormat')
                 ->label('Import .CSV File')
                 ->icon('heroicon-o-arrow-up-tray')

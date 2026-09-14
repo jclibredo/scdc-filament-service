@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Filament\Support\Enums\Size;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -23,7 +24,109 @@ class ListProjects extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        // Inside your table headerActions or ListRecords getHeaderActions:
+        $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+        $isOnline = $hasInternet ? (fclose($hasInternet) || true) : false;
+
         return [
+            // Add these inside your header actions array:
+            Action::make('syncProjectsToCloud')
+                ->label('Upload Projects to Cloud')
+                ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
+                ->color($isOnline ? 'success' : 'danger')
+                ->size('xs')
+                ->outlined()
+                ->requiresConfirmation()
+                ->modalHeading('Upload Projects to Cloud')
+                ->modalDescription('This will push all local projects to the cloud database. Proceed?')
+                ->modalSubmitActionLabel('Yes, upload')
+                ->visible(fn() => app()->environment('local'))
+                ->action(function () {
+                    try {
+                        $projects = Project::all()->toArray();
+                        if (empty($projects)) {
+                            Notification::make()->title('No local projects found to upload.')->warning()->send();
+                            return;
+                        }
+
+                        $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
+                        $response = Http::timeout(30)->post($pushUrl, ['projects' => $projects]);
+
+                        if ($response->successful()) {
+                            Notification::make()->title('Projects uploaded successfully!')->success()->send();
+                        } else {
+                            throw new \Exception('Cloud server error: ' . $response->status());
+                        }
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Upload failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
+
+            Action::make('pullProjectsFromCloud')
+                ->label('Download Projects from Cloud')
+                ->icon('heroicon-o-cloud-arrow-down')
+                ->color('info')
+                ->size('xs')
+                ->outlined()
+                ->requiresConfirmation()
+                ->modalHeading('Download Projects from Cloud')
+                ->modalDescription('This will download and merge all cloud projects into your local database. Proceed?')
+                ->modalSubmitActionLabel('Yes, download')
+                ->visible(fn() => app()->environment('local') && $isOnline)
+                ->action(function () {
+                    try {
+                        $pullUrl = str_replace('sync-attendance', 'fetch-cloud-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-projects'));
+                        $response = Http::timeout(30)->get($pullUrl);
+
+                        if (!$response->successful()) {
+                            throw new \Exception('Cloud server error: ' . $response->status());
+                        }
+
+                        $cloudProjects = $response->json('projects', []);
+                        $downloadedCount = 0;
+
+                        foreach ($cloudProjects as $cloudProject) {
+                            $code = trim($cloudProject['project_code']);
+                            $normalizedCode = Str::upper(preg_replace('/\s+/', '', $code));
+
+                            $localProject = Project::whereRaw("UPPER(REPLACE(project_code, ' ', '')) = ?", [$normalizedCode])->first();
+
+                            if (!$localProject) {
+                                Project::create([
+                                    'project_code' => Str::upper($code),
+                                    'name'         => Str::upper($cloudProject['name'] ?? ''),
+                                    'datecovered'  => Str::upper($cloudProject['datecovered'] ?? ''),
+                                    'scope'        => Str::upper($cloudProject['scope'] ?? ''),
+                                    'address'      => Str::upper($cloudProject['address'] ?? ''),
+                                    'image'        => $cloudProject['image'] ?? null,
+                                    'status'       => $cloudProject['status'] ?? true,
+                                    'created_at'   => $cloudProject['created_at'] ?? now(),
+                                    'updated_at'   => $cloudProject['updated_at'] ?? now(),
+                                ]);
+                                $downloadedCount++;
+                            } else {
+                                $localProject->update([
+                                    'name'         => Str::upper($cloudProject['name'] ?? ''),
+                                    'datecovered'  => Str::upper($cloudProject['datecovered'] ?? ''),
+                                    'scope'        => Str::upper($cloudProject['scope'] ?? ''),
+                                    'address'      => Str::upper($cloudProject['address'] ?? ''),
+                                    'image'        => $cloudProject['image'] ?? null,
+                                    'status'       => $cloudProject['status'] ?? true,
+                                    'updated_at'   => $cloudProject['updated_at'] ?? now(),
+                                ]);
+                                $downloadedCount++;
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('Download successful!')
+                            ->body("Successfully synchronized {$downloadedCount} projects from the cloud.")
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Download failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
             Action::make('importProjectsCsvFormat')
                 ->label('Import .CSV File')
                 ->icon('heroicon-o-arrow-up-tray')
