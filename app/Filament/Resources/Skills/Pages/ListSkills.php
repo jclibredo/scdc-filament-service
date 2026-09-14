@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Skills\Pages;
 use App\Filament\Resources\Skills\SkillResource;
 use App\Models\ActivityLog;
 use App\Models\Skill;
-use Carbon\Carbon;
+// use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -24,7 +24,6 @@ class ListSkills extends ListRecords
 
     protected function getHeaderActions(): array
     {
-
         // Simple connectivity check for the upload button state
         $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
         if ($hasInternet) {
@@ -33,9 +32,7 @@ class ListSkills extends ListRecords
         } else {
             $isOnline = false;
         }
-
         return [
-
 
             // 2. Simple Upload (Local Skills to Cloud)
             Action::make('syncSkillsToCloud')
@@ -55,8 +52,6 @@ class ListSkills extends ListRecords
                             Notification::make()->title('No local skills found to upload.')->warning()->send();
                             return;
                         }
-                        // $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
-                        // $response = Http::timeout(30)->post($pushUrl, ['skills' => $skills]);
                         // // --- UPLOAD ACTION ---
                         $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
                         $response = Http::withToken(env('CLOUD_API_TOKEN'))

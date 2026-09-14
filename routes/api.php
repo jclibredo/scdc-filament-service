@@ -26,6 +26,120 @@ if (!function_exists('verify_api_token')) {
         return $token && hash_equals($expectedToken, $token);
     }
 }
+// --- MASTER FETCH ALL ENDPOINT ---
+Route::get('/fetch-all-cloud-data', function (Request $request) {
+    if (!verify_api_token($request)) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    }
+
+    try {
+        return response()->json([
+            'success'  => true,
+            'logs'     => DB::table('attendance_logs')->get(),
+            'skills'   => DB::table('skills')->get(),
+            'projects' => DB::table('projects')->get(),
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+});
+
+// --- MASTER SYNC ALL ENDPOINT ---
+Route::post('/sync-all', function (Request $request) {
+    if (!verify_api_token($request)) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized. Invalid or missing token.'], 401);
+    }
+
+    try {
+        $summary = [];
+
+        // 1. Sync Attendance Logs
+        $logs = $request->input('logs', []);
+        if (!empty($logs)) {
+            $logCount = 0;
+            foreach ($logs as $log) {
+                $recordedAt = isset($log['recorded_at']) ? Carbon::parse($log['recorded_at'])->format('Y-m-d H:i:s') : now();
+                $createdAt  = isset($log['created_at']) ? Carbon::parse($log['created_at'])->format('Y-m-d H:i:s') : now();
+
+                DB::table('attendance_logs')->updateOrInsert(
+                    [
+                        'user_id'     => $log['user_id'],
+                        'recorded_at' => $recordedAt,
+                    ],
+                    [
+                        'project_code'      => $log['project_code'] ?? 0,
+                        'status'            => $log['status'],
+                        'verification_mode' => $log['verification_mode'],
+                        'work_code'         => $log['work_code'] ?? 0,
+                        'reserved'          => $log['reserved'] ?? 0,
+                        'created_at'        => $createdAt,
+                        'updated_at'        => now()->format('Y-m-d H:i:s'),
+                    ]
+                );
+                $logCount++;
+            }
+            $summary[] = "{$logCount} logs";
+        }
+
+        // 2. Sync Skills
+        $skills = $request->input('skills', []);
+        if (!empty($skills)) {
+            $skillCount = 0;
+            foreach ($skills as $skill) {
+                $createdAt = isset($skill['created_at']) ? Carbon::parse($skill['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($skill['updated_at']) ? Carbon::parse($skill['updated_at'])->format('Y-m-d H:i:s') : now();
+
+                DB::table('skills')->updateOrInsert(
+                    ['title' => $skill['title']],
+                    [
+                        'details'    => $skill['details'] ?? null,
+                        'status'     => $skill['status'] ?? true,
+                        'created_at' => $createdAt,
+                        'updated_at' => $updatedAt,
+                    ]
+                );
+                $skillCount++;
+            }
+            $summary[] = "{$skillCount} skills";
+        }
+
+        // 3. Sync Projects
+        $projects = $request->input('projects', []);
+        if (!empty($projects)) {
+            $projectCount = 0;
+            foreach ($projects as $project) {
+                $createdAt = isset($project['created_at']) ? Carbon::parse($project['created_at'])->format('Y-m-d H:i:s') : now();
+                $updatedAt = isset($project['updated_at']) ? Carbon::parse($project['updated_at'])->format('Y-m-d H:i:s') : now();
+
+                DB::table('projects')->updateOrInsert(
+                    ['project_code' => $project['project_code']],
+                    [
+                        'name'         => $project['name'] ?? null,
+                        'datecovered'  => $project['datecovered'] ?? null,
+                        'scope'        => $project['scope'] ?? null,
+                        'address'      => $project['address'] ?? null,
+                        'image'        => $project['image'] ?? null,
+                        'status'       => $project['status'] ?? true,
+                        'created_at'   => $createdAt,
+                        'updated_at'   => $updatedAt,
+                    ]
+                );
+                $projectCount++;
+            }
+            $summary[] = "{$projectCount} projects";
+        }
+
+        if (empty($summary)) {
+            return response()->json(['success' => false, 'message' => 'No data provided for synchronization.'], 400);
+        }
+
+        $message = "Successfully synchronized: " . implode(', ', $summary) . ".";
+        return response()->json(['success' => true, 'message' => $message], 200);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Sync All Error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+});
 
 // --- ATTENDANCE LOGS ---
 Route::post('/sync-attendance', function (Request $request) {

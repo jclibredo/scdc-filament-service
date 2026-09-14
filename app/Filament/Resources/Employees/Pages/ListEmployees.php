@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Filament\Support\Enums\Size;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -31,7 +32,181 @@ class ListEmployees extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        // Simple connectivity check for the upload button state
+        $hasInternet = @fsockopen('scdc-web-app.com', 443, $errno, $errstr, 1);
+        if ($hasInternet) {
+            fclose($hasInternet);
+            $isOnline = true;
+        } else {
+            $isOnline = false;
+        }
+
         return [
+
+            Action::make('pullAllFromCloud')
+                ->label('Download All from Cloud')
+                ->icon('heroicon-o-cloud-arrow-down')
+                ->color('info')
+                ->size('xs')
+                ->outlined()
+                ->requiresConfirmation()
+                ->modalHeading('Download All Data from Cloud')
+                ->modalDescription('This will download and merge all cloud data into your local database in one go. Proceed?')
+                ->modalSubmitActionLabel('Yes, download all')
+                ->visible(fn() => app()->environment('local') && $isOnline)
+                ->action(function () {
+                    try {
+                        $token = env('CLOUD_API_TOKEN');
+                        $pullUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills', 'sync-all'], 'fetch-all-cloud-data', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-all-cloud-data'));
+
+                        $response = Http::withToken($token)->timeout(60)->get($pullUrl);
+
+                        if (!$response->successful()) {
+                            $errorMsg = $response->json('message') ?? ('Cloud server error: ' . $response->status());
+                            throw new \Exception($errorMsg);
+                        }
+
+                        $summary = [];
+
+                        // 1. Sync Attendance Logs
+                        $cloudLogs = $response->json('logs', []);
+                        $logCount = 0;
+                        foreach ($cloudLogs as $log) {
+                            if (class_exists(Atlog::class)) {
+                                Atlog::updateOrCreate(
+                                    ['user_id' => $log['user_id'], 'recorded_at' => $log['recorded_at']],
+                                    [
+                                        'project_code'      => $log['project_code'] ?? 0,
+                                        'status'            => $log['status'],
+                                        'verification_mode' => $log['verification_mode'],
+                                        'work_code'         => $log['work_code'] ?? 0,
+                                        'reserved'          => $log['reserved'] ?? 0,
+                                        'created_at'        => $log['created_at'] ?? now(),
+                                        'updated_at'        => $log['updated_at'] ?? now(),
+                                    ]
+                                );
+                                $logCount++;
+                            }
+                        }
+                        if ($logCount > 0) $summary[] = "{$logCount} logs";
+
+                        // 2. Sync Skills
+                        $cloudSkills = $response->json('skills', []);
+                        $skillCount = 0;
+                        foreach ($cloudSkills as $cloudSkill) {
+                            if (class_exists(Skill::class)) {
+                                $title = trim($cloudSkill['title']);
+                                $normalizedTitle = Str::upper(preg_replace('/\s+/', '', $title));
+
+                                $localSkill = Skill::whereRaw("UPPER(REPLACE(title, ' ', '')) = ?", [$normalizedTitle])->first();
+
+                                if (!$localSkill) {
+                                    Skill::create([
+                                        'title'      => Str::upper($title),
+                                        'details'    => $cloudSkill['details'] ?? null,
+                                        'status'     => $cloudSkill['status'] ?? true,
+                                        'created_at' => $cloudSkill['created_at'] ?? now(),
+                                        'updated_at' => $cloudSkill['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localSkill->update([
+                                        'details'    => $cloudSkill['details'] ?? null,
+                                        'status'     => $cloudSkill['status'] ?? true,
+                                        'updated_at' => $cloudSkill['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $skillCount++;
+                            }
+                        }
+                        if ($skillCount > 0) $summary[] = "{$skillCount} skills";
+
+                        // 3. Sync Projects
+                        $cloudProjects = $response->json('projects', []);
+                        $projectCount = 0;
+                        foreach ($cloudProjects as $cloudProject) {
+                            if (class_exists(Project::class)) {
+                                $code = trim($cloudProject['project_code']);
+                                $normalizedCode = Str::upper(preg_replace('/\s+/', '', $code));
+
+                                $localProject = Project::whereRaw("UPPER(REPLACE(project_code, ' ', '')) = ?", [$normalizedCode])->first();
+
+                                if (!$localProject) {
+                                    Project::create([
+                                        'project_code' => Str::upper($code),
+                                        'name'         => Str::upper($cloudProject['name'] ?? ''),
+                                        'datecovered'  => Str::upper($cloudProject['datecovered'] ?? ''),
+                                        'scope'        => Str::upper($cloudProject['scope'] ?? ''),
+                                        'address'      => Str::upper($cloudProject['address'] ?? ''),
+                                        'image'        => $cloudProject['image'] ?? null,
+                                        'status'       => $cloudProject['status'] ?? true,
+                                        'created_at'   => $cloudProject['created_at'] ?? now(),
+                                        'updated_at'   => $cloudProject['updated_at'] ?? now(),
+                                    ]);
+                                } else {
+                                    $localProject->update([
+                                        'name'         => Str::upper($cloudProject['name'] ?? ''),
+                                        'datecovered'  => Str::upper($cloudProject['datecovered'] ?? ''),
+                                        'scope'        => Str::upper($cloudProject['scope'] ?? ''),
+                                        'address'      => Str::upper($cloudProject['address'] ?? ''),
+                                        'image'        => $cloudProject['image'] ?? null,
+                                        'status'       => $cloudProject['status'] ?? true,
+                                        'updated_at'   => $cloudProject['updated_at'] ?? now(),
+                                    ]);
+                                }
+                                $projectCount++;
+                            }
+                        }
+                        if ($projectCount > 0) $summary[] = "{$projectCount} projects";
+
+                        $bodyMessage = empty($summary) ? 'No data found to download.' : 'Successfully downloaded: ' . implode(', ', $summary) . '.';
+
+                        Notification::make()
+                            ->title('Download successful!')
+                            ->body($bodyMessage)
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Download failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
+
+            Action::make('syncAllToCloud')
+                ->label('Sync All to Cloud')
+                ->icon($isOnline ? 'heroicon-o-cloud-arrow-up' : 'heroicon-o-x-mark')
+                ->color($isOnline ? 'success' : 'danger')
+                ->size('xs')
+                ->outlined()
+                ->requiresConfirmation()
+                ->modalHeading('Synchronize All Data to Cloud')
+                ->modalDescription('This will push all local Attendance Logs, Skills, and Projects to the cloud database in one go. Proceed?')
+                ->modalSubmitActionLabel('Yes, sync all')
+                ->visible(fn() => app()->environment('local'))
+                ->action(function () {
+                    try {
+                        // Gather data from all three models safely
+                        $payload = [
+                            'logs'     => class_exists(Atlog::class) ? Atlog::all()->toArray() : [],
+                            'skills'   => class_exists(Skill::class) ? Skill::all()->toArray() : [],
+                            'projects' => class_exists(Project::class) ? Project::all()->toArray() : [],
+                        ];
+
+                        $pushUrl = str_replace(['sync-attendance', 'sync-projects', 'sync-skills'], 'sync-all', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-all'));
+
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(60) // Slightly longer timeout since it's sending everything
+                            ->post($pushUrl, $payload);
+
+                        if ($response->successful()) {
+                            $successMessage = $response->json('message') ?? 'All data synchronized successfully!';
+                            Notification::make()->title($successMessage)->success()->send();
+                        } else {
+                            $errorMsg = $response->json('message') ?? ('Cloud server error: ' . $response->status());
+                            throw new \Exception($errorMsg);
+                        }
+                    } catch (\Exception $e) {
+                        Notification::make()->title('Sync failed: ' . $e->getMessage())->danger()->send();
+                    }
+                }),
             // 🗑️ NEW: Clear All Facial Profiles Table Action
             Action::make('clearAllFacialProfiles')
                 ->label('Clear All Facial Profiles')
