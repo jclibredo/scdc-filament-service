@@ -10,7 +10,7 @@ Route::post('/sync-attendance', function (Request $request) {
     $syncedCount = 0;
 
     foreach ($logs as $log) {
-        DB::table('atlogs')->updateOrInsert(
+        DB::table('attendance_logs')->updateOrInsert(
             [
                 'user_id'     => $log['user_id'],
                 'recorded_at' => $log['recorded_at'],
