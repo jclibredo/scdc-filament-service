@@ -26,6 +26,8 @@ use Illuminate\Support\HtmlString;
 class ListAtlogs extends ListRecords
 {
     protected static string $resource = AtlogResource::class;
+
+
     // 👇 1. Place the helper function right here in the class
     protected function getSyncGaps(): array
     {
@@ -36,9 +38,8 @@ class ListAtlogs extends ListRecords
 
             $metadataUrl = str_replace('sync-attendance', 'attendance-metadata', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/attendance-metadata'));
 
-            $response = Http::timeout(2)
-                ->withHeaders(['X-Sync-Token' => env('SYNC_API_TOKEN')])
-                ->get($metadataUrl);
+            // Token header removed here
+            $response = Http::timeout(2)->get($metadataUrl);
 
             if (!$response->successful()) {
                 return ['upload' => Atlog::count(), 'download' => 0, 'online' => false];
