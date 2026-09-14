@@ -19,6 +19,7 @@ class ListCategories extends ListRecords
                 ->label('New Category')
                 ->button()
                 ->color('success')
+                ->visible(fn() => app()->environment('local'))
                 ->size('xs')
                 ->outlined()
                 ->after(function ($record) {

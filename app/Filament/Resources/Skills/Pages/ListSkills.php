@@ -277,6 +277,7 @@ class ListSkills extends ListRecords
             CreateAction::make()
                 ->label('New Skill')
                 ->button()
+                ->visible(fn() => app()->environment('local'))
                 ->color('success')
                 ->size('xs')
                 ->outlined()

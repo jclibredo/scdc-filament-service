@@ -340,8 +340,9 @@ Route::post('/sync-all', function (Request $request) {
                 $updatedAt = isset($sched['updated_at']) ? Carbon::parse($sched['updated_at'])->format('Y-m-d H:i:s') : now();
 
                 DB::table('emp_schedule')->updateOrInsert(
-                    ['employeeid' => $sched['employeeid']],
+                    ['id' => $other['id']],
                     [
+                        'employeeid' => $sched['employeeid'],
                         'timein'       => $sched['timein'] ?? null,
                         'timeout'      => $sched['timeout'] ?? null,
                         'status'       => $sched['status'] ?? true,

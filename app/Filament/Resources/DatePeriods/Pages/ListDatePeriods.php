@@ -22,6 +22,7 @@ class ListDatePeriods extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->visible(fn() => app()->environment('local'))
                 ->after(function ($record) {
                     // 5. Log New Date Period Creation
                     ActivityLog::create([
@@ -43,7 +44,7 @@ class ListDatePeriods extends ListRecords
                 ->outlined()
                 ->visible(
                     fn() =>
-                        session()->has('session_employeestatus') &&
+                    session()->has('session_employeestatus') &&
                         session()->has('session_employeetype') &&
                         session()->has('session_periodcode')
                 )

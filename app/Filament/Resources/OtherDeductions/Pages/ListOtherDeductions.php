@@ -21,6 +21,7 @@ class ListOtherDeductions extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->visible(fn() => app()->environment('local'))
                 ->after(function ($record) {
                     ActivityLog::create([
                         'user_id'   => Auth::id() ?? 'System',

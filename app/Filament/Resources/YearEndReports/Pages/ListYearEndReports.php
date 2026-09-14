@@ -22,6 +22,7 @@ class ListYearEndReports extends ListRecords
                 ->color('success')
                 ->size('xs')
                 ->outlined()
+                ->visible(fn() => app()->environment('local'))
                 ->after(function ($record) {
                     // $record contains the newly created YearEndReport model instance
                     ActivityLog::create([

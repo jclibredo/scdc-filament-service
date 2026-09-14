@@ -358,20 +358,24 @@ class ListEmployees extends ListRecords
                         $schedCount = 0;
                         foreach ($cloudSchedules as $sched) {
                             if (class_exists(EmpSchedule::class)) {
-                                $localSched = EmpSchedule::where('employeeid', $sched['employeeid'])->first();
+                                $localSched = isset($sched['id']) ? EmpSchedule::find($sched['id']) : null;
 
-                                $data = [
+                                if (!$localSched) {
+                                    $localSched = new EmpSchedule();
+                                    if (isset($sched['id'])) {
+                                        $localSched->id = $sched['id'];
+                                    }
+                                }
+
+                                $localSched->fill([
+                                    'employeeid'   => $sched['employeeid'] ?? null,
                                     'timein'       => $sched['timein'] ?? null,
                                     'timeout'      => $sched['timeout'] ?? null,
                                     'status'       => $sched['status'] ?? true,
                                     'workingHours' => $sched['workingHours'] ?? null,
-                                ];
+                                ]);
 
-                                if (!$localSched) {
-                                    EmpSchedule::create(array_merge(['employeeid' => $sched['employeeid']], $data));
-                                } else {
-                                    $localSched->update($data);
-                                }
+                                $localSched->save();
                                 $schedCount++;
                             }
                         }
@@ -716,7 +720,7 @@ class ListEmployees extends ListRecords
                 ->modalHeading('Synchronize All Data to Cloud')
                 ->modalDescription('This will push all local Attendance Logs, Skills, and Projects to the cloud database in one go. Proceed?')
                 ->modalSubmitActionLabel('Yes, sync all')
-                ->visible(fn() => app()->environment('local'))
+                ->visible(fn() => app()->environment('local') && $isOnline)
                 ->action(function () {
                     try {
                         // Gather data from all three models safely

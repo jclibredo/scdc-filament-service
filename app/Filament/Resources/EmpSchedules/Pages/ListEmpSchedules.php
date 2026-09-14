@@ -47,6 +47,7 @@ class ListEmpSchedules extends ListRecords
                 ->button()
                 ->color('success')
                 ->size('xs')
+                ->visible(fn() => app()->environment('local'))
                 ->after(function ($record) {
                     ActivityLog::create([
                         'user_id'   => Auth::id() ?? 'System',
