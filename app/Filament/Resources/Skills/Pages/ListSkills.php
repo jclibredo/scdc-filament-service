@@ -55,9 +55,13 @@ class ListSkills extends ListRecords
                             Notification::make()->title('No local skills found to upload.')->warning()->send();
                             return;
                         }
-
+                        // $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
+                        // $response = Http::timeout(30)->post($pushUrl, ['skills' => $skills]);
+                        // // --- UPLOAD ACTION ---
                         $pushUrl = str_replace('sync-attendance', 'sync-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-skills'));
-                        $response = Http::timeout(30)->post($pushUrl, ['skills' => $skills]);
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->post($pushUrl, ['skills' => $skills]); // or ['skills' => $skills]
 
                         if ($response->successful()) {
                             Notification::make()->title('Skills uploaded successfully!')->success()->send();
@@ -82,8 +86,15 @@ class ListSkills extends ListRecords
                 ->visible(fn() => app()->environment('local') && $isOnline)
                 ->action(function () {
                     try {
+                        // $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
+                        // $response = Http::timeout(30)->get($pullUrl);
+
+                        // --- DOWNLOAD ACTION ---
                         $pullUrl = str_replace('sync-attendance', 'fetch-cloud-skills', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-skills'));
-                        $response = Http::timeout(30)->get($pullUrl);
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->get($pullUrl);
+
 
                         if (!$response->successful()) {
                             throw new \Exception('Cloud server error: ' . $response->status());

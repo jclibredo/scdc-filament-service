@@ -89,11 +89,16 @@ class ListAtlogs extends ListRecords
                             return;
                         }
 
-                        // Send data securely via HTTPS to your cloud app API using the .env variable
-                        $response = Http::timeout(30)->post(env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'), [
-                            'logs' => $localLogs
-                        ]);
+                        // --- UPLOAD ACTION ---
+                        $pushUrl = str_replace('sync-attendance', 'sync-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'));
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->post($pushUrl, ['logs' => $localLogs]);
 
+                        // Send data securely via HTTPS to your cloud app API using the .env variable
+                        // $response = Http::timeout(30)->post(env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-attendance'), [
+                        //     'logs' => $localLogs
+                        // ]);
                         if ($response->successful()) {
                             Notification::make()
                                 ->title('Cloud sync successful!')
@@ -160,8 +165,13 @@ class ListAtlogs extends ListRecords
                 ->action(function () {
                     try {
                         // Request cloud logs via HTTP GET
-                        $apiUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
-                        $response = Http::timeout(30)->get($apiUrl);
+                        // $apiUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
+                        // $response = Http::timeout(30)->get($apiUrl);
+                        // --- DOWNLOAD ACTION ---
+                        $pullUrl = str_replace('sync-attendance', 'fetch-cloud-attendance', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-attendance'));
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->get($pullUrl);
 
                         if (!$response->successful()) {
                             throw new \Exception('Cloud server returned error code: ' . $response->status());

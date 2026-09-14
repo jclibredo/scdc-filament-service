@@ -48,10 +48,12 @@ class ListProjects extends ListRecords
                             Notification::make()->title('No local projects found to upload.')->warning()->send();
                             return;
                         }
-
+                        // $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
+                        // $response = Http::timeout(30)->post($pushUrl, ['projects' => $projects]);
                         $pushUrl = str_replace('sync-attendance', 'sync-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/sync-projects'));
-                        $response = Http::timeout(30)->post($pushUrl, ['projects' => $projects]);
-
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->post($pushUrl, ['projects' => $projects]);
                         if ($response->successful()) {
                             Notification::make()->title('Projects uploaded successfully!')->success()->send();
                         } else {
@@ -75,8 +77,12 @@ class ListProjects extends ListRecords
                 ->visible(fn() => app()->environment('local') && $isOnline)
                 ->action(function () {
                     try {
+                        // $pullUrl = str_replace('sync-attendance', 'fetch-cloud-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-projects'));
+                        // $response = Http::timeout(30)->get($pullUrl);
                         $pullUrl = str_replace('sync-attendance', 'fetch-cloud-projects', env('CLOUD_API_URL', 'https://scdc-web-app.com/api/fetch-cloud-projects'));
-                        $response = Http::timeout(30)->get($pullUrl);
+                        $response = Http::withToken(env('CLOUD_API_TOKEN'))
+                            ->timeout(30)
+                            ->get($pullUrl);
 
                         if (!$response->successful()) {
                             throw new \Exception('Cloud server error: ' . $response->status());
