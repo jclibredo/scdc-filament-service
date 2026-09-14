@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\EmployeeProjectHistory;
+use App\Models\FacialProfile;
 use App\Models\Project;
 use App\Models\Skill;
 use Filament\Actions\Action;
@@ -28,6 +29,33 @@ class ListEmployees extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // 🗑️ NEW: Clear All Facial Profiles Table Action
+            Action::make('clearAllFacialProfiles')
+                ->label('Clear All Facial Profiles')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Clear All Facial Profiles')
+                ->modalDescription('Are you sure you want to delete ALL facial profiles from the database? This action is permanent and will require all employees to re-register their faces.')
+                ->modalSubmitActionLabel('Yes, delete all profiles')
+                ->action(function () {
+                    // Truncate or delete all entries in the FacialProfile table
+                    $count = FacialProfile::count();
+                    FacialProfile::truncate(); // Or FacialProfile::query()->delete(); if foreign key constraints require delete()
+
+                    ActivityLog::create([
+                        'user_id'   => Auth::id() ?? 'System',
+                        'activity'  => "Cleared all facial profiles ({$count} records removed) from the database",
+                        'module'    => 'Employee Management',
+                        'ipaddress' => request()->ip(),
+                        'windows'   => request()->userAgent(),
+                    ]);
+
+                    Notification::make()
+                        ->title('All facial profiles have been successfully cleared.')
+                        ->success()
+                        ->send();
+                }),
             Action::make('openVoiceToText')
                 ->label('Voice to Text')
                 ->icon('heroicon-o-microphone')

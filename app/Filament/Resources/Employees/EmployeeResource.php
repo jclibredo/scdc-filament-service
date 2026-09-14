@@ -283,6 +283,34 @@ class EmployeeResource extends Resource
             ->filtersFormWidth('2xl')
             ->actions([
                 ActionGroup::make([
+                    // 👤 Clear Face Profile Action Button
+                    Action::make('clearFaceProfile')
+                        ->label('Clear Face Profile')
+                        ->icon('heroicon-o-user-minus')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Clear Employee Face Profile')
+                        ->modalDescription('Are you sure you want to clear the facial recognition profile for this employee? This action cannot be undone.')
+                        ->modalSubmitActionLabel('Yes, clear profile')
+                        ->action(function (Employee $record) {
+                            // Delete the associated FacialProfile record using your model relationship
+                            $record->facialProfile()->delete();
+
+                            ActivityLog::create([
+                                'user_id'   => Auth::id() ?? 'System',
+                                'activity'  => "Cleared facial profile for employee: {$record->lastname}, {$record->firstname} (ID: {$record->employeeid})",
+                                'module'    => 'Employee Management',
+                                'ipaddress' => request()->ip(),
+                                'windows'   => request()->userAgent(),
+                            ]);
+
+                            Notification::make()
+                                ->title('Facial profile successfully cleared.')
+                                ->success()
+                                ->send();
+                        })
+                        // 👁️ Only show this action if a facial profile actually exists
+                        ->visible(fn(Employee $record) => $record->facialProfile()->exists()),
                     Action::make('viewEarnings')
                         ->label('View Earnings')
                         ->icon('heroicon-o-banknotes')

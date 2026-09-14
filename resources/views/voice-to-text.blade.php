@@ -154,9 +154,9 @@
             transition: all 0.2s ease-in-out;
             background: #0f172a;
             border: 1px solid #334155;
-            border-left: 4px solid #38bdf8;
+            border-inline-start: 4px solid #38bdf8;
             border-radius: 6px;
-            margin-bottom: 8px;
+            margin-block-end: 8px;
             padding: 12px;
             cursor: pointer;
         }
@@ -242,7 +242,7 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <select id="languageSelect" class="form-control form-control-sm bg-dark text-white" style="width: auto;">
+                    <select id="languageSelect" class="form-control form-control-sm bg-dark text-white" style="inline-size: auto;">
                         <option value="en-US">🇬🇧 English (US)</option>
                         <option value="fil-PH">🇵🇭 Tagalog (Pilipino)</option>
                     </select>
